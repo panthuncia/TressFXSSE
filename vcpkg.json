@@ -1,0 +1,17 @@
+{
+"name": "commonlibsse-plugin",
+  "version-string": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "dependencies": [
+    "commonlibsse-ng",
+    "magic-enum",
+    "nlohmann-json",
+    "xbyak",
+    "glm",
+    "directx-headers",
+    "directxtk",
+    "detours",
+    "effects11"
+  ]
+}
