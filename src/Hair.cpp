@@ -1,5 +1,12 @@
 #include "Hair.h"
 #include <sys/stat.h>
+#include "SkyrimGPUInterface.h"
+#include "TressFXLayouts.h"
+// See TressFXLayouts.h
+// By default, app allocates space for each of these, and TressFX uses it.
+// These are globals, because there should really just be one instance.
+TressFXLayouts* g_TressFXLayouts = 0;
+
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) {
 	deviceContext = context;
 	initialize(resourceManager);
@@ -9,7 +16,8 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
-	//hairObject.DrawStrands((EI_CommandContextRef)deviceContext, );
+	
+	hairObject.DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
 }
 void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	//create texture and SRV (empty for now)
@@ -36,5 +44,35 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 		throw std::runtime_error("File not found");
 	}
 	logger::info("Compiling hair effect shader");
-	hairEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), pManager->device);
+	pStrandEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), pManager->device);
+	
+
+	// See TressFXLayouts.h
+	// Global storage for layouts.
+
+	if (g_TressFXLayouts == 0)
+		g_TressFXLayouts = new TressFXLayouts;
+	//why? TFX sample does it
+	DestroyAllLayouts((EI_Device*)pManager->device);
+	delete g_TressFXLayouts;
+	logger::info("Deleted layouts");
+
+	m_pBuildPSO = GetPSO("TressFX2", pStrandEffect);
+	logger::info("Got strand PSO");
+
+
+	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)pStrandEffect;
+	CreateRenderPosTanLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
+	logger::info("Created PosTanLayout");
+	CreateRenderLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
+	logger::info("Created RenderLayout");
+	CreatePPLLBuildLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
+	logger::info("Created PPLLBuildLayout");
+	//CreateShortCutDepthsAlphaLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
+	//CreateShortCutFillColorsLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
+
+	//EI_LayoutManagerRef readLayoutManager = GetLayoutManagerRef(m_pHairResolveEffect);
+	//CreatePPLLReadLayout2(pDevice, readLayoutManager);
+	//CreateShortCutResolveDepthLayout2(pDevice, readLayoutManager);
+	//CreateShortCutResolveColorLayout2(pDevice, readLayoutManager);
 }

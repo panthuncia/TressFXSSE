@@ -3,11 +3,33 @@
 #include "TressFXGPUInterface.h"
 #include "SkyrimGPUResourceManager.h"
 #include "SuAssert.h"
+#include "Effects11/d3dx11effect.h"
 #include <d3d11.h>
+template <typename T>
+constexpr auto type_name()
+{
+	std::string_view name, prefix, suffix;
+#ifdef __clang__
+	name = __PRETTY_FUNCTION__;
+	prefix = "auto type_name() [T = ";
+	suffix = "]";
+#elif defined(__GNUC__)
+	name = __PRETTY_FUNCTION__;
+	prefix = "constexpr auto type_name() [with T = ";
+	suffix = "]";
+#elif defined(_MSC_VER)
+	name = __FUNCSIG__;
+	prefix = "auto __cdecl type_name<";
+	suffix = ">(void)";
+#endif
+	name.remove_prefix(prefix.size());
+	name.remove_suffix(suffix.size());
+	return name;
+}
 EXTERN_C
 {
-	EI_BindLayout* SuCreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description);
-	void SuDestroyLayout(EI_Device* pDevice, EI_BindLayout* pLayout);
+	EI_BindLayout* CreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description);
+	void DestroyLayout(EI_Device* pDevice, EI_BindLayout* pLayout);
 
 	// Creates a structured buffer and srv (StructuredBuffer). It necessarily needs data to start, so
 	// begin state should be EI_STATE_COPY_DEST.
@@ -44,6 +66,7 @@ EXTERN_C
 		void* pInitialData, EI_StringHash objectName);
 	void DestroyIB(EI_Device* pDevice, EI_IndexBuffer* pBuffer);
 	void LogError(const char* msg);
+	void Bind(EI_CommandContextRef commandContext, EI_BindLayout * pLayout, EI_BindSet & set);
 }
 class EI_Resource
 {
@@ -60,9 +83,9 @@ public:
 };
 struct EI_BindLayout
 {
-	//std::vector<const SuTextureSlot*> srvs;
-	//std::vector<const SuUAVSlot*> uavs;
-	//std::vector<SuEffectParameter*> constants;
+	std::vector<ID3DX11EffectShaderResourceVariable*> srvs;
+	std::vector<ID3DX11EffectUnorderedAccessViewVariable*> uavs;
+	std::vector<ID3DX11EffectVariable*> constants;
 };
 class EI_BindSet
 {
@@ -77,3 +100,10 @@ public:
 	void* values;
 	int     nBytes;
 };
+class EI_PSO
+{
+public:
+	ID3DX11Effect*          m_pEffect;
+	ID3DX11EffectTechnique* m_pTechnique;
+};
+EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect);

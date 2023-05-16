@@ -79,7 +79,6 @@ void CreateRenderPosTanLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutMa
         TRESSFX_STRING_HASH("g_GuideHairVertexPositions"),
         TRESSFX_STRING_HASH("g_GuideHairVertexTangents")
     };
-
     static TressFXConstantBufferDesc constDesc =
     {
         TRESSFX_STRING_HASH(""),
@@ -101,11 +100,10 @@ void CreateRenderPosTanLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutMa
     };
 
     EI_BindLayout*&  pLayout = g_TressFXLayouts->pRenderPosTanLayout;
-
     if (pLayout != nullptr)
         EI_DestroyLayout(pDevice, pLayout);
-
     pLayout = EI_CreateLayout(pDevice, pLayoutManager, layoutDesc);
+	logger::info("5");
 
 }
 

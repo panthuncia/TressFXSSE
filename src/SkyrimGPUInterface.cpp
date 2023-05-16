@@ -1,6 +1,9 @@
 #include "SkyrimGPUInterface.h"
 #include "Buffer.h"
+#include "LOCAL_RE/BSGraphics.h"
 void printHResult(HRESULT hr);
+#include <string_view>
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,6 +38,25 @@ static void Transition(
 		}
 	}
 }
+
+static void UpdateConstants(std::vector<ID3DX11EffectVariable*>& cb, void* values, int nBytes)
+{
+	uint8_t* pCurrent = (uint8_t*)values;
+	for (AMD::int32 i = 0; i < cb.size(); ++i) {
+		ID3DX11EffectVariable* pParam = cb[i];
+		uint32_t               nParamBytes = nBytes;  //pParam->GetParameterSize();
+		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
+		SU_ASSERT(nBytes >= 0);
+		if (nCummulativeBytes > (uint32_t)nBytes) {
+			logger::warn("Layout looking for {} bytes so far, but bindset only has {} bytes.",
+				(uint32_t)nCummulativeBytes,
+				(uint32_t)nBytes);
+		}
+		pParam->SetRawValue(pCurrent, 0, nParamBytes);
+		pCurrent += nParamBytes;
+	}
+}
+
 // Generates a name from object and resource name to create a unique, single string.  
 // For example, "ruby.positions" or just "positions".
 static void GenerateCompositeName(std::string& fullName, const char* resourceName, const char* objectName)
@@ -225,44 +247,40 @@ extern "C"
 	//	return pRW2D;
 	//}
 
-	//EI_BindLayout* SuCreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description)
-	//{
-	//	(void)pDevice;
+	EI_BindLayout* CreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description)
+	{
+		logger::info("In CreateLayout");
+		(void)pDevice;
 
-	//	EI_BindLayout* pLayout = new EI_BindLayout;
+		EI_BindLayout* pLayout = new EI_BindLayout;
 
-	//	SuEffectPtr pEffect = GetEffect(layoutManager);
+		ID3DX11Effect* pEffect = (ID3DX11Effect*)&layoutManager;
+		logger::info("1");
+		for (int i = 0; i < description.nSRVs; ++i) {
+			logger::info("Getting SRV: {}", description.srvNames[i]);
+			pLayout->srvs.push_back(pEffect->GetVariableByName(description.srvNames[i])->AsShaderResource());
+		}
+		logger::info("2");
+		for (int i = 0; i < description.nUAVs; ++i) {
+			ID3DX11EffectUnorderedAccessViewVariable* pSlot = pEffect->GetVariableByName(description.uavNames[i])->AsUnorderedAccessView();
+			SU_ASSERT(pSlot != nullptr);
+			pLayout->uavs.push_back(pSlot);
+		}
+		logger::info("3");
+		(void)description.constants.constantBufferName;  // Sushi doesn't use constant buffer names.  It sets individually.
 
+		for (int i = 0; i < description.constants.nConstants; i++) {
+			pLayout->constants.push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
+		}
+		logger::info("4");
+		return pLayout;
+	}
 
-	//	for (int i = 0; i < description.nSRVs; ++i)
-	//	{
-	//		pLayout->srvs.push_back(pEffect->GetTextureSlot(description.srvNames[i]));
-	//	}
-
-	//	for (int i = 0; i < description.nUAVs; ++i)
-	//	{
-	//		const SuUAVSlot* pSlot = pEffect->GetUAVSlot(description.uavNames[i]);
-	//		SU_ASSERT(pSlot != nullptr);
-	//		pLayout->uavs.push_back(pSlot);
-	//	}
-
-	//	(void)description.constants.constantBufferName; // Sushi doesn't use constant buffer names.  It sets individually.
-
-	//	for (int i = 0; i < description.constants.nConstants; i++)
-	//	{
-	//		pLayout->constants.push_back(pEffect->GetParameter(description.constants.parameterNames[i]));
-	//	}
-
-
-	//	return pLayout;
-
-	//}
-
-	//void SuDestroyLayout(EI_Device* pDevice, EI_BindLayout* pLayout)
-	//{
-	//	(void)pDevice;
-	//	AMD_SAFE_DELETE(pLayout);
-	//}
+	void DestroyLayout(EI_Device* pDevice, EI_BindLayout* pLayout)
+	{
+		(void)pDevice;
+		AMD_SAFE_DELETE(pLayout);
+	}
 
 	// Creates structured buffer. SRV only.  Begin state should be Upload.
 	EI_Resource* CreateReadOnlySB(EI_Device* pContext,
@@ -452,4 +470,70 @@ extern "C"
 	void LogError(const char* msg) {
 		logger::error("{}",msg);
 	}
+	void Bind(EI_CommandContextRef commandContext, EI_BindLayout* pLayout, EI_BindSet& set)
+	{
+		(void)commandContext;
+		SU_ASSERT(set.nSRVs == pLayout->srvs.size());
+		for (AMD::int32 i = 0; i < set.nSRVs; ++i) {
+			//pLayout->srvs[i]->BindResource(set.srvs[i]);
+			pLayout->srvs[i]->SetResource(set.srvs[i]);
+		}
+
+		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
+		for (AMD::int32 i = 0; i < set.nUAVs; ++i) {
+			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
+		}
+
+		UpdateConstants(pLayout->constants, set.values, set.nBytes);
+	}
+	void DrawIndexedInstanced(EI_CommandContextRef commandContext,
+		EI_PSO&                                      pso,
+		AMD::EI_IndexedDrawParams&                   drawParams)
+	{
+		(void)commandContext;
+		//EI_IndexBuffer*                pIndexBuffer = ((EI_IndexBuffer*)drawParams.pIndexBuffer);
+		//TODO need to update variables
+		//pEffect->BindIndexBuffer(pIndexBuffer);
+		ID3D11DeviceContext* pContext = (ID3D11DeviceContext*)(&commandContext); 
+		D3DX11_TECHNIQUE_DESC techDesc;
+		pso.m_pTechnique->GetDesc(&techDesc); 
+		uint32_t numPasses = techDesc.Passes;
+		//bool   techniqueFound = pEffect->Begin(&technique, &numPasses);
+		int indicesPerInstance = drawParams.numIndices / drawParams.numInstances;
+		//if (techniqueFound) {
+			for (uint32_t i = 0; i < numPasses; ++i) {
+			pso.m_pTechnique->GetPassByIndex(i)->Apply(0, pContext);
+			pContext->DrawIndexedInstanced(indicesPerInstance, drawParams.numInstances, 0, 0, 0);
+				//pEffect->BeginPass(i);
+				//SuRenderManager::GetRef().DrawIndexedInstanced(SuRenderManager::TRIANGLE_LIST,
+				//	0,
+				//	0 /*Doesn't matter*/,
+				//	0 /*Doesn't matter*/,
+				//	drawParams.numIndices,
+				//	0,
+				//	TRESSFX_INDEX_SIZE,
+				//	drawParams.numInstances,
+				//	0);
+				//pEffect->EndPass();
+			}
+			//pEffect->End();
+		//}
+	}
+}
+EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)
+{
+	if (pEffect == nullptr) {
+		logger::warn("Could not get technique named {} because effect is null.", techniqueName);
+		return nullptr;
+	}
+	ID3DX11EffectTechnique* pTechnique = pEffect->GetTechniqueByName(techniqueName);
+
+	if (pTechnique == nullptr) {
+		logger::warn("Could not get technique named {}", techniqueName);
+		return nullptr;
+	}
+	EI_PSO* pso = new EI_PSO;
+	pso->m_pEffect = pEffect;
+	pso->m_pTechnique = pTechnique;
+	return pso;	
 }

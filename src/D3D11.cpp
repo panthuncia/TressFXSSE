@@ -210,8 +210,8 @@ void setCallbacks() {
 	AMD::g_Callbacks.pfRead = TressFX_DefaultRead;
 	AMD::g_Callbacks.pfSeek = TressFX_DefaultSeek;
 
-	//AMD::g_Callbacks.pfCreateLayout = SuCreateLayout;
-	//AMD::g_Callbacks.pfDestroyLayout = SuDestroyLayout;
+	AMD::g_Callbacks.pfCreateLayout = CreateLayout;
+	AMD::g_Callbacks.pfDestroyLayout = DestroyLayout;
 
 	AMD::g_Callbacks.pfCreateReadOnlySB = CreateReadOnlySB;
 	AMD::g_Callbacks.pfCreateReadWriteSB = CreateReadWriteSB;
@@ -233,7 +233,7 @@ void setCallbacks() {
 
 	AMD::g_Callbacks.pfCreateBindSet = CreateBindSet;
 	AMD::g_Callbacks.pfDestroyBindSet = DestroyBindSet;
-	//AMD::g_Callbacks.pfBind = SuBind;
+	AMD::g_Callbacks.pfBind = Bind;
 
 	//AMD::g_Callbacks.pfCreateComputeShaderPSO = SuCreateComputeShaderPSO;
 	//AMD::g_Callbacks.pfDestroyPSO = SuDestroyPSO;
