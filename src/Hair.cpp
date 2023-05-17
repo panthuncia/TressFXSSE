@@ -17,7 +17,7 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 }
 void Hair::draw() {
 	
-	hairObject.DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
+	//hairObject.DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
 }
 void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	//create texture and SRV (empty for now)
@@ -45,7 +45,28 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	}
 	logger::info("Compiling hair effect shader");
 	pStrandEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), pManager->device);
-	
+	if (pStrandEffect->IsValid())
+		logger::info("Effect is valid");
+	else
+		logger::info("Error: Effect is invalid!");
+	D3DX11_EFFECT_DESC effectDesc;
+	pStrandEffect->GetDesc(&effectDesc);
+	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
+	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
+	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
+	for (uint16_t i = 0; i < effectDesc.ConstantBuffers; ++i) {
+		auto var = pStrandEffect->GetConstantBufferByIndex(i);
+		D3DX11_EFFECT_VARIABLE_DESC vardesc;
+		var->GetDesc(&vardesc);
+		logger::info("{}", vardesc.Name);
+	}
+	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
+	for (uint16_t i = 0; i < effectDesc.GlobalVariables; ++i) {
+		auto var = pStrandEffect->GetVariableByIndex(i);
+		D3DX11_EFFECT_VARIABLE_DESC vardesc;
+		var->GetDesc(&vardesc);
+		logger::info("{}", vardesc.Name);
+	}
 
 	// See TressFXLayouts.h
 	// Global storage for layouts.
@@ -61,7 +82,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	logger::info("Got strand PSO");
 
 
-	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)pStrandEffect;
+	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)*pStrandEffect;
 	CreateRenderPosTanLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
 	logger::info("Created PosTanLayout");
 	CreateRenderLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);

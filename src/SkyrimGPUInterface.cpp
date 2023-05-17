@@ -255,33 +255,22 @@ extern "C"
 		EI_BindLayout* pLayout = new EI_BindLayout;
 
 		ID3DX11Effect* pEffect = (ID3DX11Effect*)&layoutManager;
-		logger::info("1");
-		for (int i = 0; i < description.nSRVs; ++i) {
-			auto var = pEffect->GetVariableByIndex(i);
-			D3DX11_EFFECT_VARIABLE_DESC desc;
-			var->GetDesc(&desc);
-			logger::info("{}", desc.Name);
-		}
+
 		for (int i = 0; i < description.nSRVs; ++i) {
 			logger::info("Getting SRV: {}", description.srvNames[i]);
 			auto var = pEffect->GetVariableByName(description.srvNames[i]);
-			logger::info("1.1");
 			pLayout->srvs.push_back(var->AsShaderResource());
-			logger::info("1.2");
 		}
-		logger::info("2");
 		for (int i = 0; i < description.nUAVs; ++i) {
 			ID3DX11EffectUnorderedAccessViewVariable* pSlot = pEffect->GetVariableByName(description.uavNames[i])->AsUnorderedAccessView();
 			SU_ASSERT(pSlot != nullptr);
 			pLayout->uavs.push_back(pSlot);
 		}
-		logger::info("3");
 		(void)description.constants.constantBufferName;  // Sushi doesn't use constant buffer names.  It sets individually.
 
 		for (int i = 0; i < description.constants.nConstants; i++) {
 			pLayout->constants.push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
 		}
-		logger::info("4");
 		return pLayout;
 	}
 

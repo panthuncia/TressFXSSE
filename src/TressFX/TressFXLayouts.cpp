@@ -103,8 +103,6 @@ void CreateRenderPosTanLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutMa
     if (pLayout != nullptr)
         EI_DestroyLayout(pDevice, pLayout);
     pLayout = EI_CreateLayout(pDevice, pLayoutManager, layoutDesc);
-	logger::info("5");
-
 }
 
 
