@@ -1,8 +1,10 @@
 #include "SkyrimGPUInterface.h"
 #include "Buffer.h"
 #include "LOCAL_RE/BSGraphics.h"
+#include <sstream>  //for std::stringstream
+#include <string>   //for std::string
+
 void printHResult(HRESULT hr);
-#include <string_view>
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
@@ -39,20 +41,24 @@ static void Transition(
 	}
 }
 
-static void UpdateConstants(std::vector<ID3DX11EffectVariable*>& cb, void* values, int nBytes)
+static void UpdateConstants(std::vector<ID3DX11EffectVariable*>* cb, void* values, int nBytes)
 {
 	uint8_t* pCurrent = (uint8_t*)values;
-	for (AMD::int32 i = 0; i < cb.size(); ++i) {
-		ID3DX11EffectVariable* pParam = cb[i];
+	logger::info("1");
+	for (AMD::int32 i = 0; i < cb->size(); ++i) {
+		ID3DX11EffectVariable* pParam = (*cb)[i];
 		uint32_t               nParamBytes = nBytes;  //pParam->GetParameterSize();
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
+		logger::info("2");
 		SU_ASSERT(nBytes >= 0);
 		if (nCummulativeBytes > (uint32_t)nBytes) {
 			logger::warn("Layout looking for {} bytes so far, but bindset only has {} bytes.",
 				(uint32_t)nCummulativeBytes,
 				(uint32_t)nBytes);
 		}
+		logger::info("3");
 		pParam->SetRawValue(pCurrent, 0, nParamBytes);
+		logger::info("4");
 		pCurrent += nParamBytes;
 	}
 }
@@ -252,25 +258,28 @@ extern "C"
 		logger::info("In CreateLayout");
 		(void)pDevice;
 
-		EI_BindLayout* pLayout = new EI_BindLayout;
+		EI_BindLayout* pLayout = new EI_BindLayout();
 
 		ID3DX11Effect* pEffect = (ID3DX11Effect*)&layoutManager;
 
 		for (int i = 0; i < description.nSRVs; ++i) {
 			logger::info("Getting SRV: {}", description.srvNames[i]);
 			auto var = pEffect->GetVariableByName(description.srvNames[i]);
-			pLayout->srvs.push_back(var->AsShaderResource());
+			pLayout->srvs->push_back(var->AsShaderResource());
 		}
 		for (int i = 0; i < description.nUAVs; ++i) {
 			ID3DX11EffectUnorderedAccessViewVariable* pSlot = pEffect->GetVariableByName(description.uavNames[i])->AsUnorderedAccessView();
 			SU_ASSERT(pSlot != nullptr);
-			pLayout->uavs.push_back(pSlot);
+			pLayout->uavs->push_back(pSlot);
 		}
 		(void)description.constants.constantBufferName;  // Sushi doesn't use constant buffer names.  It sets individually.
 
 		for (int i = 0; i < description.constants.nConstants; i++) {
-			pLayout->constants.push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
+			pLayout->constants->push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
 		}
+		logger::info("Layout num UAVs: {}", pLayout->uavs->size());
+		logger::info("Layout num SRVs: {}", pLayout->srvs->size());
+		logger::info("Layout num constants: {}", pLayout->constants->size());
 		return pLayout;
 	}
 
@@ -359,7 +368,6 @@ extern "C"
 		{
 			pBindSet->uavs = nullptr;
 		}
-
 		return pBindSet;
 	}
 
@@ -471,17 +479,24 @@ extern "C"
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout* pLayout, EI_BindSet& set)
 	{
 		(void)commandContext;
-		SU_ASSERT(set.nSRVs == pLayout->srvs.size());
+		logger::info("in Bind");
+		SU_ASSERT(set.nSRVs == pLayout->srvs->size());
+		logger::info("num SRVs: {}", set.nSRVs);
+		logger::info("layout SRVs: {}", pLayout->srvs->size());
 		for (AMD::int32 i = 0; i < set.nSRVs; ++i) {
 			//pLayout->srvs[i]->BindResource(set.srvs[i]);
-			pLayout->srvs[i]->SetResource(set.srvs[i]);
+			auto srvs = pLayout->srvs;
+			(*srvs)[i]->SetResource(set.srvs[i]);
 		}
-
-		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
+		logger::info("After SRVs");
+		SU_ASSERT(set.nUAVs == pLayout->uavs->size());
+		logger::info("num UAVs: {}", set.nUAVs);
+		logger::info("layout UAVs: {}", pLayout->uavs->size());
 		for (AMD::int32 i = 0; i < set.nUAVs; ++i) {
-			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
+			auto uavs = pLayout->uavs;
+			(*uavs)[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
-
+		logger::info("After UAVs");
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
 	}
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext,
@@ -499,7 +514,7 @@ extern "C"
 		//bool   techniqueFound = pEffect->Begin(&technique, &numPasses);
 		int indicesPerInstance = drawParams.numIndices / drawParams.numInstances;
 		//if (techniqueFound) {
-			for (uint32_t i = 0; i < numPasses; ++i) {
+		for (uint32_t i = 0; i < numPasses; ++i) {
 			pso.m_pTechnique->GetPassByIndex(i)->Apply(0, pContext);
 			pContext->DrawIndexedInstanced(indicesPerInstance, drawParams.numInstances, 0, 0, 0);
 				//pEffect->BeginPass(i);
@@ -513,7 +528,8 @@ extern "C"
 				//	drawParams.numInstances,
 				//	0);
 				//pEffect->EndPass();
-			}
+		}
+		logger::info("3");
 			//pEffect->End();
 		//}
 	}

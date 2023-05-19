@@ -241,7 +241,7 @@ void setCallbacks() {
 
 	AMD::g_Callbacks.pfCreateIndexBuffer = CreateIndexBuffer;
 	AMD::g_Callbacks.pfDestroyIB = DestroyIB;
-	//AMD::g_Callbacks.pfDraw = SuDrawIndexedInstanced;
+	AMD::g_Callbacks.pfDraw = DrawIndexedInstanced;
 }
 struct Hooks
 {

@@ -67,6 +67,7 @@ EXTERN_C
 	void DestroyIB(EI_Device* pDevice, EI_IndexBuffer* pBuffer);
 	void LogError(const char* msg);
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout * pLayout, EI_BindSet & set);
+	void DrawIndexedInstanced(EI_CommandContextRef commandContext, EI_PSO & pso, AMD::EI_IndexedDrawParams & drawParams);
 }
 class EI_Resource
 {
@@ -83,9 +84,15 @@ public:
 };
 struct EI_BindLayout
 {
-	std::vector<ID3DX11EffectShaderResourceVariable*> srvs;
-	std::vector<ID3DX11EffectUnorderedAccessViewVariable*> uavs;
-	std::vector<ID3DX11EffectVariable*> constants;
+	EI_BindLayout() {
+		logger::info("in struct constructor");
+		srvs = new std::vector<ID3DX11EffectShaderResourceVariable*>();
+		uavs = new std::vector<ID3DX11EffectUnorderedAccessViewVariable*>();
+		constants = new std::vector<ID3DX11EffectVariable*>();
+	}
+	std::vector<ID3DX11EffectShaderResourceVariable*>* srvs;
+	std::vector<ID3DX11EffectUnorderedAccessViewVariable*>* uavs;
+	std::vector<ID3DX11EffectVariable*>* constants;
 };
 class EI_BindSet
 {

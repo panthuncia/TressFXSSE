@@ -8,16 +8,24 @@
 TressFXLayouts* g_TressFXLayouts = 0;
 
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) {
+	hairObject = new TressFXHairObject;
+	hairEIResource = new EI_Resource;
 	deviceContext = context;
 	initialize(resourceManager);
-	hairEIResource.srv = hairSRV;
-	hairObject.Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, &hairEIResource);
+	hairEIResource->srv = hairSRV;
+	hairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, hairEIResource);
 	logger::info("Created hair object");
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
-	
-	//hairObject.DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
+	logger::info("in draw");
+	PosTanCollection test = hairObject->GetPosTanCollection();
+	logger::info("Got pos tan collection");
+	EI_BindSet test1 = test.GetRenderBindSet();
+	logger::info("Got render BindSet");
+	logger::info("bind set uavs: {}", test1.nUAVs);
+	logger::info("bind set srvs: {}", test1.nSRVs);
+	//hairObject->DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
 }
 void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	//create texture and SRV (empty for now)
@@ -49,7 +57,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 		logger::info("Effect is valid");
 	else
 		logger::info("Error: Effect is invalid!");
-	D3DX11_EFFECT_DESC effectDesc;
+	/*D3DX11_EFFECT_DESC effectDesc;
 	pStrandEffect->GetDesc(&effectDesc);
 	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
 	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
@@ -66,25 +74,30 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 		D3DX11_EFFECT_VARIABLE_DESC vardesc;
 		var->GetDesc(&vardesc);
 		logger::info("{}", vardesc.Name);
-	}
+	}*/
 
 	// See TressFXLayouts.h
 	// Global storage for layouts.
 
-	if (g_TressFXLayouts == 0)
-		g_TressFXLayouts = new TressFXLayouts;
 	//why? TFX sample does it
-	DestroyAllLayouts((EI_Device*)pManager->device);
-	delete g_TressFXLayouts;
-	logger::info("Deleted layouts");
+	if (g_TressFXLayouts != 0) {
+		EI_Device* pDevice = (EI_Device*)pManager->device;
+		DestroyAllLayouts(pDevice);
+
+		delete g_TressFXLayouts;
+	}
 
 	m_pBuildPSO = GetPSO("TressFX2", pStrandEffect);
 	logger::info("Got strand PSO");
 
+	if (g_TressFXLayouts == 0)
+		g_TressFXLayouts = new TressFXLayouts;
 
 	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)*pStrandEffect;
 	CreateRenderPosTanLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
 	logger::info("Created PosTanLayout");
+	logger::info("srvs: {}", g_TressFXLayouts->pRenderPosTanLayout->srvs->size());
+	logger::info("uavs: {}", g_TressFXLayouts->pRenderPosTanLayout->uavs->size());
 	CreateRenderLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
 	logger::info("Created RenderLayout");
 	CreatePPLLBuildLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
