@@ -84,15 +84,9 @@ public:
 };
 struct EI_BindLayout
 {
-	EI_BindLayout() {
-		logger::info("in struct constructor");
-		srvs = new std::vector<ID3DX11EffectShaderResourceVariable*>();
-		uavs = new std::vector<ID3DX11EffectUnorderedAccessViewVariable*>();
-		constants = new std::vector<ID3DX11EffectVariable*>();
-	}
-	std::vector<ID3DX11EffectShaderResourceVariable*>* srvs;
-	std::vector<ID3DX11EffectUnorderedAccessViewVariable*>* uavs;
-	std::vector<ID3DX11EffectVariable*>* constants;
+	std::vector<ID3DX11EffectShaderResourceVariable*> srvs;
+	std::vector<ID3DX11EffectUnorderedAccessViewVariable*> uavs;
+	std::vector<ID3DX11EffectVariable*> constants;
 };
 class EI_BindSet
 {

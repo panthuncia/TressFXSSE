@@ -41,12 +41,12 @@ static void Transition(
 	}
 }
 
-static void UpdateConstants(std::vector<ID3DX11EffectVariable*>* cb, void* values, int nBytes)
+static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values, int nBytes)
 {
 	uint8_t* pCurrent = (uint8_t*)values;
 	logger::info("1");
-	for (AMD::int32 i = 0; i < cb->size(); ++i) {
-		ID3DX11EffectVariable* pParam = (*cb)[i];
+	for (AMD::int32 i = 0; i < cb.size(); ++i) {
+		ID3DX11EffectVariable* pParam = cb[i];
 		uint32_t               nParamBytes = nBytes;  //pParam->GetParameterSize();
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
 		logger::info("2");
@@ -265,21 +265,21 @@ extern "C"
 		for (int i = 0; i < description.nSRVs; ++i) {
 			logger::info("Getting SRV: {}", description.srvNames[i]);
 			auto var = pEffect->GetVariableByName(description.srvNames[i]);
-			pLayout->srvs->push_back(var->AsShaderResource());
+			pLayout->srvs.push_back(var->AsShaderResource());
 		}
 		for (int i = 0; i < description.nUAVs; ++i) {
 			ID3DX11EffectUnorderedAccessViewVariable* pSlot = pEffect->GetVariableByName(description.uavNames[i])->AsUnorderedAccessView();
 			SU_ASSERT(pSlot != nullptr);
-			pLayout->uavs->push_back(pSlot);
+			pLayout->uavs.push_back(pSlot);
 		}
 		(void)description.constants.constantBufferName;  // Sushi doesn't use constant buffer names.  It sets individually.
 
 		for (int i = 0; i < description.constants.nConstants; i++) {
-			pLayout->constants->push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
+			pLayout->constants.push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
 		}
-		logger::info("Layout num UAVs: {}", pLayout->uavs->size());
-		logger::info("Layout num SRVs: {}", pLayout->srvs->size());
-		logger::info("Layout num constants: {}", pLayout->constants->size());
+		logger::info("Layout num UAVs: {}", pLayout->uavs.size());
+		logger::info("Layout num SRVs: {}", pLayout->srvs.size());
+		logger::info("Layout num constants: {}", pLayout->constants.size());
 		return pLayout;
 	}
 
@@ -480,21 +480,21 @@ extern "C"
 	{
 		(void)commandContext;
 		logger::info("in Bind");
-		SU_ASSERT(set.nSRVs == pLayout->srvs->size());
+		SU_ASSERT(set.nSRVs == pLayout->srvs.size());
 		logger::info("num SRVs: {}", set.nSRVs);
-		logger::info("layout SRVs: {}", pLayout->srvs->size());
-		for (AMD::int32 i = 0; i < set.nSRVs; ++i) {
+		logger::info("layout SRVs: {}", pLayout->srvs.size());
+		for (AMD::int32 i = 0; i < set.nSRVs; i++) {
+			logger::info("1");
 			//pLayout->srvs[i]->BindResource(set.srvs[i]);
-			auto srvs = pLayout->srvs;
-			(*srvs)[i]->SetResource(set.srvs[i]);
+			pLayout->srvs[i]->SetResource(set.srvs[i]);
+			logger::info("2");
 		}
 		logger::info("After SRVs");
-		SU_ASSERT(set.nUAVs == pLayout->uavs->size());
+		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
 		logger::info("num UAVs: {}", set.nUAVs);
-		logger::info("layout UAVs: {}", pLayout->uavs->size());
-		for (AMD::int32 i = 0; i < set.nUAVs; ++i) {
-			auto uavs = pLayout->uavs;
-			(*uavs)[i]->SetUnorderedAccessView(set.uavs[i]);
+		logger::info("layout UAVs: {}", pLayout->uavs.size());
+		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
+			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
 		logger::info("After UAVs");
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);

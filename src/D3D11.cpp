@@ -288,7 +288,7 @@ struct Hooks
 
 			SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device);
 			//init hair resources
-			Hair hair(asset, gpuResourceManager, context, "hairTest");
+			new Hair(asset, gpuResourceManager, context, "hairTest");
 			logger::info("Detouring virtual function tables");
 
 			*(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);

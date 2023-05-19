@@ -18,14 +18,7 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
-	logger::info("in draw");
-	PosTanCollection test = hairObject->GetPosTanCollection();
-	logger::info("Got pos tan collection");
-	EI_BindSet test1 = test.GetRenderBindSet();
-	logger::info("Got render BindSet");
-	logger::info("bind set uavs: {}", test1.nUAVs);
-	logger::info("bind set srvs: {}", test1.nSRVs);
-	//hairObject->DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
+	hairObject->DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
 }
 void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	//create texture and SRV (empty for now)
@@ -96,8 +89,8 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)*pStrandEffect;
 	CreateRenderPosTanLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
 	logger::info("Created PosTanLayout");
-	logger::info("srvs: {}", g_TressFXLayouts->pRenderPosTanLayout->srvs->size());
-	logger::info("uavs: {}", g_TressFXLayouts->pRenderPosTanLayout->uavs->size());
+	logger::info("srvs: {}", g_TressFXLayouts->pRenderPosTanLayout->srvs.size());
+	logger::info("uavs: {}", g_TressFXLayouts->pRenderPosTanLayout->uavs.size());
 	CreateRenderLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
 	logger::info("Created RenderLayout");
 	CreatePPLLBuildLayout2((EI_Device*)pManager->device, renderStrandsLayoutManager);
