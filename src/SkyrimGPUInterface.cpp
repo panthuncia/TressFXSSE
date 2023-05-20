@@ -134,7 +134,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	printHResult(hr1);
 	//SU_ASSERT(r.srv);
 
-	/*if (bUAV)
+	if (bUAV)
 	{
 		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
 		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -142,22 +142,27 @@ EI_Resource* CreateSB(EI_Device* pContext,
 		uavDesc.Buffer.FirstElement = 0;
 		uavDesc.Buffer.NumElements = structCount;
 		if (bCounter) {
+			logger::info("adding uav counter");
 			uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
 		}
 		logger::info("Creating UAV");
-		pManager->device->CreateUnorderedAccessView(sbPtr->GetResource(), &uavDesc, &r.uav);
-		logger::info("Created UAV");
-
+		HRESULT hr2 = pManager->device->CreateUnorderedAccessView(pSB->resource, &uavDesc, &r.uav);
+		printHResult(hr2);
+		const void*       uav_address = static_cast<const void*>(pSB->uav);
+		std::stringstream uav_ss;
+		uav_ss << uav_address;
+		std::string uav_addr = uav_ss.str();
+		logger::info("Addr. of uav: {}", uav_addr);
 		SU_ASSERT(r.uav);
-	}*/
+	}
 	if (bUAV) {
 		r.hasUAV = true;
 	}
-	const void*       address = static_cast<const void*>(pSB->srv);
-	std::stringstream ss;
-	ss << address;
-	std::string name = ss.str();
-	logger::info("Addr. of srv: {}", name);
+	const void* srv_address = static_cast<const void*>(pSB->srv);
+	std::stringstream srv_ss;
+	srv_ss << srv_address;
+	std::string srv_addr = srv_ss.str();
+	logger::info("Addr. of srv: {}", srv_addr);
 	return pSB;
 }
 

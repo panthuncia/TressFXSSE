@@ -9,8 +9,8 @@ ENB_API::ENBSDKALT1002* g_ENB = nullptr;
 
 HMODULE m_hModule;
 
-extern "C" __declspec(dllexport) const char* NAME = "Playground";
-extern "C" __declspec(dllexport) const char* DESCRIPTION = "Advanced ReShade utility by doodlez";
+extern "C" __declspec(dllexport) const char* NAME = "TressFXSSE";
+extern "C" __declspec(dllexport) const char* DESCRIPTION = "AMD TressFX 4.0 implementation for Skyrim SE";
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID)
 {
@@ -43,14 +43,5 @@ void Load()
 	hookFacegen();
 	hookGameLoop();
 	logger::info("Installed skeleton hook");
-
-	/*if (reshade::register_addon(m_hModule)) {
-		logger::info("Registered addon");
-		Lighting::GetSingleton()->Initialise();
-		Grass::GetSingleton()->Initialise();
-		Clustered::GetSingleton()->Initialise();
-	} else {
-		logger::info("ReShade not present, not installing hooks");
-	}*/
 }
 
