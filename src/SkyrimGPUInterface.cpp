@@ -99,7 +99,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	std::string strHash;
 	GenerateCompositeName(strHash, resourceName, objectName);
 
-	//SkyrimGPUResourceManager* pManager = (SkyrimGPUResourceManager*)pContext;
+	SkyrimGPUResourceManager* pManager = (SkyrimGPUResourceManager*)pContext;
 
 	//ID3D11Buffer* sbPtr = pManager->CreateStructuredBuffer(
 	//	(uint32_t)structSize,
@@ -114,6 +114,9 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	//D3D11_BUFFER_DESC desc = StructuredBufferDesc(structCount, structSize, bUAV, false, true);
 	D3D11_BUFFER_DESC nextDesc = StructuredBufferDesc(structCount, structSize, bUAV, false);
 	r.desc = nextDesc;
+	logger::info("creating buffer");
+	HRESULT hr = pManager->device->CreateBuffer(&nextDesc, NULL, &pSB->resource);
+	printHResult(hr);
 	r.structCount = structCount;
 	r.structSize = structSize;
 
@@ -122,7 +125,13 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-	//pManager->device->CreateShaderResourceView(sbPtr->GetResource(), &srvDesc, &r.srv);
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.ElementOffset = 0;
+	srvDesc.Buffer.NumElements = structCount;
+	srvDesc.Buffer.ElementWidth = structSize;
+	logger::info("creating srv");
+	HRESULT hr1 = pManager->device->CreateShaderResourceView(pSB->resource, &srvDesc, &r.srv);
+	printHResult(hr1);
 	//SU_ASSERT(r.srv);
 
 	/*if (bUAV)
@@ -144,6 +153,11 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	if (bUAV) {
 		r.hasUAV = true;
 	}
+	const void*       address = static_cast<const void*>(pSB->srv);
+	std::stringstream ss;
+	ss << address;
+	std::string name = ss.str();
+	logger::info("Addr. of srv: {}", name);
 	return pSB;
 }
 
@@ -348,6 +362,15 @@ extern "C"
 			for (int i = 0; i < bindSet.nSRVs; ++i)
 			{
 				pBindSet->srvs[i] = bindSet.srvs[i]->srv;
+				const void*       address = static_cast<const void*>(bindSet.srvs[i]->srv);
+				std::stringstream ss;
+				ss << address;
+				std::string name = ss.str(); 
+				logger::info("Addr. of srv: {}", name);
+				logger::info("Type of srv: {}", type_name<decltype(bindSet.srvs[i]->srv)>());
+				/*D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+				pBindSet->srvs[i]->GetDesc(&desc);
+				logger::info("Got format: {}", desc.Format);*/
 			}
 		}
 		else
@@ -486,6 +509,10 @@ extern "C"
 		for (AMD::int32 i = 0; i < set.nSRVs; i++) {
 			logger::info("1");
 			//pLayout->srvs[i]->BindResource(set.srvs[i]);
+			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+
+			set.srvs[i]->GetDesc(&desc);
+			logger::info("Resource format: {}", desc.Format);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 			logger::info("2");
 		}
