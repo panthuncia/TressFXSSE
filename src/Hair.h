@@ -9,7 +9,7 @@ class Hair
 public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
 	void draw();
-	ID3D11DeviceContext* deviceContext;
+	SkyrimGPUResourceManager* m_pManager;
 
 	//static
 	static inline std::unordered_map<std::string, Hair*> hairs;

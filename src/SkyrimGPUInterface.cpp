@@ -9,7 +9,14 @@ void printHResult(HRESULT hr);
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
 //////////////////////////////////////////////////////////////////////////////////////////////
+std::string ptr_to_string(void* ptr) {
 
+	const void*       address = static_cast<const void*>(ptr);
+	std::stringstream ss;
+	ss << address;
+	std::string name = ss.str();
+	return name;
+}
 static void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
 {
 	logger::info("Printing messages");
@@ -89,22 +96,19 @@ static void Transition(
 
 static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values, int nBytes)
 {
+	logger::info("Update constants");
 	uint8_t* pCurrent = (uint8_t*)values;
-	logger::info("1");
 	for (AMD::int32 i = 0; i < cb.size(); ++i) {
 		ID3DX11EffectVariable* pParam = cb[i];
 		uint32_t               nParamBytes = nBytes;  //pParam->GetParameterSize();
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
-		logger::info("2");
 		SU_ASSERT(nBytes >= 0);
 		if (nCummulativeBytes > (uint32_t)nBytes) {
 			logger::warn("Layout looking for {} bytes so far, but bindset only has {} bytes.",
 				(uint32_t)nCummulativeBytes,
 				(uint32_t)nBytes);
 		}
-		logger::info("3");
 		pParam->SetRawValue(pCurrent, 0, nParamBytes);
-		logger::info("4");
 		pCurrent += nParamBytes;
 	}
 }
@@ -556,28 +560,19 @@ extern "C"
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout* pLayout, EI_BindSet& set)
 	{
 		(void)commandContext;
-		logger::info("in Bind");
 		SU_ASSERT(set.nSRVs == pLayout->srvs.size());
-		logger::info("num SRVs: {}", set.nSRVs);
-		logger::info("layout SRVs: {}", pLayout->srvs.size());
 		for (AMD::int32 i = 0; i < set.nSRVs; i++) {
-			logger::info("1");
 			//pLayout->srvs[i]->BindResource(set.srvs[i]);
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			logger::info("Resource format: {}", desc.Format);
+			logger::info("Binding resource, format: {}", desc.Format);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
-			logger::info("2");
 		}
-		logger::info("After SRVs");
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
-		logger::info("num UAVs: {}", set.nUAVs);
-		logger::info("layout UAVs: {}", pLayout->uavs.size());
 		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
 			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
-		logger::info("After UAVs");
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
 	}
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext,
@@ -588,31 +583,27 @@ extern "C"
 		//EI_IndexBuffer*                pIndexBuffer = ((EI_IndexBuffer*)drawParams.pIndexBuffer);
 		//TODO need to update variables
 		//pEffect->BindIndexBuffer(pIndexBuffer);
-		ID3D11DeviceContext* pContext = (ID3D11DeviceContext*)(&commandContext); 
+		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext)); 
 		D3DX11_TECHNIQUE_DESC techDesc;
+		logger::info("1");
 		pso.m_pTechnique->GetDesc(&techDesc); 
 		uint32_t numPasses = techDesc.Passes;
 		//bool   techniqueFound = pEffect->Begin(&technique, &numPasses);
 		int indicesPerInstance = drawParams.numIndices / drawParams.numInstances;
 		//if (techniqueFound) {
+		logger::info("2");
+		logger::info("Passes: {}", numPasses);
 		for (uint32_t i = 0; i < numPasses; ++i) {
-			pso.m_pTechnique->GetPassByIndex(i)->Apply(0, pContext);
+			auto pass = pso.m_pTechnique->GetPassByIndex(i);
+			logger::info("2.5");
+			if (pass->IsValid()){
+				logger::info("Pass is valid");
+			} else {
+				logger::info("Pass: Effect is invalid!");
+			}
+			pass->Apply(0, pContext);
 			pContext->DrawIndexedInstanced(indicesPerInstance, drawParams.numInstances, 0, 0, 0);
-				//pEffect->BeginPass(i);
-				//SuRenderManager::GetRef().DrawIndexedInstanced(SuRenderManager::TRIANGLE_LIST,
-				//	0,
-				//	0 /*Doesn't matter*/,
-				//	0 /*Doesn't matter*/,
-				//	drawParams.numIndices,
-				//	0,
-				//	TRESSFX_INDEX_SIZE,
-				//	drawParams.numInstances,
-				//	0);
-				//pEffect->EndPass();
 		}
-		logger::info("3");
-			//pEffect->End();
-		//}
 	}
 }
 EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)

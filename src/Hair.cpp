@@ -10,7 +10,6 @@ TressFXLayouts* g_TressFXLayouts = 0;
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) {
 	hairObject = new TressFXHairObject;
 	hairEIResource = new EI_Resource;
-	deviceContext = context;
 	initialize(resourceManager);
 	hairEIResource->srv = hairSRV;
 	hairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, hairEIResource);
@@ -18,7 +17,9 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
-	hairObject->DrawStrands((EI_CommandContextRef)deviceContext, *m_pBuildPSO);
+	ID3D11DeviceContext* pContext;
+	m_pManager->device->GetImmediateContext(&pContext);
+	hairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
 }
 void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	//create texture and SRV (empty for now)
@@ -33,6 +34,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	desc.MiscFlags = 0;
+	m_pManager = pManager;
 	pManager->device->CreateTexture2D(&desc, NULL, &hairTexture);
 	pManager->device->CreateShaderResourceView(hairTexture, nullptr, &hairSRV);
 	//compile effect

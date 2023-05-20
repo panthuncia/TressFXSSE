@@ -309,9 +309,7 @@ void TressFXHairObject::DrawStrands(EI_CommandContextRef commandContext,
     // at some point, should probably pass these in to EI_BindAndDrawIndexedInstanced.
     EI_Bind(commandContext, GetRenderPosTanLayout(), mPosTanCollection.GetRenderBindSet());
     //EI_Bind(commandContext, renderLayout, *m_pDrawStrandsBindSet);
-	logger::info("after bind");
     EI_Bind(commandContext, GetRenderLayout(), *m_pDrawStrandsBindSet);
-	logger::info("after bind");
     // This could be an argument at some point.
     AMD::uint32 nStrandCopies = 1;
     float  density = 1.0f;
