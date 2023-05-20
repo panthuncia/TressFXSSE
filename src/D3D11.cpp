@@ -11,7 +11,7 @@
 #include "SkyrimGPUInterface.h"
 #include "SkeletonInterface.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
-
+decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
 decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
 
@@ -42,6 +42,39 @@ extern "C"
 	}
 }
 
+HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
+	IDXGIAdapter*               pAdapter,
+	D3D_DRIVER_TYPE             DriverType,
+	HMODULE                     Software,
+	UINT                        Flags,
+	const D3D_FEATURE_LEVEL*    pFeatureLevels,
+	UINT                        FeatureLevels,
+	UINT                        SDKVersion,
+	const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+	IDXGISwapChain**            ppSwapChain,
+	ID3D11Device**              ppDevice,
+	D3D_FEATURE_LEVEL*          pFeatureLevel,
+	ID3D11DeviceContext**       ppImmediateContext)
+{
+	Flags |= D3D11_CREATE_DEVICE_DEBUG; 
+	logger::info("Calling original D3D11CreateDeviceAndSwapChain");
+	HRESULT hr = (*ptrD3D11CreateDeviceAndSwapChain)(pAdapter,
+		DriverType,
+		Software,
+		Flags,
+		pFeatureLevels,
+		FeatureLevels,
+		SDKVersion,
+		pSwapChainDesc,
+		ppSwapChain,
+		ppDevice,
+		pFeatureLevel,
+		ppImmediateContext);
+	
+
+	return hr;
+}
+
 
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
@@ -68,79 +101,6 @@ void hk_ID3D11DeviceContext_DrawIndexedInstanced(ID3D11DeviceContext* This, UINT
 
 GUID WKPDID_D3DDebugObjectNameT = { 0x429b8c22, 0x9188, 0x4b0c, 0x87, 0x42, 0xac, 0xb0, 0xbf, 0x85, 0xc2, 0x00 };
 
-void SetResourceName(ID3D11DeviceChild* Resource, const char* Format, ...)
-{
-	if (!Resource)
-		return;
-
-	char    buffer[1024];
-	va_list va;
-
-	va_start(va, Format);
-	int len = _vsnprintf_s(buffer, _TRUNCATE, Format, va);
-	va_end(va);
-
-	Resource->SetPrivateData(WKPDID_D3DDebugObjectNameT, len, buffer);
-}
-
-void AddTextureDebugInformation()
-{
-	auto r = BSGraphics::Renderer::QInstance();
-	for (int i = 0; i < RenderTargets::RENDER_TARGET_COUNT; i++) {
-		auto rt = r->pRenderTargets[i];
-		auto name = RTNames[i];
-		if (rt.RTV) {
-			SetResourceName(rt.RTV, "%s RTV", name);
-		}
-		if (rt.SRV) {
-			SetResourceName(rt.SRV, "%s SRV", name);
-		}
-		if (rt.SRVCopy) {
-			SetResourceName(rt.SRVCopy, "%s COPY SRV", name);
-		}
-		if (rt.Texture) {
-			SetResourceName(rt.Texture, "%s TEXTURE", name);
-		}
-	}
-	for (int i = 0; i < RenderTargetsCubemaps::RENDER_TARGET_CUBEMAP_COUNT; i++) {
-		auto rt = r->pCubemapRenderTargets[i];
-		auto name = RTCubemapNames[i];
-		if (rt.SRV) {
-			SetResourceName(rt.SRV, "%s SRV", name);
-		}
-		for (int k = 0; k < 6; k++) {
-			if (rt.CubeSideRTV[k]) {
-				SetResourceName(rt.CubeSideRTV[k], "%s SIDE SRV", name);
-			}
-		}
-		if (rt.Texture) {
-			SetResourceName(rt.Texture, "%s TEXTURE", name);
-		}
-	}
-
-		for (int i = 0; i < RenderTargetsDepthStencil::DEPTH_STENCIL_COUNT; i++) {
-		auto rt = r->pDepthStencils[i];
-			auto name = DepthNames[i];
-		if (rt.DepthSRV) {
-				SetResourceName(rt.DepthSRV, "%s DEPTH SRV", name);
-		}
-		if (rt.StencilSRV) {
-			SetResourceName(rt.StencilSRV, "%s STENCIL SRV", name);
-		}
-		for (int k = 0; k < 8; k++) {
-			if (rt.Views[k]) {
-				SetResourceName(rt.Views[k], "%s VIEWS SRV", name);
-			}
-			if (rt.ReadOnlyViews[k]) {
-				SetResourceName(rt.Views[k], "%s READONLY VIEWS SRV", name);
-			}
-		}
-		if (rt.Texture) {
-			SetResourceName(rt.Texture, "%s TEXTURE", name);
-		}
-	}
-}
-
 
 typedef void (*LoadShaders_t)(BSGraphics::BSShader* shader, std::uintptr_t stream);
 LoadShaders_t oLoadShaders;
@@ -149,17 +109,6 @@ bool          loadinit = false;
 void hk_LoadShaders(BSGraphics::BSShader* bsShader, std::uintptr_t stream)
 {
 	oLoadShaders(bsShader, stream);
-	if (!loadinit) {
-		AddTextureDebugInformation();
-		loadinit = true;
-	}
-
-	for (const auto& entry : bsShader->m_PixelShaderTable) {
-		SetResourceName(entry->m_Shader, "%s %u PS", bsShader->m_LoaderType, entry->m_TechniqueID);
-	}
-	for (const auto& entry : bsShader->m_VertexShaderTable) {
-		SetResourceName(entry->m_Shader, "%s %u VS", bsShader->m_LoaderType, entry->m_TechniqueID);
-	}
 };
 
 uintptr_t LoadShaders;
@@ -300,6 +249,14 @@ struct Hooks
 
 	static void Install()
 	{
+		//hook CreateDeviceAndSwapChain
+		//Thanks PureDark
+		LPCWSTR ptr = nullptr;
+		auto  moduleBase = (uintptr_t)GetModuleHandle(ptr);
+		auto  dllD3D11 = GetModuleHandleA("d3d11.dll");
+		*(FARPROC*)&ptrD3D11CreateDeviceAndSwapChain = GetProcAddress(dllD3D11, "D3D11CreateDeviceAndSwapChain");
+		Detours::IATHook(moduleBase, "d3d11.dll", "D3D11CreateDeviceAndSwapChain", (uintptr_t)hk_D3D11CreateDeviceAndSwapChain);
+
 		stl::write_thunk_call<BSGraphics_Renderer_Init_InitD3D>(REL::RelocationID(75595, 77226).address() + REL::Relocate(0x50, 0x2BC));
 		//Detours::X64::DetourFunction(*(uintptr_t*)RELOCATION_ID(101339, 108326).address(), (uintptr_t)&hk_LoadShaders);
 		InstallLoadShaders();

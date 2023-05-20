@@ -28,6 +28,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	desc.MipLevels = desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DYNAMIC;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;

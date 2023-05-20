@@ -9,7 +9,53 @@ void printHResult(HRESULT hr);
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
 //////////////////////////////////////////////////////////////////////////////////////////////
-//handles transfering staging buffer data to UAV
+
+static void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
+{
+	logger::info("Printing messages");
+	Microsoft::WRL::ComPtr<ID3D11Device> m_d3dDevice;
+	*(m_d3dDevice.GetAddressOf()) = d3dDevice;
+	Microsoft::WRL::ComPtr<ID3D11Debug> d3dDebug;
+	Microsoft::WRL::ComPtr<ID3D11InfoQueue> d3dInfoQueue;
+	logger::info("got debug device");
+	HRESULT hr = m_d3dDevice.As(&d3dDebug);
+	if (SUCCEEDED(hr)) {
+		hr = d3dDebug.As(&d3dInfoQueue);
+		if (SUCCEEDED(hr)) {
+#	ifdef _DEBUG
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+#	endif
+			D3D11_MESSAGE_ID hide[] = {
+				D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
+				// TODO: Add more message IDs here as needed
+			};
+			D3D11_INFO_QUEUE_FILTER filter = {};
+			filter.DenyList.NumIDs = _countof(hide);
+			filter.DenyList.pIDList = hide;
+			d3dInfoQueue->AddStorageFilterEntries(&filter);
+		}
+	}
+	//HANDLE_HRESULT is just a macro of mine to check for S_OK return value
+	d3dInfoQueue->PushEmptyStorageFilter();
+	UINT64 message_count = d3dInfoQueue->GetNumStoredMessages();
+
+	for (UINT64 i = 0; i < message_count; i++) {
+		SIZE_T message_size = 0;
+		d3dInfoQueue->GetMessage(i, nullptr, &message_size);  //get the size of the message
+
+		D3D11_MESSAGE* message = (D3D11_MESSAGE*)malloc(message_size);            //allocate enough space
+		d3dInfoQueue->GetMessage(i, message, &message_size);  //get the actual message
+
+		//do whatever you want to do with it
+		logger::info("{}",message->pDescription);
+
+		free(message);
+	}
+
+	d3dInfoQueue->ClearStoredMessages();
+}
+	//handles transfering staging buffer data to UAV
 static void Transition(
 	EI_Resource* pResource,
 	AMD::EI_ResourceState  from,
@@ -144,6 +190,8 @@ EI_Resource* CreateSB(EI_Device* pContext,
 		if (bCounter) {
 			logger::info("adding uav counter");
 			uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
+		} else {
+			uavDesc.Buffer.Flags = 0;
 		}
 		logger::info("Creating UAV");
 		HRESULT hr2 = pManager->device->CreateUnorderedAccessView(pSB->resource, &uavDesc, &r.uav);
@@ -163,6 +211,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	srv_ss << srv_address;
 	std::string srv_addr = srv_ss.str();
 	logger::info("Addr. of srv: {}", srv_addr);
+	PrintAllD3D11DebugMessages(pManager->device);
 	return pSB;
 }
 
