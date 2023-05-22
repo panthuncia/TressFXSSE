@@ -5,7 +5,7 @@ protected:
 	//=================================================================================================   
 	/// Constructor
 	//=================================================================================================   
-	SkyrimGPUResourceManager(ID3D11Device* device);
+	SkyrimGPUResourceManager(ID3D11Device* pDevice, IDXGISwapChain* pSwapChain);
 	static inline SkyrimGPUResourceManager* singleton_;
 public:
 	//=================================================================================================   
@@ -27,10 +27,11 @@ public:
 	 * into the static field. On subsequent runs, it returns the client existing
 	 * object stored in the static field.
 	 */
-	static SkyrimGPUResourceManager* GetInstance(ID3D11Device* device);
+	static SkyrimGPUResourceManager* GetInstance(ID3D11Device* pDevice, IDXGISwapChain* pSwapChain);
 	static SkyrimGPUResourceManager* GetInstance();
 
-	inline static ID3D11Device* device;
+	inline static ID3D11Device* m_pDevice;
+	inline static IDXGISwapChain* m_pSwapChain;
 	/// Creates a structured buffer
 	ID3D11Buffer* CreateStructuredBuffer(uint32_t nStructSize,
 		uint32_t nNumStructs,

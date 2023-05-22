@@ -68,14 +68,16 @@ EXTERN_C
 	void LogError(const char* msg);
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout * pLayout, EI_BindSet & set);
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext, EI_PSO & pso, AMD::EI_IndexedDrawParams & drawParams);
-}
+	EI_Resource* Create2D(EI_Device * pContext, const size_t  width, const size_t  height, const size_t  arraySize, EI_StringHash strHash);
+	}
 class EI_Resource
 {
 public:
-	ID3D11Buffer* resource;
-	ID3D11UnorderedAccessView*    uav;
-	ID3D11ShaderResourceView*   srv;
-	/*SuGPURenderableResourceViewPtr rtv;*/
+	ID3D11Buffer* buffer;
+	ID3D11Texture2D* texture;
+	ID3D11UnorderedAccessView* uav;
+	ID3D11ShaderResourceView* srv;
+	ID3D11ShaderResourceView* rtv;//renderable texture view- same as SRV in DX11, sushi has a separate type
 	D3D11_BUFFER_DESC desc;
 	bool hasUAV;
 	uint32_t structCount;

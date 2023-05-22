@@ -15,19 +15,6 @@ decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwap
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
 decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
 
-// This could instead be retrieved as a variable from the
-// script manager, or passed as an argument.
-static const size_t AVE_FRAGS_PER_PIXEL = 4;
-static const size_t PPLL_NODE_SIZE = 16;
-
-
-
-// See TressFXLayouts.h
-// By default, app allocates space for each of these, and TressFX uses it.
-// These are globals, because there should really just be one instance.
-TressFXLayouts* g_TressFXLayouts = 0;
-
-
 extern "C"
 {
 	void TressFX_DefaultRead(void* ptr, AMD::uint size, EI_Stream* pFile)
@@ -41,7 +28,48 @@ extern "C"
 		fseek(fp, offset, SEEK_SET);
 	}
 }
+void setCallbacks()
+{
+	AMD::g_Callbacks.pfMalloc = malloc;
+	AMD::g_Callbacks.pfFree = free;
+	AMD::g_Callbacks.pfError = LogError;
 
+	AMD::g_Callbacks.pfRead = TressFX_DefaultRead;
+	AMD::g_Callbacks.pfSeek = TressFX_DefaultSeek;
+
+	AMD::g_Callbacks.pfCreateLayout = CreateLayout;
+	AMD::g_Callbacks.pfDestroyLayout = DestroyLayout;
+
+	AMD::g_Callbacks.pfCreateReadOnlySB = CreateReadOnlySB;
+	AMD::g_Callbacks.pfCreateReadWriteSB = CreateReadWriteSB;
+	AMD::g_Callbacks.pfCreateCountedSB = CreateCountedSB;
+
+	//AMD::g_Callbacks.pfClearCounter = SuClearCounter;
+	//AMD::g_Callbacks.pfCopy = SuCopy;
+	AMD::g_Callbacks.pfMap = Map;
+	AMD::g_Callbacks.pfUnmap = Unmap;
+
+	//AMD::g_Callbacks.pfDestroySB = SuDestroy;
+
+	//AMD::g_Callbacks.pfCreateRT = SuCreateRT;
+	AMD::g_Callbacks.pfCreate2D = Create2D;
+
+	//AMD::g_Callbacks.pfClear2D = SuClear2D;
+
+	AMD::g_Callbacks.pfSubmitBarriers = SubmitBarriers;
+
+	AMD::g_Callbacks.pfCreateBindSet = CreateBindSet;
+	AMD::g_Callbacks.pfDestroyBindSet = DestroyBindSet;
+	AMD::g_Callbacks.pfBind = Bind;
+
+	//AMD::g_Callbacks.pfCreateComputeShaderPSO = SuCreateComputeShaderPSO;
+	//AMD::g_Callbacks.pfDestroyPSO = SuDestroyPSO;
+	//AMD::g_Callbacks.pfDispatch = SuDispatch;
+
+	AMD::g_Callbacks.pfCreateIndexBuffer = CreateIndexBuffer;
+	AMD::g_Callbacks.pfDestroyIB = DestroyIB;
+	AMD::g_Callbacks.pfDraw = DrawIndexedInstanced;
+}
 HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	IDXGIAdapter*               pAdapter,
 	D3D_DRIVER_TYPE             DriverType,
@@ -71,6 +99,42 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		pFeatureLevel,
 		ppImmediateContext);
 	
+	logger::info("Loading hair API");
+	setCallbacks();
+	FILE* fp;
+	logger::info("Opening file");
+	fopen_s(&fp, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfx", "rb");
+	if (!fp) {
+		logger::info("File opening failed");
+	}
+	FILE* fpBone;
+	logger::info("Opening bone file");
+	fopen_s(&fpBone, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfxbone", "rb");
+	if (!fpBone) {
+		logger::info("File opening failed");
+	}
+	AMD::TressFXAsset* asset = new AMD::TressFXAsset();
+	logger::info("Loading hair data");
+	asset->LoadHairData(fp);
+	logger::info("Closing file");
+	fclose(fp);
+	logger::info("Loading bone data");
+	SkeletonInterface placeholder;
+	asset->LoadBoneData(placeholder, fpBone);
+	logger::info("Closing file");
+	fclose(fp);
+	logger::info("Processing asset");
+	asset->ProcessAsset();
+	logger::info("Accessing render device information");
+
+	auto manager = RE::BSRenderManager::GetSingleton();
+	auto device = manager->GetRuntimeData().forwarder;
+	auto context = manager->GetRuntimeData().context;
+	auto swapchain = manager->GetRuntimeData().swapChain;
+
+	SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device, swapchain);
+	//init hair resources
+	new Hair(asset, gpuResourceManager, context, "hairTest");
 
 	return hr;
 }
@@ -151,47 +215,6 @@ void InstallLoadShaders()
 void hookSkinAllGeometry() {
 	REL::Relocation<uintptr_t> skinAllGeometryHook{ RELOCATION_ID(26405, 26986) };  // 0x3d87b0, 0x1403F0830, SkinAllGeometry
 }
-void setCallbacks() {
-	AMD::g_Callbacks.pfMalloc = malloc;
-	AMD::g_Callbacks.pfFree = free;
-	AMD::g_Callbacks.pfError = LogError;
-
-	AMD::g_Callbacks.pfRead = TressFX_DefaultRead;
-	AMD::g_Callbacks.pfSeek = TressFX_DefaultSeek;
-
-	AMD::g_Callbacks.pfCreateLayout = CreateLayout;
-	AMD::g_Callbacks.pfDestroyLayout = DestroyLayout;
-
-	AMD::g_Callbacks.pfCreateReadOnlySB = CreateReadOnlySB;
-	AMD::g_Callbacks.pfCreateReadWriteSB = CreateReadWriteSB;
-	AMD::g_Callbacks.pfCreateCountedSB = CreateCountedSB;
-
-	//AMD::g_Callbacks.pfClearCounter = SuClearCounter;
-	//AMD::g_Callbacks.pfCopy = SuCopy;
-	AMD::g_Callbacks.pfMap = Map;
-	AMD::g_Callbacks.pfUnmap = Unmap;
-
-	//AMD::g_Callbacks.pfDestroySB = SuDestroy;
-
-	//AMD::g_Callbacks.pfCreateRT = SuCreateRT;
-	//AMD::g_Callbacks.pfCreate2D = SuCreate2D;
-
-	//AMD::g_Callbacks.pfClear2D = SuClear2D;
-
-	AMD::g_Callbacks.pfSubmitBarriers = SubmitBarriers;
-
-	AMD::g_Callbacks.pfCreateBindSet = CreateBindSet;
-	AMD::g_Callbacks.pfDestroyBindSet = DestroyBindSet;
-	AMD::g_Callbacks.pfBind = Bind;
-
-	//AMD::g_Callbacks.pfCreateComputeShaderPSO = SuCreateComputeShaderPSO;
-	//AMD::g_Callbacks.pfDestroyPSO = SuDestroyPSO;
-	//AMD::g_Callbacks.pfDispatch = SuDispatch;
-
-	AMD::g_Callbacks.pfCreateIndexBuffer = CreateIndexBuffer;
-	AMD::g_Callbacks.pfDestroyIB = DestroyIB;
-	AMD::g_Callbacks.pfDraw = DrawIndexedInstanced;
-}
 struct Hooks
 {
 	struct BSGraphics_Renderer_Init_InitD3D
@@ -202,42 +225,11 @@ struct Hooks
 
 			func();
 
-			logger::info("Loading hair API");
-			setCallbacks();
-			FILE* fp;
-			logger::info("Opening file");
-			fopen_s(&fp, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfx", "rb");
-			if (!fp) {
-				logger::info("File opening failed");
-			}
-			FILE* fpBone;
-			logger::info("Opening bone file");
-			fopen_s(&fpBone, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfxbone", "rb");
-			if (!fpBone) {
-				logger::info("File opening failed");
-			}
-			AMD::TressFXAsset* asset = new AMD::TressFXAsset();
-			logger::info("Loading hair data");
-			asset->LoadHairData(fp);
-			logger::info("Closing file");
-			fclose(fp);
-			logger::info("Loading bone data");
-			SkeletonInterface placeholder;
-			asset->LoadBoneData(placeholder, fpBone);
-			logger::info("Closing file");
-			fclose(fp);
-			logger::info("Processing asset");
-			asset->ProcessAsset();
-			logger::info("Accessing render device information");
-
 			auto manager = RE::BSRenderManager::GetSingleton();
-			auto device = manager->GetRuntimeData().forwarder;
+			//auto device = manager->GetRuntimeData().forwarder;
 			auto context = manager->GetRuntimeData().context;
 			auto swapchain = manager->GetRuntimeData().swapChain;
 
-			SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device);
-			//init hair resources
-			new Hair(asset, gpuResourceManager, context, "hairTest");
 			logger::info("Detouring virtual function tables");
 
 			*(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);

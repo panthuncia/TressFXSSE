@@ -4,6 +4,7 @@
 #include "AMD_TressFX.h"
 #include "SkyrimGPUInterface.h"
 #include "ShaderCompiler.h"
+class TressFXPPLL;
 class Hair
 {
 public:
@@ -15,11 +16,15 @@ public:
 	static inline std::unordered_map<std::string, Hair*> hairs;
 private:
 	void initialize(SkyrimGPUResourceManager* pManager);
-	ID3D11Texture2D* hairTexture;
-	ID3D11ShaderResourceView* hairSRV;
-	EI_Resource* hairEIResource;
-	TressFXHairObject* hairObject;
-	ID3DX11Effect* pStrandEffect;
+	ID3DX11Effect* create_effect(std::string_view filePath);
+	ID3D11Texture2D* m_hairTexture;
+	ID3D11ShaderResourceView* m_hairSRV;
+	EI_Resource* m_hairEIResource;
+	TressFXHairObject* m_hairObject;
+	ID3DX11Effect* m_pStrandEffect;
+	ID3DX11Effect* m_pQuadEffect;
 	EI_PSO* m_pBuildPSO;
 	EI_PSO* m_pReadPSO;
+	TressFXPPLL* m_pPPLL;
+	int m_nPPLLNodes;
 };

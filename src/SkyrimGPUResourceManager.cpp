@@ -21,14 +21,16 @@ void printHResult(HRESULT hr) {
 		logger::error("DXGI_ERROR_INVALID_CALL");
 	}
 }
-SkyrimGPUResourceManager::SkyrimGPUResourceManager(ID3D11Device* pDevice) {
-	this->device = pDevice;
+SkyrimGPUResourceManager::SkyrimGPUResourceManager(ID3D11Device* pDevice, IDXGISwapChain* pSwapChain)
+{
+	this->m_pDevice = pDevice;
+	this->m_pSwapChain = pSwapChain;
 	}
 SkyrimGPUResourceManager::~SkyrimGPUResourceManager() {
 	}
-SkyrimGPUResourceManager* SkyrimGPUResourceManager::GetInstance(ID3D11Device* pDevice) {
+SkyrimGPUResourceManager* SkyrimGPUResourceManager::GetInstance(ID3D11Device* pDevice, IDXGISwapChain* pSwapChain) {
 	if (singleton_ == nullptr) {
-		singleton_ = new SkyrimGPUResourceManager(pDevice);
+		singleton_ = new SkyrimGPUResourceManager(pDevice, pSwapChain);
 	}
 	return singleton_;
 }
@@ -65,7 +67,7 @@ SkyrimGPUResourceManager* SkyrimGPUResourceManager::GetInstance() {
 		data.pSysMem = pInitialData;
 		data.SysMemPitch = 0;
 		data.SysMemSlicePitch = 0;
-		HRESULT hr = device->CreateBuffer(&desc, pInitialData, &buffer);
+		HRESULT hr = m_pDevice->CreateBuffer(&desc, pInitialData, &buffer);
 		_com_error err(hr);
 		LPCTSTR errMsg = err.ErrorMessage();
 		CStringA sB(errMsg);

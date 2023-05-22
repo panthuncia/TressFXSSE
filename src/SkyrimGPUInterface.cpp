@@ -87,7 +87,7 @@ static void Transition(
 		D3D11_SUBRESOURCE_DATA data;
 		data.pSysMem = pResource->data;
 		logger::info("creating buffer with data");
-		HRESULT hr = device->CreateBuffer(&(pResource->desc), &data, &(pResource->resource));
+		HRESULT hr = device->CreateBuffer(&(pResource->desc), &data, &(pResource->buffer));
 		if (hr != S_OK) {
 			printHResult(hr);
 		}
@@ -165,12 +165,12 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	D3D11_BUFFER_DESC nextDesc = StructuredBufferDesc(structCount, structSize, bUAV, false);
 	r.desc = nextDesc;
 	logger::info("creating buffer");
-	HRESULT hr = pManager->device->CreateBuffer(&nextDesc, NULL, &pSB->resource);
+	HRESULT hr = pManager->m_pDevice->CreateBuffer(&nextDesc, NULL, &pSB->buffer);
 	printHResult(hr);
 	r.structCount = structCount;
 	r.structSize = structSize;
 
-	SU_ASSERT(r.resource);
+	SU_ASSERT(r.buffer);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -180,7 +180,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	srvDesc.Buffer.NumElements = structCount;
 	srvDesc.Buffer.ElementWidth = structSize;
 	logger::info("creating srv");
-	HRESULT hr1 = pManager->device->CreateShaderResourceView(pSB->resource, &srvDesc, &r.srv);
+	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pSB->buffer, &srvDesc, &r.srv);
 	printHResult(hr1);
 	//SU_ASSERT(r.srv);
 
@@ -198,7 +198,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 			uavDesc.Buffer.Flags = 0;
 		}
 		logger::info("Creating UAV");
-		HRESULT hr2 = pManager->device->CreateUnorderedAccessView(pSB->resource, &uavDesc, &r.uav);
+		HRESULT hr2 = pManager->m_pDevice->CreateUnorderedAccessView(pSB->buffer, &uavDesc, &r.uav);
 		printHResult(hr2);
 		const void*       uav_address = static_cast<const void*>(pSB->uav);
 		std::stringstream uav_ss;
@@ -215,52 +215,74 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	srv_ss << srv_address;
 	std::string srv_addr = srv_ss.str();
 	logger::info("Addr. of srv: {}", srv_addr);
-	PrintAllD3D11DebugMessages(pManager->device);
+	PrintAllD3D11DebugMessages(pManager->m_pDevice);
 	return pSB;
 }
 
 extern "C"
 {
 
-	//EI_Resource* SuCreate2D(EI_Device* pContext,
-	//	const size_t     width,
-	//	const size_t     height,
-	//	const size_t     arraySize,
-	//	EI_StringHash    strHash)
-	//{
-	//	(void)pContext;
+	EI_Resource* Create2D(EI_Device* pContext,
+		const size_t                   width,
+		const size_t                   height,
+		const size_t                   arraySize,
+		EI_StringHash                  strHash)
+	{
+		(void)strHash;
+		EI_Resource* pRW2D = new EI_Resource;
+		SkyrimGPUResourceManager* pManager = (SkyrimGPUResourceManager*)pContext;
 
-	//	EI_Resource* pRW2D = new EI_Resource;
+		//sampler desc
+		DXGI_SAMPLE_DESC sampleDesc;
+		sampleDesc.Count = 1;
+		sampleDesc.Quality = 0;
 
-	//	SuGPUTexture2DArrayPtr texPtr = SuGPUResourceManager::GetPtr()->CreateTexture2DArray(SuGPUResource::GPU_RESOURCE_DYNAMIC,
-	//		SuGPUResource::BIND_RENDER_TARGET |
-	//		SuGPUResource::BIND_SHADER_RESOURCE |
-	//		SuGPUResource::BIND_UNORDERED_ACCESS,
-	//		0,
-	//		SuGPUResourceFormat::SU_FORMAT_R32_UINT,
-	//		SuGPUTexture::MIP_NONE,
-	//		1,  // Mip levels
-	//		(uint16)width,
-	//		(uint16)height,
-	//		(uint16)arraySize,
-	//		1,
-	//		0,  // sample count and quality
-	//		SuMemoryBufferPtr(0),
-	//		strHash);
+		//create texture
+		D3D11_TEXTURE2D_DESC texDesc;
+		texDesc.Width = (UINT)width;
+		texDesc.Height = (UINT)height;
+		texDesc.MipLevels = 1;
+		texDesc.ArraySize = (UINT)arraySize;
+		texDesc.Format = DXGI_FORMAT_R32_UINT;
+		texDesc.SampleDesc = sampleDesc;
+		texDesc.Usage = D3D11_USAGE_DYNAMIC;
+		texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		texDesc.MiscFlags = 0;
+		ID3D11Texture2D* texPtr;
+		logger::info("Creating texture");
+		pManager->m_pDevice->CreateTexture2D(&texDesc, NULL, &texPtr);
 
-	//	pRW2D->resource = texPtr.cast<SuGPUResource>();
-	//	pRW2D->srv = texPtr->GetDefaultSamplingView();
-	//	SuGPUResourceDescription     desc = texPtr->GetDefaultResourceDesc();
-	//	SuGPUResourceViewDescription viewDesc =
-	//		SuGPUResourceViewDescription(SU_UNORDERED_ACCESS_VIEW,
-	//			texPtr->GetFormat(),
-	//			SuGPUResource::GPU_RESOURCE_TEXTURE_2D_ARRAY,
-	//			desc);
-	//	pRW2D->uav = texPtr->GetUnorderedAccessView(viewDesc);
-	//	pRW2D->rtv = SuGPURenderableResourceViewPtr(0);
+		//create SRV
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		srvDesc.Format = DXGI_FORMAT_R32_UINT;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.MostDetailedMip = 0;
+		srvDesc.Texture2DArray.MipLevels = 1;
+		srvDesc.Texture2DArray.FirstArraySlice = 0;
+		srvDesc.Texture2DArray.ArraySize = (UINT)arraySize;
+		ID3D11ShaderResourceView* pSRV;
+		logger::info("Creating SRV");
+		pManager->m_pDevice->CreateShaderResourceView(texPtr, &srvDesc, &pSRV);
 
-	//	return pRW2D;
-	//}
+		//create UAV
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		uavDesc.Format = DXGI_FORMAT_R32_UINT;
+		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Texture2DArray.ArraySize = (UINT)arraySize;
+		uavDesc.Texture2DArray.FirstArraySlice = 0;
+		uavDesc.Texture2DArray.MipSlice = 1;
+		ID3D11UnorderedAccessView* pUAV;
+		logger::info("Creating UAV");
+		pManager->m_pDevice->CreateUnorderedAccessView(texPtr, &uavDesc, &pUAV);
+
+		pRW2D->texture = texPtr;
+		pRW2D->srv = pSRV;
+		pRW2D->uav = pUAV;
+		pRW2D->rtv = NULL;
+
+		return pRW2D;
+	}
 
 	//EI_Resource* SuCreateRT(EI_Device* pContext,
 	//	const size_t     width,
@@ -540,7 +562,7 @@ extern "C"
 		bufferDesc.MiscFlags = 0;
 		D3D11_SUBRESOURCE_DATA data;
 		data.pSysMem = pInitialData;
-		HRESULT hr = pResourceManager->device->CreateBuffer(&bufferDesc, &data, &g_pIndexBuffer);
+		HRESULT hr = pResourceManager->m_pDevice->CreateBuffer(&bufferDesc, &data, &g_pIndexBuffer);
 		if (FAILED(hr))
 			logger::error("index buffer creation failed");
 
