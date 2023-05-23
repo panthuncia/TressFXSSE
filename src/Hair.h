@@ -16,15 +16,17 @@ public:
 	static inline std::unordered_map<std::string, Hair*> hairs;
 private:
 	void initialize(SkyrimGPUResourceManager* pManager);
-	ID3DX11Effect* create_effect(std::string_view filePath);
+	ID3DX11Effect* create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
 	ID3D11Texture2D* m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource* m_hairEIResource;
 	TressFXHairObject* m_hairObject;
 	ID3DX11Effect* m_pStrandEffect;
 	ID3DX11Effect* m_pQuadEffect;
+	ID3DX11Effect* m_pTressFXSimEffect;
+	ID3DX11Effect* m_pTressFXSDFCollisionEffect;
 	EI_PSO* m_pBuildPSO;
 	EI_PSO* m_pReadPSO;
-	TressFXPPLL* m_pPPLL;
+	TressFXPPLL* m_pPPLL = NULL;
 	int m_nPPLLNodes;
 };

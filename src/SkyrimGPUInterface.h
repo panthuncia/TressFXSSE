@@ -69,6 +69,7 @@ EXTERN_C
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout * pLayout, EI_BindSet & set);
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext, EI_PSO & pso, AMD::EI_IndexedDrawParams & drawParams);
 	EI_Resource* Create2D(EI_Device * pContext, const size_t  width, const size_t  height, const size_t  arraySize, EI_StringHash strHash);
+	void Destroy(EI_Device * pDevice, EI_Resource * pRW2D);
 	}
 class EI_Resource
 {

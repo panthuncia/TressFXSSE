@@ -49,7 +49,7 @@ void setCallbacks()
 	AMD::g_Callbacks.pfMap = Map;
 	AMD::g_Callbacks.pfUnmap = Unmap;
 
-	//AMD::g_Callbacks.pfDestroySB = SuDestroy;
+	AMD::g_Callbacks.pfDestroySB = Destroy;
 
 	//AMD::g_Callbacks.pfCreateRT = SuCreateRT;
 	AMD::g_Callbacks.pfCreate2D = Create2D;

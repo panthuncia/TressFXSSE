@@ -245,7 +245,7 @@ extern "C"
 		texDesc.ArraySize = (UINT)arraySize;
 		texDesc.Format = DXGI_FORMAT_R32_UINT;
 		texDesc.SampleDesc = sampleDesc;
-		texDesc.Usage = D3D11_USAGE_DYNAMIC;
+		texDesc.Usage = D3D11_USAGE_DEFAULT;
 		texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		texDesc.MiscFlags = 0;
@@ -271,7 +271,7 @@ extern "C"
 		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 		uavDesc.Texture2DArray.ArraySize = (UINT)arraySize;
 		uavDesc.Texture2DArray.FirstArraySlice = 0;
-		uavDesc.Texture2DArray.MipSlice = 1;
+		uavDesc.Texture2DArray.MipSlice = 0;
 		ID3D11UnorderedAccessView* pUAV;
 		logger::info("Creating UAV");
 		pManager->m_pDevice->CreateUnorderedAccessView(texPtr, &uavDesc, &pUAV);
@@ -411,16 +411,27 @@ extern "C"
 		return CreateSB(pContext, structSize, structCount, resourceName, objectName, true, true);
 	}
 
-	/*void SuDestroy(EI_Device* pDevice, EI_Resource* pRW2D)
+	void Destroy(EI_Device* pDevice, EI_Resource* pRW2D)
 	{
-		SuGPUResourceManager* pResourceManager = GetResourceManager(pDevice);
-
-		pRW2D->uav = SuGPUUnorderedAccessViewPtr(0);
-		pRW2D->srv = SuGPUSamplingResourceViewPtr(0);
-		pRW2D->rtv = SuGPURenderableResourceViewPtr(0);
-		pRW2D->resource = SuGPUResourcePtr(0);
+		logger::info("In destroy:");
+		(void*)pDevice;
+		if (pRW2D->uav != NULL)
+			pRW2D->uav->Release();
+		logger::info("1");
+		if (pRW2D->srv != NULL)
+			pRW2D->srv->Release();
+		logger::info("2");
+		if (pRW2D->rtv != NULL)
+			pRW2D->rtv->Release();
+		logger::info("3");
+		if (pRW2D->buffer != NULL)
+			pRW2D->buffer->Release();
+		logger::info("4");
+		if (pRW2D->texture != NULL)
+			pRW2D->texture->Release();
+		logger::info("5");
 		delete pRW2D;
-	}*/
+	}
 	EI_BindSet* CreateBindSet(EI_Device* commandContext, AMD::TressFXBindSet& bindSet)
 	{
 		//TODO ignore
@@ -476,6 +487,7 @@ extern "C"
 
 	void DestroyBindSet(EI_Device* pDevice, EI_BindSet* pBindSet)
 	{
+		logger::info("Destroying bindset");
 		//TODO ignore
 		pDevice = pDevice;
 		if (pBindSet->nSRVs > 0)

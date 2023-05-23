@@ -90,10 +90,10 @@ namespace ShaderCompiler
 		//wcstombs(path, a_filePath.c_str(), 20);
 		logger::info("Compiling from file");
 			//if (FAILED(D3DX11CompileEffectFromFile(L"color.fx", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, shaderFlags, 0, device, &effect, &errorBlob))) {
-			if (FAILED(D3DCompileFromFile(a_filePath.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, NULL, "fx_5_0", shaderFlags, NULL, &shaderBlob, &errorBlob))) {
-				logger::warn("Shader compilation failed:\n\n{}", errorBlob ? (const char*)errorBlob->GetBufferPointer() : "Unknown error");
-				return nullptr;
-			}
+		if (FAILED(D3DCompileFromFile(a_filePath.c_str(), defines.data(), D3D_COMPILE_STANDARD_FILE_INCLUDE, NULL, "fx_5_0", shaderFlags, NULL, &shaderBlob, &errorBlob))) {
+			logger::warn("Shader compilation failed:\n\n{}", errorBlob ? (const char*)errorBlob->GetBufferPointer() : "Unknown error");
+			return nullptr;
+		}
 		logger::info("Creating effect from memory");
 		D3DX11CreateEffectFromMemory(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 0, device, &effect);
 		/*HRESULT hr = D3DX11CompileEffectFromFile(a_filePath.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, shaderFlags,

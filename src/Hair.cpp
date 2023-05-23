@@ -26,10 +26,25 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 void Hair::draw() {
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
-
+	logger::info("Bind for build");
+	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
+	logger::info("Draw strands");
 	m_hairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
+	logger::info("Done building");
+	m_pPPLL->DoneBuilding((EI_CommandContextRef)pContext);
+	// TODO move this to a clear "after all pos and tan usage by rendering" place.
+	logger::info("Transition rendering to sim");
+	m_hairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
+	//necessary?
+	//UnbindUAVS();
+	logger::info("Bind for read");
+	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
+	//m_pFullscreenPass->Draw(m_pReadPSO);
+	logger::info("Done reading");
+	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
 }
-ID3DX11Effect* Hair::create_effect(std::string_view filePath){
+ID3DX11Effect* Hair::create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines)
+{
 	//compile effect
 	const auto  path = std::filesystem::current_path() /= filePath;
 	struct stat buffer;
@@ -40,7 +55,7 @@ ID3DX11Effect* Hair::create_effect(std::string_view filePath){
 		throw std::runtime_error("File not found");
 	}
 	logger::info("Compiling hair effect shader");
-	ID3DX11Effect* pEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), m_pManager->m_pDevice);
+	ID3DX11Effect* pEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), m_pManager->m_pDevice, defines);
 	if (pEffect->IsValid())
 		logger::info("Effect is valid");
 	else
@@ -86,6 +101,13 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	m_pStrandEffect = create_effect("data\\Shaders\\TressFX\\oHair.fx"sv);
 	logger::info("Create quad effect");
 	m_pQuadEffect = create_effect("data\\Shaders\\TressFX\\qHair.fx"sv);
+	logger::info("Create simulation effect");
+	std::vector<D3D_SHADER_MACRO> macros;
+	std::string s = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
+	macros.push_back({ "AMD_TRESSFX_MAX_NUM_BONES", s.c_str() });
+	m_pTressFXSimEffect = create_effect("data\\Shaders\\TressFX\\cTressFXSimulation.fx"sv);
+	logger::info("Create collision effect");
+	m_pTressFXSDFCollisionEffect = create_effect("data\\Shaders\\TressFX\\cTressFXSDFCollision.fx"sv);
 	// See TressFXLayouts.h
 	// Global storage for layouts.
 
@@ -137,4 +159,18 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	logger::info("Created PPLLReadLayout");
 	//CreateShortCutResolveDepthLayout2(pDevice, readLayoutManager);
 	//CreateShortCutResolveColorLayout2(pDevice, readLayoutManager);
+
+	EI_LayoutManagerRef simLayoutManager = (EI_LayoutManagerRef&)*m_pTressFXSimEffect;
+	CreateSimPosTanLayout2((EI_Device*)pManager->m_pDevice, simLayoutManager);
+	logger::info("Created SimPosTanLayout");
+	CreateSimLayout2((EI_Device*)pManager->m_pDevice, simLayoutManager);
+	logger::info("Created SimLayout");
+
+	EI_LayoutManagerRef applySDFManager = (EI_LayoutManagerRef&)*m_pTressFXSDFCollisionEffect;
+	CreateApplySDFLayout2((EI_Device*)pManager->m_pDevice, applySDFManager);
+	logger::info("Created ApplySDFLayout");
+
+	EI_LayoutManagerRef sdfCollisionManager = (EI_LayoutManagerRef&)*m_pTressFXSDFCollisionEffect;
+	CreateGenerateSDFLayout2((EI_Device*)pManager->m_pDevice, sdfCollisionManager);
+	logger::info("Created GenerateSDFLayout");
 }
