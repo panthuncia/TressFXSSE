@@ -62,7 +62,7 @@ void setCallbacks()
 	AMD::g_Callbacks.pfDestroyBindSet = DestroyBindSet;
 	AMD::g_Callbacks.pfBind = Bind;
 
-	//AMD::g_Callbacks.pfCreateComputeShaderPSO = SuCreateComputeShaderPSO;
+	AMD::g_Callbacks.pfCreateComputeShaderPSO = CreateComputeShaderPSO;
 	//AMD::g_Callbacks.pfDestroyPSO = SuDestroyPSO;
 	//AMD::g_Callbacks.pfDispatch = SuDispatch;
 

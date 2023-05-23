@@ -609,6 +609,25 @@ extern "C"
 		}
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
 	}
+
+	EI_PSO* CreateComputeShaderPSO(EI_Device* pDevice,
+		EI_LayoutManagerRef                     layoutManager,
+		const EI_StringHash&                    shaderName)
+	{
+		(void)pDevice;
+		ID3DX11Effect* pEffect = (ID3DX11Effect*)&layoutManager;
+		// SuEffect& effect = (SuEffect&)layoutManager;
+		//return const_cast<SuEffectTechnique*>(
+		std::string prefix = "TressFXSimulation_";
+		std::string shader_name = prefix.append(shaderName);
+		ID3DX11EffectTechnique* pTechnique = pEffect->GetTechniqueByName(shader_name.c_str());
+		EI_PSO* pso = new EI_PSO;
+		pso->m_pEffect = pEffect;
+		pso->m_pTechnique = pTechnique;
+		return pso;	
+
+	}
+
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext,
 		EI_PSO&                                      pso,
 		AMD::EI_IndexedDrawParams&                   drawParams)

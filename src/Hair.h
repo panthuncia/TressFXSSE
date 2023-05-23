@@ -2,6 +2,8 @@
 #include <d3d11.h>
 #include "TressFXHairObject.h"
 #include "AMD_TressFX.h"
+#include "TressFXSimulation.h"
+#include "TressFXSDFCollision.h"
 #include "SkyrimGPUInterface.h"
 #include "ShaderCompiler.h"
 class TressFXPPLL;
@@ -28,5 +30,7 @@ private:
 	EI_PSO* m_pBuildPSO;
 	EI_PSO* m_pReadPSO;
 	TressFXPPLL* m_pPPLL = NULL;
+	TressFXSimulation         mSimulation;
+	TressFXSDFCollisionSystem mSDFCollisionSystem;
 	int m_nPPLLNodes;
 };

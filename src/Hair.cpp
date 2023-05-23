@@ -173,4 +173,9 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	EI_LayoutManagerRef sdfCollisionManager = (EI_LayoutManagerRef&)*m_pTressFXSDFCollisionEffect;
 	CreateGenerateSDFLayout2((EI_Device*)pManager->m_pDevice, sdfCollisionManager);
 	logger::info("Created GenerateSDFLayout");
+
+	logger::info("Initialize simulation");
+	mSimulation.Initialize((EI_Device*)pManager->m_pDevice, simLayoutManager);
+	logger::info("Initialize SDF collision");
+	mSDFCollisionSystem.Initialize((EI_Device*)pManager->m_pDevice, sdfCollisionManager);
 }
