@@ -46,13 +46,12 @@ namespace hdt
 		};
 		int activeSkeletons = 0;
 
+	public:
+		struct Skeleton;
 	private:
 		int maxActiveSkeletons = 10;
 		int frameCount = 0;
 		float rollingAverage = 0;
-		struct Skeleton;
-
-
 		struct Head
 		{
 			struct HeadPart
@@ -72,17 +71,26 @@ namespace hdt
 			bool isFullSkinning;
 		};
 
+		bool m_shutdown = false;
+		std::recursive_mutex m_lock;
+		std::vector<Skeleton> m_skeletons;
+
+
+
+		Skeleton& getSkeletonData(RE::NiNode* skeleton);
+
+	public:
 		struct Skeleton
 		{
 			RE::NiPointer<RE::TESObjectREFR> skeletonOwner;
-			RE::NiNode* skeleton;
-			RE::NiNode* npc;
-			Head head;
-			SkeletonState state;
+			RE::NiNode*                      skeleton;
+			RE::NiNode*                      npc;
+			Head                             head;
+			SkeletonState                    state;
 
 			std::string name();
-			void addArmor(RE::NiNode* armorModel);
-			void attachArmor(RE::NiNode* armorModel, RE::NiAVObject* attachedNode);
+			void        addArmor(RE::NiNode* armorModel);
+			void        attachArmor(RE::NiNode* armorModel, RE::NiAVObject* attachedNode);
 
 			void cleanArmor();
 			void cleanHead(bool cleanAll = false);
@@ -96,9 +104,9 @@ namespace hdt
 			// @param sourceOrientation the orientation of the camera
 			void calculateDistanceAndOrientationDifferenceFromSource(RE::NiPoint3 sourcePosition, RE::NiPoint3 sourceOrientation);
 
-			bool isPlayerCharacter() const;
-			bool isInPlayerView();
-			bool hasPhysics = false;
+			bool                        isPlayerCharacter() const;
+			bool                        isInPlayerView();
+			bool                        hasPhysics = false;
 			std::optional<RE::NiPoint3> position() const;
 
 			// @brief Update windfactor for skeleton
@@ -118,12 +126,11 @@ namespace hdt
 			void scanHead();
 			void processGeometry(RE::BSFaceGenNiNode* head, RE::BSGeometry* geometry);
 
-			static void doSkeletonMerge(RE::NiNode* dst, RE::NiNode* src, std::string* prefix,
-				std::unordered_map<std::string, std::string>& map);
-			static void doSkeletonClean(RE::NiNode* dst, std::string* prefix);
+			static void        doSkeletonMerge(RE::NiNode* dst, RE::NiNode* src, std::string* prefix,
+					   std::unordered_map<std::string, std::string>& map);
+			static void        doSkeletonClean(RE::NiNode* dst, std::string* prefix);
 			static RE::NiNode* cloneNodeTree(RE::NiNode* src, std::string* prefix, std::unordered_map<std::string, std::string>& map);
-			static void renameTree(RE::NiNode* root, std::string* prefix, std::unordered_map<std::string, std::string>& map);
-
+			static void        renameTree(RE::NiNode* root, std::string* prefix, std::unordered_map<std::string, std::string>& map);
 
 			// @brief This is the squared distance between the skeleton and the camera.
 			float m_distanceFromCamera2 = std::numeric_limits<float>::max();
@@ -135,23 +142,13 @@ namespace hdt
 			bool isActiveInScene() const;
 			bool checkPhysics();
 
-			bool isActive = false;
+			bool  isActive = false;
 			float currentWindFactor = 0.f;
 			//std::vector<Armor> armors;
 		};
-
-		bool m_shutdown = false;
-		std::recursive_mutex m_lock;
-		std::vector<Skeleton> m_skeletons;
-
-
-
-		Skeleton& getSkeletonData(RE::NiNode* skeleton);
-
-	public:
 		ActorManager();
 		~ActorManager();
-
+		Skeleton* m_playerSkeleton;
 		static ActorManager* instance();
 
 		static std::string armorPrefix(IDType id);

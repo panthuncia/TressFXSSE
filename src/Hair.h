@@ -6,12 +6,15 @@
 #include "TressFXSDFCollision.h"
 #include "SkyrimGPUInterface.h"
 #include "ShaderCompiler.h"
+typedef float BoneMatrix[4][4];
+#define BONE_MATRIX_SIZE 64
 class TressFXPPLL;
 class Hair
 {
 public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
 	void draw();
+	void simulate();
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
@@ -22,7 +25,7 @@ private:
 	ID3D11Texture2D* m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource* m_hairEIResource;
-	TressFXHairObject* m_hairObject;
+	TressFXHairObject* m_pHairObject;
 	ID3DX11Effect* m_pStrandEffect;
 	ID3DX11Effect* m_pQuadEffect;
 	ID3DX11Effect* m_pTressFXSimEffect;

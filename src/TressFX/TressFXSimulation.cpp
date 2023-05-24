@@ -55,42 +55,35 @@ void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHai
 
     // For dispatching one thread per one strand
     int numOfGroupsForCS_StrandLevel = (int)(((float)(hairObject.m_NumTotalStrands) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
-
     // Binding
     EI_Bind(commandContext, GetSimPosTanLayout(), hairObject.mPosTanCollection.GetSimBindSet());
     EI_Bind(commandContext, GetSimLayout(), *hairObject.m_pSimBindSet);
-
     // IntegrationAndGlobalShapeConstraints
     {
         EI_Dispatch(commandContext, *mIntegrationAndGlobalShapeConstraintsPSO, numOfGroupsForCS_VertexLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
-
     // VelocityShockPropagation
     {
         EI_Dispatch(commandContext, *mVelocityShockPropagationPSO, numOfGroupsForCS_StrandLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
-
     // LocalShapeConstraintsWithIteration
     for (int i = 0; i < hairObject.m_CPULocalShapeIterations; i++)
     {
         EI_Dispatch(commandContext, *mLocalShapeConstraintsPSO, numOfGroupsForCS_StrandLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
-
     // LengthConstriantsWindAndCollision
     {
         EI_Dispatch(commandContext, *mLengthConstriantsWindAndCollisionPSO, numOfGroupsForCS_VertexLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
-
     // UpdateFollowHairVertices
     {
         EI_Dispatch(commandContext, *mUpdateFollowHairVerticesPSO, numOfGroupsForCS_VertexLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
-
     hairObject.mSimulationFrame++;
 }
 

@@ -16,21 +16,21 @@ struct BSFaceGenNiNode_FixSkinInstances
 
 		if (a_skeleton->GetUserData() && a_skeleton->GetUserData()->GetBaseObject())
 		{
-			logger::info("2");
+			//logger::info("2");
 			auto bname = skyrim_cast<RE::TESNPC*>(a_skeleton->GetUserData()->GetBaseObject());
 			if (bname)
 				name = bname->GetName();
-			logger::info("3");
+			//logger::info("3");
 			auto bnpc = skyrim_cast<RE::TESNPC*>(a_skeleton->GetUserData()->GetBaseObject());
 			if (bnpc && bnpc->faceNPC)
 				formId = bnpc->faceNPC->formID;
 		}
-		logger::info("4");
+		//logger::info("4");
 		logger::info("SkinAllGeometry {} {}, {}, (formid {} base form {} head template form {})",
 			a_skeleton->name, a_skeleton->GetChildren().capacity(), name,
 			a_skeleton->GetUserData() ? a_skeleton->GetUserData()->formID : 0x0,
 			a_skeleton->GetUserData() ? a_skeleton->GetUserData()->GetBaseObject()->formID : 0x0, formId);
-		logger::info("5");
+		//logger::info("5");
 		if ((a_skeleton->GetUserData() && a_skeleton->GetUserData()->formID == 0x14) || hdt::ActorManager::instance()->m_skinNPCFaceParts)
 		{
 			hdt::SkinAllHeadGeometryEvent e;
@@ -61,6 +61,7 @@ struct Main_Update
 		func();
 		//draw hair
 		auto hair = Hair::hairs.find("hairTest");
+		hair->second->simulate();
 		hair->second->draw();
 	}
 	static inline REL::Relocation<decltype(thunk)> func;

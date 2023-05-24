@@ -68,6 +68,7 @@ EXTERN_C
 	void LogError(const char* msg);
 	void Bind(EI_CommandContextRef commandContext, EI_BindLayout * pLayout, EI_BindSet & set);
 	EI_PSO* CreateComputeShaderPSO(EI_Device * pDevice, EI_LayoutManagerRef  layoutManager, const EI_StringHash& shaderName);
+	void Dispatch(EI_CommandContextRef commandContext, EI_PSO & pso, int nThreadGroups);
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext, EI_PSO & pso, AMD::EI_IndexedDrawParams & drawParams);
 	EI_Resource* Create2D(EI_Device * pContext, const size_t  width, const size_t  height, const size_t  arraySize, EI_StringHash strHash);
 	void Destroy(EI_Device * pDevice, EI_Resource * pRW2D);

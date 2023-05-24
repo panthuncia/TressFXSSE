@@ -3,7 +3,8 @@
 #include "SkyrimGPUInterface.h"
 #include "TressFXLayouts.h"
 #include "TressFXPPLL.h"
-
+#include "ActorManager.h"
+#include <SimpleMath.h>
 // This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
 static const size_t AVE_FRAGS_PER_PIXEL = 4;
@@ -14,35 +15,59 @@ static const size_t PPLL_NODE_SIZE = 16;
 // These are globals, because there should really just be one instance.
 TressFXLayouts* g_TressFXLayouts = 0;
 
-Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) {
-	m_hairObject = new TressFXHairObject;
+Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) : mSimulation(), mSDFCollisionSystem() {
+	m_pHairObject = new TressFXHairObject;
 	m_hairEIResource = new EI_Resource;
 	initialize(resourceManager);
 	m_hairEIResource->srv = m_hairSRV;
-	m_hairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, m_hairEIResource);
+	m_pHairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, m_hairEIResource);
 	logger::info("Created hair object");
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
-	logger::info("Bind for build");
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
-	logger::info("Draw strands");
-	m_hairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
-	logger::info("Done building");
+	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
 	m_pPPLL->DoneBuilding((EI_CommandContextRef)pContext);
 	// TODO move this to a clear "after all pos and tan usage by rendering" place.
-	logger::info("Transition rendering to sim");
-	m_hairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
+	m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
 	//necessary?
 	//UnbindUAVS();
-	logger::info("Bind for read");
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
 	//m_pFullscreenPass->Draw(m_pReadPSO);
-	logger::info("Done reading");
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
 }
+
+void Hair::simulate() {
+	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
+	if (playerSkeleton != NULL) {
+		//logger::info("Got player skeleton: {}", playerSkeleton->name());
+		RE::NiMatrix3 rotation = playerSkeleton->skeleton->world.rotate;
+		RE::NiPoint3 translation = playerSkeleton->skeleton->world.translate;
+		//float scale = playerSkeleton->skeleton->world.scale;
+		//float matrices[16] = (BoneMatrix*)calloc(playerSkeleton->skeleton->GetChildren().size(), sizeof(BoneMatrix));
+		float(*matrices)[4] = new BoneMatrix;
+		const float* matrices_start = (float*)matrices;
+		//logger::info("Bone has {} children", playerSkeleton->skeleton->GetChildren().size());
+		for (uint16_t i = 0; i < playerSkeleton->skeleton->GetChildren().size(); i++) {
+			//logger::info("Child has {} children", playerSkeleton->skeleton->GetChildren()[i].get()->AsNode()->GetChildren().size());
+			BoneMatrix transformation = { { rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], translation.x },
+										  { rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], translation.y },
+										  { rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], translation.z },
+										  { 0,					  0,					0,					  1 } };
+			matrices = transformation;
+			matrices += BONE_MATRIX_SIZE;
+		}
+		m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, matrices_start, BONE_MATRIX_SIZE);
+		//logger::info("Updated bone matrices");
+		ID3D11DeviceContext* context;
+		m_pManager->m_pDevice->GetImmediateContext(&context);
+		mSimulation.Simulate((EI_CommandContextRef)context, *m_pHairObject);
+		//logger::info("simulation complete");
+	}
+}
+
 ID3DX11Effect* Hair::create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines)
 {
 	//compile effect

@@ -24,6 +24,7 @@ namespace hdt
 {
 	ActorManager::ActorManager()
 	{
+
 	}
 
 	ActorManager::~ActorManager()
@@ -214,6 +215,7 @@ namespace hdt
 			skeleton.skeletonOwner = RE::NiPointer(e.skeleton->GetUserData());
 		if (e.skeleton->GetUserData()->formID == 20) {
 			logger::info("Found player skeleton");
+			m_playerSkeleton = &skeleton;
 		}
 		if (e.hasSkinned)
 		{

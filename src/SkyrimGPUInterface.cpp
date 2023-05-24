@@ -96,11 +96,14 @@ static void Transition(
 
 static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values, int nBytes)
 {
-	logger::info("Update constants");
+	//logger::info("Update constants");
+	
 	uint8_t* pCurrent = (uint8_t*)values;
 	for (AMD::int32 i = 0; i < cb.size(); ++i) {
 		ID3DX11EffectVariable* pParam = cb[i];
-		uint32_t               nParamBytes = nBytes;  //pParam->GetParameterSize();
+		D3DX11_EFFECT_TYPE_DESC typeDesc;
+		pParam->GetType()->GetDesc(&typeDesc);
+		uint32_t               nParamBytes = typeDesc.PackedSize;  //pParam->GetParameterSize();
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
 		SU_ASSERT(nBytes >= 0);
 		if (nCummulativeBytes > (uint32_t)nBytes) {
@@ -417,19 +420,14 @@ extern "C"
 		(void*)pDevice;
 		if (pRW2D->uav != NULL)
 			pRW2D->uav->Release();
-		logger::info("1");
 		if (pRW2D->srv != NULL)
 			pRW2D->srv->Release();
-		logger::info("2");
 		if (pRW2D->rtv != NULL)
 			pRW2D->rtv->Release();
-		logger::info("3");
 		if (pRW2D->buffer != NULL)
 			pRW2D->buffer->Release();
-		logger::info("4");
 		if (pRW2D->texture != NULL)
 			pRW2D->texture->Release();
-		logger::info("5");
 		delete pRW2D;
 	}
 	EI_BindSet* CreateBindSet(EI_Device* commandContext, AMD::TressFXBindSet& bindSet)
@@ -600,7 +598,7 @@ extern "C"
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			logger::info("Binding resource, format: {}", desc.Format);
+			//logger::info("Binding resource, format: {}", desc.Format);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 		}
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
@@ -627,30 +625,37 @@ extern "C"
 		return pso;	
 
 	}
-
+	// All our compute shaders have dimensions of (N,1,1)
+	void Dispatch(EI_CommandContextRef commandContext, EI_PSO& pso, int nThreadGroups)
+	{
+		//SuEffectTechnique* pTechnique = pso;
+		ID3DX11EffectTechnique* pTechnique = pso.m_pTechnique;
+		ID3D11DeviceContext*    pContext = *((ID3D11DeviceContext**)(&commandContext)); 
+		auto pass = pTechnique->GetPassByIndex(0);
+		if (pass->IsValid()) {
+		} else {
+			logger::info("Pass: Effect is invalid!");
+		}
+		pass->Apply(0, pContext);
+		pContext->Dispatch(nThreadGroups, 1, 1);
+	}
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext,
 		EI_PSO&                                      pso,
 		AMD::EI_IndexedDrawParams&                   drawParams)
 	{
-		(void)commandContext;
 		//EI_IndexBuffer*                pIndexBuffer = ((EI_IndexBuffer*)drawParams.pIndexBuffer);
 		//TODO need to update variables
 		//pEffect->BindIndexBuffer(pIndexBuffer);
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext)); 
 		D3DX11_TECHNIQUE_DESC techDesc;
-		logger::info("1");
 		pso.m_pTechnique->GetDesc(&techDesc); 
 		uint32_t numPasses = techDesc.Passes;
 		//bool   techniqueFound = pEffect->Begin(&technique, &numPasses);
 		int indicesPerInstance = drawParams.numIndices / drawParams.numInstances;
 		//if (techniqueFound) {
-		logger::info("2");
-		logger::info("Passes: {}", numPasses);
 		for (uint32_t i = 0; i < numPasses; ++i) {
 			auto pass = pso.m_pTechnique->GetPassByIndex(i);
-			logger::info("2.5");
 			if (pass->IsValid()){
-				logger::info("Pass is valid");
 			} else {
 				logger::info("Pass: Effect is invalid!");
 			}
