@@ -3,28 +3,43 @@
 #include "LOCAL_RE/BSGraphics.h"
 #include <sstream>  //for std::stringstream
 #include <string>   //for std::string
-
+#include <DirectXMath.h>
 void printHResult(HRESULT hr);
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
 //////////////////////////////////////////////////////////////////////////////////////////////
+void printEffectVariables(ID3DX11Effect* pEffect){
+	D3DX11_EFFECT_DESC desc;
+	pEffect->GetDesc(&desc);
+	logger::info("Effect buffer count: {}", desc.ConstantBuffers);
+	for (uint32_t i = 0; i < desc.ConstantBuffers; i++) {
+		D3DX11_EFFECT_VARIABLE_DESC varDesc;
+		ID3DX11EffectConstantBuffer* buffer = pEffect->GetConstantBufferByIndex(i);
+		buffer->GetDesc(&varDesc);
+		logger::info("{}", varDesc.Name);
+	}
+	logger::info("Effect global variables count: {}", desc.GlobalVariables);
+	for (uint32_t i = 0; i < desc.GlobalVariables; i++) {
+		D3DX11_EFFECT_VARIABLE_DESC  varDesc;
+		ID3DX11EffectVariable* buffer = pEffect->GetVariableByIndex(i);
+		buffer->GetDesc(&varDesc);
+		logger::info("{}", varDesc.Name);
+	}
+}
 std::string ptr_to_string(void* ptr) {
-
-	const void*       address = static_cast<const void*>(ptr);
+	const void* address = static_cast<const void*>(ptr);
 	std::stringstream ss;
 	ss << address;
 	std::string name = ss.str();
 	return name;
 }
-static void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
+void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
 {
-	logger::info("Printing messages");
 	Microsoft::WRL::ComPtr<ID3D11Device> m_d3dDevice;
 	*(m_d3dDevice.GetAddressOf()) = d3dDevice;
 	Microsoft::WRL::ComPtr<ID3D11Debug> d3dDebug;
 	Microsoft::WRL::ComPtr<ID3D11InfoQueue> d3dInfoQueue;
-	logger::info("got debug device");
 	HRESULT hr = m_d3dDevice.As(&d3dDebug);
 	if (SUCCEEDED(hr)) {
 		hr = d3dDebug.As(&d3dInfoQueue);
@@ -63,7 +78,7 @@ static void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
 	d3dInfoQueue->ClearStoredMessages();
 }
 	//handles transfering staging buffer data to UAV
-static void Transition(
+static void Transition(EI_CommandContextRef context,
 	EI_Resource* pResource,
 	AMD::EI_ResourceState  from,
 	AMD::EI_ResourceState  to)
@@ -74,7 +89,9 @@ static void Transition(
 	{
 		if (from == AMD::EI_STATE_UAV)
 		{
-			//pResource->resource->UAVBarrier();
+			ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context));
+			ID3D11UnorderedAccessView* UAV_NULL = NULL;
+			pContext->CSSetUnorderedAccessViews(3, 1, &UAV_NULL, 0);
 		}
 		else
 		{
@@ -91,8 +108,26 @@ static void Transition(
 		if (hr != S_OK) {
 			printHResult(hr);
 		}
+	} else if (from == AMD::EI_STATE_UAV && to == AMD::EI_STATE_VS_SRV){
+		logger::info("Transition CS->VS");
+		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context)); 
+		ID3D11UnorderedAccessView* UAV_NULL = NULL;
+		pContext->CSSetUnorderedAccessViews(0, 1, &UAV_NULL, 0);
+		pContext->CSSetUnorderedAccessViews(1, 1, &UAV_NULL, 0);
+	} else if (from == AMD::EI_STATE_VS_SRV && to == AMD::EI_STATE_UAV) {
+		logger::info("Transition VS->CS");
+		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context));
+		ID3D11ShaderResourceView* SRV_NULL = NULL;
+		pContext->VSSetShaderResources(1, 1, &SRV_NULL);
+		pContext->VSSetShaderResources(2, 1, &SRV_NULL);
 	}
 }
+
+//void UnbindUAVs(){
+//	pContext->OMSetRenderTargets(0, nullptr, nullptr);
+//	pContext->CSSetUnorderedAccessViews(0, 0, nullptr, nullptr);
+//	pContext->OMSetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, 0, NULL, NULL);
+//}
 
 static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values, int nBytes)
 {
@@ -246,7 +281,7 @@ extern "C"
 		texDesc.Height = (UINT)height;
 		texDesc.MipLevels = 1;
 		texDesc.ArraySize = (UINT)arraySize;
-		texDesc.Format = DXGI_FORMAT_R32_UINT;
+		texDesc.Format = DXGI_FORMAT_R32_SINT;
 		texDesc.SampleDesc = sampleDesc;
 		texDesc.Usage = D3D11_USAGE_DEFAULT;
 		texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
@@ -258,23 +293,28 @@ extern "C"
 
 		//create SRV
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = DXGI_FORMAT_R32_UINT;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Format = DXGI_FORMAT_R32_SINT;
+		/*srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
 		srvDesc.Texture2DArray.MostDetailedMip = 0;
 		srvDesc.Texture2DArray.MipLevels = 1;
 		srvDesc.Texture2DArray.FirstArraySlice = 0;
-		srvDesc.Texture2DArray.ArraySize = (UINT)arraySize;
+		srvDesc.Texture2DArray.ArraySize = (UINT)arraySize;*/
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D; 
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
 		ID3D11ShaderResourceView* pSRV;
 		logger::info("Creating SRV");
 		pManager->m_pDevice->CreateShaderResourceView(texPtr, &srvDesc, &pSRV);
 
 		//create UAV
 		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
-		uavDesc.Format = DXGI_FORMAT_R32_UINT;
-		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Format = DXGI_FORMAT_R32_SINT;
+		/*uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 		uavDesc.Texture2DArray.ArraySize = (UINT)arraySize;
 		uavDesc.Texture2DArray.FirstArraySlice = 0;
-		uavDesc.Texture2DArray.MipSlice = 0;
+		uavDesc.Texture2DArray.MipSlice = 0;*/
+		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Texture2D.MipSlice = 0;
 		ID3D11UnorderedAccessView* pUAV;
 		logger::info("Creating UAV");
 		pManager->m_pDevice->CreateUnorderedAccessView(texPtr, &uavDesc, &pUAV);
@@ -508,7 +548,7 @@ extern "C"
 		(void)context;
 		for (int i = 0; i < numBarriers; ++i)
 		{
-			Transition(barriers[i].pResource, barriers[i].from, barriers[i].to);
+			Transition(context, barriers[i].pResource, barriers[i].from, barriers[i].to);
 		}
 	}
 	// Map gets a pointer to upload heap / mapped memory.
@@ -643,10 +683,11 @@ extern "C"
 		EI_PSO&                                      pso,
 		AMD::EI_IndexedDrawParams&                   drawParams)
 	{
-		//EI_IndexBuffer*                pIndexBuffer = ((EI_IndexBuffer*)drawParams.pIndexBuffer);
 		//TODO need to update variables
 		//pEffect->BindIndexBuffer(pIndexBuffer);
-		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext)); 
+		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext));
+		logger::info("Setting index buffer");
+		pContext->IASetIndexBuffer((ID3D11Buffer*)drawParams.pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		D3DX11_TECHNIQUE_DESC techDesc;
 		pso.m_pTechnique->GetDesc(&techDesc); 
 		uint32_t numPasses = techDesc.Passes;
@@ -663,6 +704,31 @@ extern "C"
 			pContext->DrawIndexedInstanced(indicesPerInstance, drawParams.numInstances, 0, 0, 0);
 		}
 	}
+	void Clear2D(EI_CommandContext* pContext, EI_RWTexture2D* pResource, AMD::uint32 clearValue)
+	{
+		pResource;
+		//logger::info("Clear 2d");
+		ID3D11DeviceContext* pDeviceContext = (ID3D11DeviceContext*)*((ID3D11DeviceContext**)pContext);
+		uint32_t clearVector[4];
+		clearVector[0] = clearVector[1] = clearVector[2] = clearVector[3] = clearValue;
+		//ID3D11UnorderedAccessView* nullUAV = nullptr;
+		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, NULL, NULL, 0, 0, NULL, NULL);
+		//logger::info("cleared 2d");
+		//pResource->uav->ClearUInt(clearVector);
+		//pResource->resource->UAVBarrier();
+	}
+	void ClearCounter(EI_CommandContextRef pContext,
+		EI_StructuredBufferRef               sb,
+		AMD::uint32                          clearValue)
+	{
+		sb;
+		clearValue;
+		//logger::info("Clear counter");
+		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext));
+		pDeviceContext;
+		//pDeviceContext->Count
+		//sb.uav->SetInitialCount(clearValue);
+	}
 }
 EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)
 {
@@ -671,7 +737,6 @@ EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)
 		return nullptr;
 	}
 	ID3DX11EffectTechnique* pTechnique = pEffect->GetTechniqueByName(techniqueName);
-
 	if (pTechnique == nullptr) {
 		logger::warn("Could not get technique named {}", techniqueName);
 		return nullptr;
@@ -680,4 +745,77 @@ EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)
 	pso->m_pEffect = pEffect;
 	pso->m_pTechnique = pTechnique;
 	return pso;	
+}
+
+FullscreenPass::FullscreenPass(SkyrimGPUResourceManager* pManager)
+{
+	DirectX::XMFLOAT2 quadVertBuffer[] = {
+		{ -1.0, -1.0 },
+		{ 1.0, -1.0 },
+		{ -1.0, 1.0 },
+		{ 1.0, 1.0 },
+	};
+	// Create quad vertex buffer.
+	//SuMemoryBufferPtr quadVertBuffer(SuMemoryBuffer::Allocate(sizeof(SuVector2) * 4));
+	//quadVertBuffer->Set(0, 0, SuVector2(-1.0, -1.0));
+	//quadVertBuffer->Set(0, 1, SuVector2(1.0, -1.0));
+	//quadVertBuffer->Set(0, 2, SuVector2(-1.0, 1.0));
+	//quadVertBuffer->Set(0, 3, SuVector2(1.0, 1.0));
+	D3D11_BUFFER_DESC bufferDesc;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(DirectX::XMFLOAT2) * 4;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA InitData;
+	InitData.pSysMem = quadVertBuffer;
+	InitData.SysMemPitch = 0;
+	InitData.SysMemSlicePitch = 0;
+
+	pManager->m_pDevice->CreateBuffer(&bufferDesc, &InitData, &m_QuadVertexBuffer);
+	/*m_QuadVertexBuffer =
+		SuGPUResourceManager::GetRef().CreateResourceVertex(SuGPUResource::GPU_RESOURCE_STATIC,
+			sizeof(SuVector2),
+			4,
+			quadVertBuffer,
+			SuGPUResource::BIND_VERTEX_BUFFER);*/
+}
+
+FullscreenPass::~FullscreenPass() {}
+
+void FullscreenPass::Draw(SkyrimGPUResourceManager* pManager, EI_PSO* pPSO)
+{
+	// Local hack
+	//SuEffectTechnique& technique = GetTechniqueRef(pso);
+	ID3DX11Effect* pEffect = pPSO->m_pEffect;
+	ID3DX11EffectTechnique* pTechnique = pPSO->m_pTechnique;
+	if (pEffect) {
+		ID3D11DeviceContext* pContext;
+		pManager->m_pDevice->GetImmediateContext(&pContext);
+		logger::info("Setting vertex buffers");
+		pContext->IASetVertexBuffers(0, 1, &m_QuadVertexBuffer , m_DataSize, m_DataOffsets);
+		//pEffect->BindVertexBuffer("QuadStream", m_QuadVertexBuffer);
+		D3DX11_TECHNIQUE_DESC techDesc;
+		pTechnique->GetDesc(&techDesc);
+		uint32_t numPasses = techDesc.Passes;
+		for (uint32_t i = 0; i < numPasses; ++i) {
+			auto pass = pTechnique->GetPassByIndex(i);
+			if (pass->IsValid()) {
+			} else {
+				logger::info("Pass: Effect is invalid!");
+			}
+			pass->Apply(0, pContext);
+			pContext->Draw(4, 0);
+		}
+		/*bool   techniqueFound = pEffect->Begin(pTechnique, &numPasses);
+		if (techniqueFound) {
+			for (uint32 i = 0; i < numPasses; ++i) {
+				pEffect->BeginPass(i);
+				SuRenderManager::GetRef().DrawNonIndexed(SuRenderManager::TRIANGLE_STRIP, 4, 0);
+				pEffect->EndPass();
+			}
+			pEffect->End();
+		}*/
+	}
 }

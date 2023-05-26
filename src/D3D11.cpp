@@ -1,6 +1,9 @@
+#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
 #include <d3d11.h>
-
+#pragma comment(lib, "d3d12.lib")
+#include <d3d12.h>
+#include <d3d11on12.h>
 #include "Detours.h"
 #include "TressFXAsset.h"
 #include "TressFXLayouts.h"
@@ -44,7 +47,7 @@ void setCallbacks()
 	AMD::g_Callbacks.pfCreateReadWriteSB = CreateReadWriteSB;
 	AMD::g_Callbacks.pfCreateCountedSB = CreateCountedSB;
 
-	//AMD::g_Callbacks.pfClearCounter = SuClearCounter;
+	AMD::g_Callbacks.pfClearCounter = ClearCounter;
 	//AMD::g_Callbacks.pfCopy = SuCopy;
 	AMD::g_Callbacks.pfMap = Map;
 	AMD::g_Callbacks.pfUnmap = Unmap;
@@ -54,7 +57,7 @@ void setCallbacks()
 	//AMD::g_Callbacks.pfCreateRT = SuCreateRT;
 	AMD::g_Callbacks.pfCreate2D = Create2D;
 
-	//AMD::g_Callbacks.pfClear2D = SuClear2D;
+	AMD::g_Callbacks.pfClear2D = Clear2D;
 
 	AMD::g_Callbacks.pfSubmitBarriers = SubmitBarriers;
 
@@ -84,6 +87,10 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	D3D_FEATURE_LEVEL*          pFeatureLevel,
 	ID3D11DeviceContext**       ppImmediateContext)
 {
+	/*pFeatureLevel;
+	SDKVersion;
+	Software;
+	DriverType;*/
 	Flags |= D3D11_CREATE_DEVICE_DEBUG; 
 	logger::info("Calling original D3D11CreateDeviceAndSwapChain");
 	HRESULT hr = (*ptrD3D11CreateDeviceAndSwapChain)(pAdapter,
@@ -98,6 +105,31 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		ppDevice,
 		pFeatureLevel,
 		ppImmediateContext);
+	/*logger::info("Creating D3D12 device");
+	ID3D12Device* d12Device;
+	D3D12CreateDevice(pAdapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d12Device));
+	logger::info("Creating Command Queue");
+	D3D12_COMMAND_QUEUE_DESC desc;
+	desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+	desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+	desc.NodeMask = 0;
+	ID3D12CommandQueue* pQueue;
+	d12Device->CreateCommandQueue(&desc, IID_PPV_ARGS(&pQueue));
+	IDXGIFactory* pFactory;
+	CreateDXGIFactory(IID_PPV_ARGS(&pFactory));
+	DXGI_SWAP_CHAIN_DESC swapChainDesc;
+	swapChainDesc.BufferCount = pSwapChainDesc->BufferCount;
+	swapChainDesc.BufferDesc = pSwapChainDesc->BufferDesc;
+	swapChainDesc.BufferUsage = pSwapChainDesc->BufferUsage;
+	swapChainDesc.Flags = pSwapChainDesc->Flags;
+	swapChainDesc.OutputWindow = pSwapChainDesc->OutputWindow;
+	swapChainDesc.SampleDesc = pSwapChainDesc->SampleDesc;
+	swapChainDesc.SwapEffect = pSwapChainDesc->SwapEffect;
+	swapChainDesc.Windowed = pSwapChainDesc->Windowed;
+	pFactory->CreateSwapChain(pQueue, &swapChainDesc, ppSwapChain);
+	logger::info("Creating D3D11on12 device");
+	HRESULT hr = D3D11On12CreateDevice(d12Device, Flags, pFeatureLevels, FeatureLevels, reinterpret_cast<IUnknown**>(&pQueue), 1, 0, ppDevice, ppImmediateContext, nullptr);*/
 	
 	logger::info("Loading hair API");
 	setCallbacks();
@@ -143,7 +175,10 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
 	//Clustered::GetSingleton()->OnPresent();
-	//hairObject.DrawStrands();
+	//draw hair
+	auto hair = Hair::hairs.find("hairTest");
+	hair->second->simulate();
+	hair->second->draw();
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 

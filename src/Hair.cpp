@@ -5,7 +5,9 @@
 #include "TressFXPPLL.h"
 #include "ActorManager.h"
 #include <SimpleMath.h>
-// This could instead be retrieved as a variable from the
+void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
+void printEffectVariables(ID3DX11Effect* pEffect);
+	// This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
 static const size_t AVE_FRAGS_PER_PIXEL = 4;
 static const size_t PPLL_NODE_SIZE = 16;
@@ -25,21 +27,30 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
+	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	logger::info("Starting TFX Draw");
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
+	m_pPPLL->Clear((EI_CommandContextRef)pContext);
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
+	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	logger::info("End of TFX Draw Debug");
 	m_pPPLL->DoneBuilding((EI_CommandContextRef)pContext);
+
 	// TODO move this to a clear "after all pos and tan usage by rendering" place.
 	m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
 	//necessary?
 	//UnbindUAVS();
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
-	//m_pFullscreenPass->Draw(m_pReadPSO);
+	//m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
+	
 }
 
 void Hair::simulate() {
+	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	logger::info("Starting TFX Simulate");
 	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
 	if (playerSkeleton != NULL) {
 		//logger::info("Got player skeleton: {}", playerSkeleton->name());
@@ -64,6 +75,11 @@ void Hair::simulate() {
 		ID3D11DeviceContext* context;
 		m_pManager->m_pDevice->GetImmediateContext(&context);
 		mSimulation.Simulate((EI_CommandContextRef)context, *m_pHairObject);
+		PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+		logger::info("End of TFX Simulate Debug");
+		ID3D11DeviceContext* pContext;
+		m_pManager->m_pDevice->GetImmediateContext(&pContext);
+		m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
 		//logger::info("simulation complete");
 	}
 }
@@ -123,16 +139,22 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	pManager->m_pDevice->CreateShaderResourceView(m_hairTexture, nullptr, &m_hairSRV);
 	//compile effects
 	logger::info("Create strand effect");
-	m_pStrandEffect = create_effect("data\\Shaders\\TressFX\\oHair.fx"sv);
+	std::vector<D3D_SHADER_MACRO> strand_defines = { { "SU_sRGB_TO_LINEAR", "2.2" }, { "SU_LINEAR_SPACE_LIGHTING", "" }, { "SM_CONST_BIAS", "0.000025" }, { "SU_CRAZY_IF", "[flatten] if" }, { "SU_MAX_LIGHTS", "20" }, { "KBUFFER_SIZE", "4" }, { "SU_LOOP_UNROLL", "[unroll]" }, { "SU_LINEAR_TO_sRGB", "0.4545454545" }, { "SU_3D_API_D3D11", "1" }, { NULL, NULL } };
+	m_pStrandEffect = create_effect("data\\Shaders\\TressFX\\oHair.fx"sv, strand_defines);
+	printEffectVariables(m_pStrandEffect);
 	logger::info("Create quad effect");
-	m_pQuadEffect = create_effect("data\\Shaders\\TressFX\\qHair.fx"sv);
+	std::vector<D3D_SHADER_MACRO> quad_defines = { { "SU_sRGB_TO_LINEAR", "2.2" }, { "SU_LINEAR_SPACE_LIGHTING", "" }, { "SM_CONST_BIAS", "0.000025" }, { "SU_CRAZY_IF", "[flatten] if" }, { "SU_MAX_LIGHTS", "20" }, { "KBUFFER_SIZE", "4" }, { "SU_LOOP_UNROLL", "[unroll]" }, { "SU_LINEAR_TO_sRGB", "0.4545454545" }, { "SU_3D_API_D3D11", "1" }, { NULL, NULL } };
+	m_pQuadEffect = create_effect("data\\Shaders\\TressFX\\qHair.fx"sv, quad_defines);
+	printEffectVariables(m_pQuadEffect);
 	logger::info("Create simulation effect");
 	std::vector<D3D_SHADER_MACRO> macros;
 	std::string s = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
 	macros.push_back({ "AMD_TRESSFX_MAX_NUM_BONES", s.c_str() });
 	m_pTressFXSimEffect = create_effect("data\\Shaders\\TressFX\\cTressFXSimulation.fx"sv);
+	printEffectVariables(m_pTressFXSimEffect);
 	logger::info("Create collision effect");
 	m_pTressFXSDFCollisionEffect = create_effect("data\\Shaders\\TressFX\\cTressFXSDFCollision.fx"sv);
+	printEffectVariables(m_pTressFXSDFCollisionEffect);
 	// See TressFXLayouts.h
 	// Global storage for layouts.
 
@@ -147,7 +169,8 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	logger::info("Got strand PSO");
 	m_pReadPSO = GetPSO("TressFX2", m_pQuadEffect);
 
-	
+	m_pFullscreenPass = new FullscreenPass(pManager);
+
 	if (m_pPPLL) {
 		logger::info("destroying old pll object");
 		m_pPPLL->Destroy((EI_Device*)pManager->m_pDevice);

@@ -72,6 +72,10 @@ EXTERN_C
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext, EI_PSO & pso, AMD::EI_IndexedDrawParams & drawParams);
 	EI_Resource* Create2D(EI_Device * pContext, const size_t  width, const size_t  height, const size_t  arraySize, EI_StringHash strHash);
 	void Destroy(EI_Device * pDevice, EI_Resource * pRW2D);
+	void Clear2D(EI_CommandContext * pContext, EI_RWTexture2D * pResource, AMD::uint32 clearValue);
+	void ClearCounter(EI_CommandContextRef pContext,
+				   EI_StructuredBufferRef               sb,
+				   AMD::uint32                          clearValue);
 	}
 class EI_Resource
 {
@@ -113,3 +117,18 @@ public:
 	ID3DX11EffectTechnique* m_pTechnique;
 };
 EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect);
+
+class FullscreenPass
+{
+public:
+	FullscreenPass(SkyrimGPUResourceManager* pManager);
+	~FullscreenPass();
+
+	void Draw(SkyrimGPUResourceManager* pManager, EI_PSO* pPSO);
+
+private:
+	// quad vertex buffer
+	UINT m_DataSize[1] = { 8 };
+	UINT m_DataOffsets[1] = { 0 };
+	ID3D11Buffer* m_QuadVertexBuffer;
+};

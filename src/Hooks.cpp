@@ -59,10 +59,6 @@ struct Main_Update
 	{
 		//call main game loop
 		func();
-		//draw hair
-		auto hair = Hair::hairs.find("hairTest");
-		hair->second->simulate();
-		hair->second->draw();
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };

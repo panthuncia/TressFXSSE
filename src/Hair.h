@@ -32,6 +32,7 @@ private:
 	ID3DX11Effect* m_pTressFXSDFCollisionEffect;
 	EI_PSO* m_pBuildPSO;
 	EI_PSO* m_pReadPSO;
+	FullscreenPass* m_pFullscreenPass;
 	TressFXPPLL* m_pPPLL = NULL;
 	TressFXSimulation         mSimulation;
 	TressFXSDFCollisionSystem mSDFCollisionSystem;
