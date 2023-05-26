@@ -100,14 +100,14 @@ static void Transition(EI_CommandContextRef context,
 	}
 	else if (from == AMD::EI_STATE_COPY_DEST && (to == AMD::EI_STATE_UAV || to == AMD::EI_STATE_NON_PS_SRV))
 	{
-		ID3D11Device* device = RE::BSRenderManager::GetSingleton()->GetRuntimeData().forwarder;
+		/*ID3D11Device* device = RE::BSRenderManager::GetSingleton()->GetRuntimeData().forwarder;
 		D3D11_SUBRESOURCE_DATA data;
 		data.pSysMem = pResource->data;
 		logger::info("creating buffer with data");
 		HRESULT hr = device->CreateBuffer(&(pResource->desc), &data, &(pResource->buffer));
 		if (hr != S_OK) {
 			printHResult(hr);
-		}
+		}*/
 	} else if (from == AMD::EI_STATE_UAV && to == AMD::EI_STATE_VS_SRV){
 		logger::info("Transition CS->VS");
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context)); 
@@ -432,7 +432,9 @@ extern "C"
 		const AMD::uint32 structCount,
 		EI_StringHash     resourceName, EI_StringHash objectName)
 	{
-		return CreateSB(pContext, structSize, structCount, resourceName, objectName, false, false);
+		//TFX calls this read only and then wants to map it for writing...
+		//return CreateSB(pContext, structSize, structCount, resourceName, objectName, false, false);
+		return CreateReadWriteSB(pContext, structSize, structCount, resourceName, objectName);
 	}
 
 
@@ -557,39 +559,40 @@ extern "C"
    //
 	void* Map(EI_CommandContextRef pContext, EI_StructuredBuffer& sb)
 	{
-		pContext;
-		////SU_ASSERT(sb.resource->GetType() == D3D11_RESOURCE_DIMENSION_BUFFER);
-		//logger::info("mapping buffer");
-		//D3D11_BUFFER_DESC desc;
-		//sb.resource->GetDesc(&desc);
-		//logger::info("byte width: {}", desc.ByteWidth);
-		//logger::info("usage: {}", desc.Usage);
-		//logger::info("bind flags: {}", desc.BindFlags);
-		//logger::info("CPU access flags: {}", desc.CPUAccessFlags);
-		////SuGPUBuffer* pBuffer = static_cast<SuGPUBuffer*>(sb.resource.get());
-		//logger::info("Casting context");
-		//ID3D11DeviceContext* ctx = RE::BSRenderManager::GetSingleton()->GetRuntimeData().context;
-		//D3D11_MAPPED_SUBRESOURCE mapped_buffer{};
-		//ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
-		//HRESULT hr;
-		//hr = ctx->Map(sb.resource, 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped_buffer);
-		//logger::info("mapped resource");
-		//if (hr != S_OK) {
-		//	printHResult(hr);
-		//}
-		//return (void*)mapped_buffer.pData;
-		sb.data = calloc(sb.structCount, sb.structSize);
-		return sb.data;
+		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext)); 
+		//SU_ASSERT(sb.resource->GetType() == D3D11_RESOURCE_DIMENSION_BUFFER);
+		logger::info("mapping buffer");
+		D3D11_BUFFER_DESC desc;
+		sb.buffer->GetDesc(&desc);
+		logger::info("byte width: {}", desc.ByteWidth);
+		logger::info("usage: {}", desc.Usage);
+		logger::info("bind flags: {}", desc.BindFlags);
+		logger::info("CPU access flags: {}", desc.CPUAccessFlags);
+		//SuGPUBuffer* pBuffer = static_cast<SuGPUBuffer*>(sb.resource.get());
+		D3D11_MAPPED_SUBRESOURCE mapped_buffer{};
+		ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
+		HRESULT hr;
+		hr = pDeviceContext->Map(sb.buffer, 0u, D3D11_MAP_WRITE, 0u, &mapped_buffer);
+		logger::info("mapped resource");
+		if (hr != S_OK) {
+			printHResult(hr);
+		}
+		auto manager = RE::BSRenderManager::GetSingleton();
+		auto device = manager->GetRuntimeData().forwarder;
+		PrintAllD3D11DebugMessages(device);
+		return (void*)mapped_buffer.pData;
+		//sb.data = calloc(sb.structCount, sb.structSize);
+		//return sb.data;
 	}
 
 	bool Unmap(EI_CommandContextRef pContext, EI_StructuredBuffer& sb)
 	{
-		/*ID3D11DeviceContext* context = (ID3D11DeviceContext*)&pContext;
-		logger::info("unmapping buffer");
-		context->Unmap(sb.resource, 0);*/
+		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext)); 
+		pDeviceContext->Unmap(sb.buffer, 0u);
+		logger::info("Unmapped buffer");
 		//TODO remove this warning...
-		sb = sb;
-		pContext;
+		/*sb = sb;
+		pContext;*/
 		return true;
 	}
 	// Initialize and leave in state for use as index buffer.
