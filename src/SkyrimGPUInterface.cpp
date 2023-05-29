@@ -136,9 +136,12 @@ static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values
 	uint8_t* pCurrent = (uint8_t*)values;
 	for (AMD::int32 i = 0; i < cb.size(); ++i) {
 		ID3DX11EffectVariable* pParam = cb[i];
+		D3DX11_EFFECT_VARIABLE_DESC varDesc;
+		pParam->GetDesc(&varDesc);
 		D3DX11_EFFECT_TYPE_DESC typeDesc;
 		pParam->GetType()->GetDesc(&typeDesc);
 		uint32_t               nParamBytes = typeDesc.PackedSize;  //pParam->GetParameterSize();
+		logger::info("Updating paramater {}, {} bytes", varDesc.Name, typeDesc.PackedSize);
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
 		SU_ASSERT(nBytes >= 0);
 		if (nCummulativeBytes > (uint32_t)nBytes) {
@@ -146,6 +149,7 @@ static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values
 				(uint32_t)nCummulativeBytes,
 				(uint32_t)nBytes);
 		}
+
 		pParam->SetRawValue(pCurrent, 0, nParamBytes);
 		pCurrent += nParamBytes;
 	}
@@ -410,9 +414,14 @@ extern "C"
 			pLayout->uavs.push_back(pSlot);
 		}
 		(void)description.constants.constantBufferName;  // Sushi doesn't use constant buffer names.  It sets individually.
-
 		for (int i = 0; i < description.constants.nConstants; i++) {
-			pLayout->constants.push_back(pEffect->GetVariableByName(description.constants.parameterNames[i]));
+			//logger::info("getting constant with name: {}", description.constants.parameterNames[i]);
+			ID3DX11EffectVariable* var = pEffect->GetVariableByName(description.constants.parameterNames[i]);
+			pLayout->constants.push_back(var);
+			/*D3DX11_EFFECT_VARIABLE_DESC desc;
+			var->GetDesc(&desc);
+			logger::info("got constant with name: {}", desc.Name);*/
+
 		}
 		logger::info("Layout num UAVs: {}", pLayout->uavs.size());
 		logger::info("Layout num SRVs: {}", pLayout->srvs.size());

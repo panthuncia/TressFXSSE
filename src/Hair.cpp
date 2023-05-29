@@ -27,6 +27,18 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::draw() {
+	DXGI_SWAP_CHAIN_DESC swapDesc;
+	m_pManager->m_pSwapChain->GetDesc(&swapDesc);
+	float4 vFragmentBufferSize;
+	vFragmentBufferSize.x = (float)swapDesc.BufferDesc.Width;
+	vFragmentBufferSize.y = (float)swapDesc.BufferDesc.Height;
+	vFragmentBufferSize.z = (float)(swapDesc.BufferDesc.Width * swapDesc.BufferDesc.Height);
+	vFragmentBufferSize.w = 0;
+	m_pStrandEffect->GetVariableByName("nNodePoolSize")->AsScalar()->SetInt(m_nPPLLNodes);
+	m_pQuadEffect->GetVariableByName("nNodePoolSize")->AsScalar()->SetInt(m_nPPLLNodes);
+	m_pStrandEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
+	m_pQuadEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
+
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Draw");
 	ID3D11DeviceContext* pContext;

@@ -106,7 +106,6 @@ public:
 	ID3D11UnorderedAccessView** uavs;
 	//SuArray<SuGPUSamplingResourceViewPtr> srvs;
 	//SuArray<SuGPUUnorderedAccessViewPtr> uavs;
-
 	void* values;
 	int     nBytes;
 };

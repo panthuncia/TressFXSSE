@@ -38,11 +38,11 @@ void Load()
 {
 	//for GPU profiling/debugging: game crashes if SKSE is launched through PIX with forceD3D11on12.
 	//Workaround: load PIX DLL manually here, force D3D11on12 through D3DConfig, then attach in PIX.
-	const wchar_t wtext[] = L"D:\\Dev\\Microsoft PIX\\2305.10\\WinPixGpuCapturer.dll";
+	/*const wchar_t wtext[] = L"D:\\Dev\\Microsoft PIX\\2305.10\\WinPixGpuCapturer.dll";
 	HINSTANCE hL = LoadLibrary((LPCWSTR)wtext);
 	if (!hL) {
 		logger::info("Could not acquire PIX dll");
-	}
+	}*/
 	/**(FARPROC*)&ptrForceD3D11on12 = GetProcAddress(hL, "ForceD3D11On12");
 	logger::info("Forcing D3D11on12");
 	ptrForceD3D11on12();*/
