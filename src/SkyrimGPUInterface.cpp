@@ -688,7 +688,9 @@ extern "C"
 		} else {
 			logger::info("Pass: Effect is invalid!");
 		}
+		//pContext;
 		pass->Apply(0, pContext);
+		//nThreadGroups;
 		pContext->Dispatch(nThreadGroups, 1, 1);
 	}
 	void DrawIndexedInstanced(EI_CommandContextRef commandContext,

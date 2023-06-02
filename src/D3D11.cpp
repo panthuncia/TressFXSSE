@@ -17,6 +17,7 @@ decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
 decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
+decltype(&ID3D11DeviceContext::RSSetViewports) ptrRSSetViewports;
 
 extern "C"
 {
@@ -177,8 +178,9 @@ HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval
 	//Clustered::GetSingleton()->OnPresent();
 	//draw hair
 	auto hair = Hair::hairs.find("hairTest");
-	hair->second->simulate();
-	hair->second->draw();
+	hair->second->UpdateVariables();
+	hair->second->Simulate();
+	hair->second->Draw();
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 
@@ -196,6 +198,20 @@ void hk_ID3D11DeviceContext_DrawIndexedInstanced(ID3D11DeviceContext* This, UINT
 {
 	//Grass::GetSingleton()->OnDraw();
 	(This->*ptrDrawIndexedInstanced)(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+}
+
+void hk_ID3D11DeviceContext_RSSetViewports(ID3D11DeviceContext* This, UINT NumViewports, const D3D11_VIEWPORT *pViewports){
+	//logger::info("Num viewports: {}", NumViewports);
+	//take first viewport
+	if (NumViewports > 0) {
+		Hair::currentViewport.TopLeftX = pViewports->TopLeftX;
+		Hair::currentViewport.TopLeftY = pViewports->TopLeftY;
+		Hair::currentViewport.Height = pViewports->Height;
+		Hair::currentViewport.Width = pViewports->Width;
+		Hair::currentViewport.MinDepth = pViewports->MinDepth;
+		Hair::currentViewport.MaxDepth = pViewports->MaxDepth;
+	}
+	(This->*ptrRSSetViewports)(NumViewports, pViewports);
 }
 
 GUID WKPDID_D3DDebugObjectNameT = { 0x429b8c22, 0x9188, 0x4b0c, 0x87, 0x42, 0xac, 0xb0, 0xbf, 0x85, 0xc2, 0x00 };
@@ -270,6 +286,7 @@ struct Hooks
 			*(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
 			*(uintptr_t*)&ptrDrawIndexed = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexed, 12);
 			*(uintptr_t*)&ptrDrawIndexedInstanced = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexedInstanced, 20);
+			*(uintptr_t*)&ptrRSSetViewports = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_RSSetViewports, 44);
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};

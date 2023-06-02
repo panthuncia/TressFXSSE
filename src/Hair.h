@@ -7,18 +7,21 @@
 #include "SkyrimGPUInterface.h"
 #include "ShaderCompiler.h"
 typedef float BoneMatrix[4][4];
-#define BONE_MATRIX_SIZE 64
+#define BONE_MATRIX_SIZE 16 * sizeof(float)
 class TressFXPPLL;
 class Hair
 {
 public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
-	void draw();
-	void simulate();
+	void UpdateVariables();
+	void Draw();
+	void Simulate();
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
 	static inline std::unordered_map<std::string, Hair*> hairs;
+	static inline D3D11_VIEWPORT currentViewport;
+
 private:
 	void initialize(SkyrimGPUResourceManager* pManager);
 	ID3DX11Effect* create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
