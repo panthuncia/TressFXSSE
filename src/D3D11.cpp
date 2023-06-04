@@ -13,6 +13,7 @@
 #include "Hair.h"
 #include "SkyrimGPUInterface.h"
 #include "SkeletonInterface.h"
+#include "ActorManager.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
@@ -172,15 +173,17 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	return hr;
 }
 
-
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
 	//Clustered::GetSingleton()->OnPresent();
 	//draw hair
 	auto hair = Hair::hairs.find("hairTest");
 	hair->second->UpdateVariables();
-	hair->second->Simulate();
-	hair->second->Draw();
+	if (hair->second->Simulate()) {
+		hair->second->Draw();
+	} else {
+		logger::info("Simulate failed");
+	}
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 

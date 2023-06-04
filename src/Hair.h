@@ -15,7 +15,7 @@ public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
 	void UpdateVariables();
 	void Draw();
-	void Simulate();
+	bool Simulate();
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
@@ -28,6 +28,7 @@ private:
 	ID3D11Texture2D* m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource* m_hairEIResource;
+	ID3D11InputLayout* renderInputLayout;
 	TressFXHairObject* m_pHairObject;
 	ID3DX11Effect* m_pStrandEffect;
 	ID3DX11Effect* m_pQuadEffect;

@@ -29,6 +29,7 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	hairs["hairTest"] = this;
 }
 void Hair::UpdateVariables() {
+	logger::info("In UpdateVariables");
 	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
 	if (playerSkeleton == NULL)
 		return;
@@ -139,27 +140,41 @@ void Hair::Draw()
 	
 }
 
-void Hair::Simulate() {
+bool Hair::Simulate() {
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Simulate");
 	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
 	if (playerSkeleton != NULL) {
 		logger::info("Got player skeleton: {}", playerSkeleton->name());
-		RE::NiMatrix3 rotation = playerSkeleton->skeleton->world.rotate;
-		RE::NiPoint3 translation = playerSkeleton->skeleton->world.translate;
-		int numBones = playerSkeleton->skeleton->GetChildren().size();
 		//float scale = playerSkeleton->skeleton->world.scale;
 		std::vector<float>* matrices = new std::vector<float>();
 		//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
+		auto& children = playerSkeleton->skeleton->GetChildren(); 
+		int numBones = children.size();
+		int numRealBones = 0;
 		for (uint16_t i = 0; i < numBones; i++) {
+			auto child = children[i].get();
+			logger::info("Address of child: {}", ptr_to_string(child));
+			if (child == nullptr || child == (void*)1) {
+				continue;	
+			}
+			numRealBones++;
+			RE::NiPoint3*  translation = &child->world.translate;
+			logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
+			RE::NiMatrix3*    rotation = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
 			//logger::info("Child has {} children", playerSkeleton->skeleton->GetChildren()[i].get()->AsNode()->GetChildren().size());
-			matrices->insert(matrices->end(), { rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], translation.x,
-									rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], translation.y,
-										  rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], translation.z,
+			matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[0][1], rotation->entry[0][2], translation->x,
+												rotation->entry[1][0], rotation->entry[1][1], rotation->entry[1][2], translation->y,
+												rotation->entry[2][0], rotation->entry[2][1], rotation->entry[2][2], translation->z,
 										  0,					  0,					0,					  1 });
+			//children[i].reset();
+		}
+		if (numRealBones != numBones) {
+			logger::info("Returning false");
+			return false;
 		}
 		logger::info("assembled matrices");
-		m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * numBones);
+		m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * numRealBones);
 		delete(matrices);
 		logger::info("updated matrices");
 		ID3D11DeviceContext* context;
@@ -173,7 +188,9 @@ void Hair::Simulate() {
 		m_pManager->m_pDevice->GetImmediateContext(&pContext);
 		m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
 		logger::info("simulation complete");
+		return true;
 	}
+	return false;
 }
 
 ID3DX11Effect* Hair::create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines)
@@ -229,6 +246,9 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	m_pManager = pManager;
 	pManager->m_pDevice->CreateTexture2D(&desc, NULL, &m_hairTexture);
 	pManager->m_pDevice->CreateShaderResourceView(m_hairTexture, nullptr, &m_hairSRV);
+	//create input layout for rendering
+	//D3D11_INPUT_ELEMENT_DESC inputDesc;
+	//pManager->m_pDevice->CreateInputLayout();
 	//compile effects
 	logger::info("Create strand effect");
 	std::vector<D3D_SHADER_MACRO> strand_defines = { { "SU_sRGB_TO_LINEAR", "2.2" }, { "SU_LINEAR_SPACE_LIGHTING", "" }, { "SM_CONST_BIAS", "0.000025" }, { "SU_CRAZY_IF", "[flatten] if" }, { "SU_MAX_LIGHTS", "20" }, { "KBUFFER_SIZE", "4" }, { "SU_LOOP_UNROLL", "[unroll]" }, { "SU_LINEAR_TO_sRGB", "0.4545454545" }, { "SU_3D_API_D3D11", "1" }, { NULL, NULL } };
@@ -261,7 +281,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	logger::info("Got strand PSO");
 	m_pReadPSO = GetPSO("TressFX2", m_pQuadEffect);
 
-	m_pFullscreenPass = new FullscreenPass(pManager);
+	//m_pFullscreenPass = new FullscreenPass(pManager);
 
 	if (m_pPPLL) {
 		logger::info("destroying old pll object");
