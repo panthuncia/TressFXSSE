@@ -173,27 +173,17 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	return hr;
 }
 
-void CrashGame() {
-	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-	if (playerSkeleton != NULL) {
-		//this call crashes the game after this function returns twice
-		auto children = playerSkeleton->skeleton->GetChildren();
-	}
-}
-
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
-	//ree
-	CrashGame();
 	//Clustered::GetSingleton()->OnPresent();
 	//draw hair
-	/*auto hair = Hair::hairs.find("hairTest");
+	auto hair = Hair::hairs.find("hairTest");
 	hair->second->UpdateVariables();
 	if (hair->second->Simulate()) {
 		hair->second->Draw();
 	} else {
 		logger::info("Simulate failed");
-	}*/
+	}
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 

@@ -149,11 +149,11 @@ bool Hair::Simulate() {
 		//float scale = playerSkeleton->skeleton->world.scale;
 		std::vector<float>* matrices = new std::vector<float>();
 		//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
-		auto children = playerSkeleton->skeleton->GetChildren(); 
+		auto& children = playerSkeleton->skeleton->GetChildren(); 
 		int numBones = children.size();
 		int numRealBones = 0;
 		for (uint16_t i = 0; i < numBones; i++) {
-			auto child = children[i].get()->AsNode();
+			auto child = children[i].get();
 			logger::info("Address of child: {}", ptr_to_string(child));
 			if (child == nullptr || child == (void*)1) {
 				continue;	
