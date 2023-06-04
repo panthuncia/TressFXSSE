@@ -114,6 +114,8 @@ static void Transition(EI_CommandContextRef context,
 		ID3D11UnorderedAccessView* UAV_NULL = NULL;
 		pContext->CSSetUnorderedAccessViews(0, 1, &UAV_NULL, 0);
 		pContext->CSSetUnorderedAccessViews(1, 1, &UAV_NULL, 0);
+		pContext->IASetInputLayout(nullptr);
+
 	} else if (from == AMD::EI_STATE_VS_SRV && to == AMD::EI_STATE_UAV) {
 		logger::info("Transition VS->CS");
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context));
@@ -400,9 +402,9 @@ extern "C"
 		(void)pDevice;
 
 		EI_BindLayout* pLayout = new EI_BindLayout();
-
+		pLayout->uavNames = description.uavNames;
+		pLayout->srvNames = description.srvNames;
 		ID3DX11Effect* pEffect = (ID3DX11Effect*)&layoutManager;
-
 		for (int i = 0; i < description.nSRVs; ++i) {
 			logger::info("Getting SRV: {}", description.srvNames[i]);
 			auto var = pEffect->GetVariableByName(description.srvNames[i]);
@@ -619,6 +621,7 @@ extern "C"
 		D3D11_BUFFER_DESC bufferDesc;
 		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 		bufferDesc.ByteWidth = TRESSFX_INDEX_SIZE * indexCount;
+		logger::info("Creating index buffer with {} indices, {} bytes total", indexCount, bufferDesc.ByteWidth);
 		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		bufferDesc.MiscFlags = 0;
@@ -650,11 +653,12 @@ extern "C"
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			//logger::info("Binding resource, format: {}", desc.Format);
+			logger::info("Binding SRV: {}", pLayout->srvNames[i]);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 		}
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
 		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
+			logger::info("Binding UAV: {}", pLayout->uavNames[i]);
 			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
@@ -701,6 +705,7 @@ extern "C"
 		//pEffect->BindIndexBuffer(pIndexBuffer);
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext));
 		logger::info("Setting index buffer");
+
 		pContext->IASetIndexBuffer((ID3D11Buffer*)drawParams.pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		D3DX11_TECHNIQUE_DESC techDesc;
 		pso.m_pTechnique->GetDesc(&techDesc); 

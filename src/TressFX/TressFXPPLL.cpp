@@ -185,6 +185,7 @@ void TressFXPPLL::BindForBuild(EI_CommandContextRef commandContext)
     {
         TressFXLogWarning("PPLL BindForBuild without being created.");
     }
+	logger::info("Binding for build");
     EI_Bind(commandContext, GetPPLLBuildLayout(), *m_pPPLLBuildBindSet);
 }
 

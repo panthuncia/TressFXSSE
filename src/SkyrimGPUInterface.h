@@ -94,7 +94,9 @@ public:
 struct EI_BindLayout
 {
 	std::vector<ID3DX11EffectShaderResourceVariable*> srvs;
+	const EI_StringHash* srvNames;
 	std::vector<ID3DX11EffectUnorderedAccessViewVariable*> uavs;
+	const EI_StringHash* uavNames;
 	std::vector<ID3DX11EffectVariable*> constants;
 };
 class EI_BindSet

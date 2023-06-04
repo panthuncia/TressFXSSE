@@ -83,7 +83,7 @@ namespace ShaderCompiler
 		ID3DBlob* shaderBlob;
 		ID3DBlob* errorBlob;
 		DWORD shaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-		shaderFlags = D3DCOMPILE_DEBUG;
+		shaderFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 
 		//logger::info("2");
 		//char* path;

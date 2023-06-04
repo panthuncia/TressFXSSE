@@ -31,25 +31,13 @@ struct BSFaceGenNiNode_FixSkinInstances
 			a_skeleton->GetUserData() ? a_skeleton->GetUserData()->formID : 0x0,
 			a_skeleton->GetUserData() ? a_skeleton->GetUserData()->GetBaseObject()->formID : 0x0, formId);
 		//logger::info("5");
-		if ((a_skeleton->GetUserData() && a_skeleton->GetUserData()->formID == 0x14) || hdt::ActorManager::instance()->m_skinNPCFaceParts)
-		{
-			hdt::SkinAllHeadGeometryEvent e;
-			e.skeleton = a_skeleton;
-			//e.headNode = this;
-#ifdef ANNIVERSARY_EDITION
-			SkinAllGeometryCalls(a_skeleton, a_unk);
-#else
-			//CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
-			func(self, a_skeleton, a_arg2);
-#endif
-			e.hasSkinned = true;
-			hdt::g_skinAllHeadGeometryEventDispatcher.dispatch(e);
-		}
-		else
-		{
-			//CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
-			func(self, a_skeleton, a_arg2);
-		}
+		hdt::SkinAllHeadGeometryEvent e;
+		e.skeleton = a_skeleton;
+		//e.headNode = this;
+		//CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
+		func(self, a_skeleton, a_arg2);
+		e.hasSkinned = true;
+		hdt::g_skinAllHeadGeometryEventDispatcher.dispatch(e);
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
