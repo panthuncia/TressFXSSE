@@ -61,6 +61,11 @@ static inline void InitialDataUpload(EI_CommandContextRef    commandContext,
     void* pDest = EI_SB_Map(commandContext, sb);
     TRESSFX_ASSERT(pDest);
     memcpy(pDest, pSource, size);
+	//AMD::TRESSFX::float4* vertices = (AMD::TRESSFX::float4*)pDest;
+	//int numVertices = size / sizeof(AMD::TRESSFX::float4);
+	//for (int j = 0; j < numVertices; j++) {
+	//	logger::info("Vertex: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
+	//}
     EI_SB_Unmap(commandContext, sb);
 }
 
@@ -141,7 +146,6 @@ void TressFXHairObject::Create(AMD::TressFXAsset* asset,
     // UPLOAD INITIAL DATA
     // UAVs must first be transitioned for copy dest, since they start with UAV state.
     // When done, we transition to appropriate state for start of first frame.
-
     mPosTanCollection.UploadGPUData(
         commandContext, asset->m_positions, asset->m_tangents, m_NumTotalVertice);
     InitialDataUpload(commandContext, asset->m_positions, sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice, *mInitialHairPositionsBuffer);
@@ -581,7 +585,11 @@ void PosTanCollection::UploadGPUData(EI_CommandContextRef commandContext, void* 
     };
     EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uavToUpload), uavToUpload);
 
-
+	/*auto vertices = (AMD::TRESSFX::float4*)pos;
+	for (int j = 0; j < numVertices; j++) {
+		logger::info("Vertex: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
+	}*/
+	logger::info("uploading positions:");
     InitialDataUpload(commandContext, pos, sizeof(AMD::TRESSFX::float4) * numVertices, *m_Positions);
     InitialDataUpload(commandContext, tan, sizeof(AMD::TRESSFX::float4) * numVertices, *m_Tangents);
     InitialDataUpload(commandContext, pos, sizeof(AMD::TRESSFX::float4) * numVertices, *m_PositionsPrev);

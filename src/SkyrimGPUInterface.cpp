@@ -114,6 +114,7 @@ static void Transition(EI_CommandContextRef context,
 		ID3D11UnorderedAccessView* UAV_NULL = NULL;
 		pContext->CSSetUnorderedAccessViews(0, 1, &UAV_NULL, 0);
 		pContext->CSSetUnorderedAccessViews(1, 1, &UAV_NULL, 0);
+		pContext->CSSetUnorderedAccessViews(2, 1, &UAV_NULL, 0);
 		pContext->IASetInputLayout(nullptr);
 
 	} else if (from == AMD::EI_STATE_VS_SRV && to == AMD::EI_STATE_UAV) {
@@ -220,9 +221,10 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.ElementOffset = 0;
+	//this union caused me lots of pain
+	//srvDesc.Buffer.ElementOffset = 0;
 	srvDesc.Buffer.NumElements = structCount;
-	srvDesc.Buffer.ElementWidth = structSize;
+	//srvDesc.Buffer.ElementWidth = structSize;
 	logger::info("creating srv");
 	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pSB->buffer, &srvDesc, &r.srv);
 	printHResult(hr1);
@@ -580,8 +582,8 @@ extern "C"
 		logger::info("bind flags: {}", desc.BindFlags);
 		logger::info("CPU access flags: {}", desc.CPUAccessFlags);
 		//SuGPUBuffer* pBuffer = static_cast<SuGPUBuffer*>(sb.resource.get());
-		D3D11_MAPPED_SUBRESOURCE mapped_buffer{};
-		ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
+		D3D11_MAPPED_SUBRESOURCE mapped_buffer = {};
+		//ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
 		HRESULT hr;
 		hr = pDeviceContext->Map(sb.buffer, 0u, D3D11_MAP_WRITE, 0u, &mapped_buffer);
 		logger::info("mapped resource");
@@ -601,6 +603,30 @@ extern "C"
 		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext)); 
 		pDeviceContext->Unmap(sb.buffer, 0u);
 		logger::info("Unmapped buffer");
+		//D3D11_BUFFER_DESC desc;
+		//sb.buffer->GetDesc(&desc);
+		//D3D11_MAPPED_SUBRESOURCE mapped_buffer = {};
+		//ID3D11Device* pDevice;
+		//sb.buffer->GetDevice(&pDevice);
+		////recreate uav
+		//D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		//sb.uav->GetDesc(&uavDesc);
+		//sb.uav->Release();
+		//pDevice->CreateUnorderedAccessView(sb.buffer, &uavDesc, &sb.uav);
+		////recreate srv
+		//D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		//sb.srv->GetDesc(&srvDesc);
+		//sb.srv->Release();
+		//pDevice->CreateShaderResourceView(sb.buffer, &srvDesc, &sb.srv);
+		//ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
+		/*HRESULT hr;
+		hr = pDeviceContext->Map(sb.buffer, 0u, D3D11_MAP_WRITE, 0u, &mapped_buffer);
+		AMD::TRESSFX::float4* vertices = (AMD::TRESSFX::float4*)mapped_buffer.pData;
+		int numVertices = desc.ByteWidth / sizeof(AMD::TRESSFX::float4);
+		for (int j = 0; j < numVertices; j++) {
+			logger::info("Vertex: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
+		}
+		pDeviceContext->Unmap(sb.buffer, 0u);*/
 		//TODO remove this warning...
 		/*sb = sb;
 		pContext;*/
@@ -694,6 +720,23 @@ extern "C"
 		}
 		//pContext;
 		pass->Apply(0, pContext);
+		/*ID3DX11EffectVariable* pVertexPositions = pso.m_pEffect->GetVariableByName("g_HairVertexTangents");
+		ID3D11UnorderedAccessView* pUAV;
+		pVertexPositions->AsUnorderedAccessView()->GetUnorderedAccessView(&pUAV);
+		ID3D11Resource* pResource;
+		pUAV->GetResource(&pResource);
+		D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
+		pUAV->GetDesc(&desc);
+		D3D11_MAPPED_SUBRESOURCE mapped_buffer = {};
+		pContext->Map(pResource, 0u, D3D11_MAP_READ, 0u, &mapped_buffer);
+		AMD::TRESSFX::float4* vertices = (AMD::TRESSFX::float4*)mapped_buffer.pData;
+		int numVertices = desc.Buffer.NumElements;
+		for (int j = 0; j < numVertices; j++) {
+			logger::info("Vertex tangent: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
+		}
+		pContext->Unmap(pResource, 0u);*/
+		//UINT counts[1] = { 0 };
+		//pContext->CSSetUnorderedAccessViews(3, 1, &pUAV, counts);
 		//nThreadGroups;
 		pContext->Dispatch(nThreadGroups, 1, 1);
 	}
@@ -719,6 +762,7 @@ extern "C"
 			} else {
 				logger::info("Pass: Effect is invalid!");
 			}
+			indicesPerInstance;
 			pass->Apply(0, pContext);
 			pContext->DrawIndexedInstanced(indicesPerInstance, drawParams.numInstances, 0, 0, 0);
 		}

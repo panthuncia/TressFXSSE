@@ -50,11 +50,15 @@ void TressFXSimulation::Shutdown(EI_Device* pDevice)
 
 void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHairObject& hairObject)
 {
+	logger::info("num strands: {}", hairObject.m_NumTotalStrands);
+	logger::info("num vertices: {}", hairObject.m_NumTotalVertice);
     // For dispatching one thread per one vertex
     int numOfGroupsForCS_VertexLevel = (int)((float)hairObject.m_NumTotalVertice / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
 
     // For dispatching one thread per one strand
     int numOfGroupsForCS_StrandLevel = (int)(((float)(hairObject.m_NumTotalStrands) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
+	numOfGroupsForCS_StrandLevel;
+	numOfGroupsForCS_VertexLevel;
     // Binding
     EI_Bind(commandContext, GetSimPosTanLayout(), hairObject.mPosTanCollection.GetSimBindSet());
     EI_Bind(commandContext, GetSimLayout(), *hairObject.m_pSimBindSet);
@@ -81,8 +85,8 @@ void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHai
     }
     // UpdateFollowHairVertices
     {
-        EI_Dispatch(commandContext, *mUpdateFollowHairVerticesPSO, numOfGroupsForCS_VertexLevel);
-        hairObject.mPosTanCollection.UAVBarrier(commandContext);
+        //EI_Dispatch(commandContext, *mUpdateFollowHairVerticesPSO, numOfGroupsForCS_VertexLevel);
+        //hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
     hairObject.mSimulationFrame++;
 }

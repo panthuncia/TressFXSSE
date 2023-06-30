@@ -177,12 +177,17 @@ HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval
 {
 	//Clustered::GetSingleton()->OnPresent();
 	//draw hair
-	auto hair = Hair::hairs.find("hairTest");
-	hair->second->UpdateVariables();
-	if (hair->second->Simulate()) {
-		hair->second->Draw();
-	} else {
-		logger::info("Simulate failed");
+	auto camera = RE::PlayerCamera::GetSingleton();
+	logger::info("Got camera");
+	if (camera != nullptr && camera->currentState != nullptr && camera->currentState->id == RE::CameraState::kThirdPerson) {
+		RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+		auto hair = Hair::hairs.find("hairTest");
+		hair->second->UpdateVariables(tps);
+		if (hair->second->Simulate()) {
+			hair->second->Draw();
+		} else {
+			logger::info("Simulate failed");
+		}
 	}
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
