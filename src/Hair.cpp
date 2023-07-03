@@ -121,7 +121,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	glm::mat4 modelMatrix = modelRotationMatrix*modelTranslationMatrix;
 
 	logger::info("Model:");
-	logger::info("{}, {}, {}, {}", modelMatrix[0][0], modelMatrix[0][1], m ujp[-n0kmmmi[ =-0jjj ,jjjjodelMatrix[0][2], modelMatrix[0][3]);
+	logger::info("{}, {}, {}, {}", modelMatrix[0][0], modelMatrix[0][1], modelMatrix[0][2], modelMatrix[0][3]);
 	logger::info("{}, {}, {}, {}", modelMatrix[1][0], modelMatrix[1][1], modelMatrix[1][2], modelMatrix[1][3]);
 	logger::info("{}, {}, {}, {}", modelMatrix[2][0], modelMatrix[2][1], modelMatrix[2][2], modelMatrix[2][3]);
 	logger::info("{}, {}, {}, {}", modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2], modelMatrix[3][3]);
@@ -230,6 +230,7 @@ void Hair::Draw()
 	m_pPPLL->Clear((EI_CommandContextRef)pContext);
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
 	//RunTestEffect();
+	pContext->RSSetState(m_pWireframeRSState);
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("End of TFX Draw Debug");
@@ -327,13 +328,17 @@ bool Hair::Simulate() {
 		//ListChildren(children);
 		for (uint16_t i = 0; i < numBones; i++) {
 			auto          child = bones[i];
-			RE::NiPoint3*  translation = &child->world.translate;
+			RE::NiPoint3* translation = &child->world.translate;
 			glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(translation->x, translation->y, translation->z));
 			//logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
-			RE::NiMatrix3*    rotation = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
-			matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[0][1], rotation->entry[0][2], translation_vector_scaled.x,
-												rotation->entry[1][0], rotation->entry[1][1], rotation->entry[1][2], translation_vector_scaled.y,
-												rotation->entry[2][0], rotation->entry[2][1], rotation->entry[2][2], translation_vector_scaled.z,
+			RE::NiMatrix3* rotation_nimatrix = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
+			glm::mat3      rotation = glm::mat3({{rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2]}, 
+				{ rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2]}, 
+				{rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2]}});
+			rotation = glm::transpose(rotation);
+			matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], translation_vector_scaled.x,
+												rotation[1][0], rotation[1][1], rotation[1][2], translation_vector_scaled.y,
+												rotation[2][0], rotation[2][1], rotation[2][2], translation_vector_scaled.z,
 										  0,					  0,					0,					  1 });
 			/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
 												  rotation->entry[0][1], rotation->entry[1][1], rotation->entry[2][1], 0,
@@ -509,4 +514,18 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	mSimulation.Initialize((EI_Device*)pManager->m_pDevice, simLayoutManager);
 	logger::info("Initialize SDF collision");
 	mSDFCollisionSystem.Initialize((EI_Device*)pManager->m_pDevice, sdfCollisionManager);
+
+	//create wireframe rasterizer state for testing
+	D3D11_RASTERIZER_DESC rsState;
+	rsState.FillMode = D3D11_FILL_WIREFRAME;
+	rsState.CullMode = D3D11_CULL_NONE;
+	rsState.FrontCounterClockwise = false;
+	rsState.DepthBias = 0;
+	rsState.DepthBiasClamp = 0;
+	rsState.SlopeScaledDepthBias = 0;
+	rsState.DepthClipEnable = false;
+	rsState.ScissorEnable = false;
+	rsState.MultisampleEnable = true;
+	rsState.AntialiasedLineEnable = false;
+	pManager->m_pDevice->CreateRasterizerState(&rsState, &m_pWireframeRSState);
 }

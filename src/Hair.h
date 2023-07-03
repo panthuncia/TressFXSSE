@@ -43,4 +43,5 @@ private:
 	TressFXSimulation         mSimulation;
 	TressFXSDFCollisionSystem mSDFCollisionSystem;
 	int                       m_nPPLLNodes;
+	ID3D11RasterizerState*    m_pWireframeRSState;
 };

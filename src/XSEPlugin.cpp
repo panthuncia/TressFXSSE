@@ -1,6 +1,6 @@
 #include "LOCAL_RE/BSGraphicsTypes.h"
 #include "ENB/ENBSeriesAPI.h"
-
+#include "D:/Modding/Dev/TressFXSSE/build/CMakeFiles/TressFXSSE.dir/Release/cmake_pch.hxx"
 #include "Hooks.h"
 #include "ActorManager.h"
 #include "HookEvents.h"
