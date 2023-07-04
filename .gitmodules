@@ -1,0 +1,9 @@
+[submodule "external/CommonLibSSE"]
+	path = external/CommonLibSSE
+	url = https://github.com/powerof3/CommonLibSSE.git
+[submodule "external/CommonLibAE"]
+	path = external/CommonLibAE
+	url = https://github.com/powerof3/CommonLibSSE.git
+[submodule "FX11"]
+	path = FX11
+	url = https://github.com/panthuncia/FX11.git

@@ -12,7 +12,6 @@ function(add_cxx_files TARGET)
 		CONFIGURE_DEPENDS
 		"lib/*.lib"
 	)
-	#target_link_libraries(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/GPUOpen_TressFX_x64d.lib)
 	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include
 		PREFIX "Header Files"
 		FILES ${INCLUDE_FILES})

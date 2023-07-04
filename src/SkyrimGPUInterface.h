@@ -3,7 +3,7 @@
 #include "TressFXGPUInterface.h"
 #include "SkyrimGPUResourceManager.h"
 #include "SuAssert.h"
-#include "Effects11/d3dx11effect.h"
+#include "d3dx11effect.h"
 #include <d3d11.h>
 template <typename T>
 constexpr auto type_name()

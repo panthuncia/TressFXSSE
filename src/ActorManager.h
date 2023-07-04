@@ -89,48 +89,13 @@ namespace hdt
 			SkeletonState                    state;
 
 			std::string name();
-			void        addArmor(RE::NiNode* armorModel);
-			void        attachArmor(RE::NiNode* armorModel, RE::NiAVObject* attachedNode);
 
-			void cleanArmor();
-			void cleanHead(bool cleanAll = false);
-			void clear();
-
-			// @brief This calculates and sets the distance from skeleton to player, and a value that is the cosinus
-			// between the camera orientation vector and the camera to skeleton vector, multiplied by the length
-			// of the camera to skeleton vector; that value is very fast to compute as it is a dot product, and it
-			// can be directly used for our needs later; the distance is provided squared for performance reasons.
-			// @param sourcePosition the position of the camera
-			// @param sourceOrientation the orientation of the camera
-			void calculateDistanceAndOrientationDifferenceFromSource(RE::NiPoint3 sourcePosition, RE::NiPoint3 sourceOrientation);
 
 			bool                        isPlayerCharacter() const;
 			bool                        isInPlayerView();
 			bool                        hasPhysics = false;
 			std::optional<RE::NiPoint3> position() const;
 
-			// @brief Update windfactor for skeleton
-			// @param a_windFactor is a percentage [0,1] with 0 being no wind efect to 1 being full wind effect.
-			void updateWindFactor(float a_windFactor);
-			// @brief Get windfactor for skeleton
-			float getWindFactor();
-
-			// @brief Updates the states and activity of skeletons, their heads parts and armors.
-			// @param playerCell The skeletons not in the player cell are automatically inactive.
-			// @param deactivate If set to true, the concerned skeleton will be inactive, regardless of other elements.
-			bool updateAttachedState(const RE::NiNode* playerCell, bool deactivate);
-
-			// bool deactivate(); // FIXME useless?
-			void reloadMeshes();
-
-			void scanHead();
-			void processGeometry(RE::BSFaceGenNiNode* head, RE::BSGeometry* geometry);
-
-			static void        doSkeletonMerge(RE::NiNode* dst, RE::NiNode* src, std::string* prefix,
-					   std::unordered_map<std::string, std::string>& map);
-			static void        doSkeletonClean(RE::NiNode* dst, std::string* prefix);
-			static RE::NiNode* cloneNodeTree(RE::NiNode* src, std::string* prefix, std::unordered_map<std::string, std::string>& map);
-			static void        renameTree(RE::NiNode* root, std::string* prefix, std::unordered_map<std::string, std::string>& map);
 
 			// @brief This is the squared distance between the skeleton and the camera.
 			float m_distanceFromCamera2 = std::numeric_limits<float>::max();
@@ -140,15 +105,13 @@ namespace hdt
 
 		private:
 			bool isActiveInScene() const;
-			bool checkPhysics();
-
 			bool  isActive = false;
 			float currentWindFactor = 0.f;
 			//std::vector<Armor> armors;
 		};
 		ActorManager();
 		~ActorManager();
-		Skeleton* m_playerSkeleton;
+		Skeleton* m_playerSkeleton = nullptr;
 		static ActorManager* instance();
 
 		static std::string armorPrefix(IDType id);

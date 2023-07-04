@@ -1,16 +1,16 @@
-#include "Util.h"
 #include "Hair.h"
-#include <sys/stat.h>
+#include "ActorManager.h"
 #include "SkyrimGPUInterface.h"
 #include "TressFXLayouts.h"
 #include "TressFXPPLL.h"
-#include "ActorManager.h"
-#include <SimpleMath.h>
+#include "Util.h"
 #include <glm/gtc/quaternion.hpp>
-void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
-void printEffectVariables(ID3DX11Effect* pEffect);
+#include <glm/gtx/euler_angles.hpp>
+#include <sys/stat.h>
+void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
+void        printEffectVariables(ID3DX11Effect* pEffect);
 std::string ptr_to_string(void* ptr);
-	// This could instead be retrieved as a variable from the
+// This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
 static const size_t AVE_FRAGS_PER_PIXEL = 4;
 static const size_t PPLL_NODE_SIZE = 16;
@@ -20,7 +20,9 @@ static const size_t PPLL_NODE_SIZE = 16;
 // These are globals, because there should really just be one instance.
 TressFXLayouts* g_TressFXLayouts = 0;
 
-Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) : mSimulation(), mSDFCollisionSystem() {
+Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name) :
+	mSimulation(), mSDFCollisionSystem()
+{
 	m_pHairObject = new TressFXHairObject;
 	m_hairEIResource = new EI_Resource;
 	initialize(resourceManager);
@@ -29,7 +31,8 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	logger::info("Created hair object");
 	hairs["hairTest"] = this;
 }
-void Hair::RunTestEffect(){
+void Hair::RunTestEffect()
+{
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
 	//m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
@@ -63,7 +66,7 @@ void Hair::RunTestEffect(){
 	logger::info("Var name: {}", desc.Name);
 	m_pTestEffect->GetVariableByName("g_GuideHairVertexPositions")->AsShaderResource()->SetResource(pSRV);
 	ID3DX11EffectTechnique* pTechnique = m_pTestEffect->GetTechniqueByName("TressFX2");
-	ID3DX11EffectPass* pPass = pTechnique->GetPassByIndex(0);
+	ID3DX11EffectPass*      pPass = pTechnique->GetPassByIndex(0);
 	pPass->Apply(0, pContext);
 	//int numOfGroupsForCS_StrandLevel = (int)(((float)(m_pHairObject->GetNumTotalHairStrands()) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
 	pContext->Draw(1000, 0);
@@ -89,24 +92,67 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pQuadEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
 	//get view, projection, viewProj, and inverse viewProj matrix
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
+	/*logger::info("WorldToCam:");
+	logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[0][0], playerCam->GetRuntimeData().worldToCam[0][1], playerCam->GetRuntimeData().worldToCam[0][2], playerCam->GetRuntimeData().worldToCam[0][3]);
+	logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[1][0], playerCam->GetRuntimeData().worldToCam[1][1], playerCam->GetRuntimeData().worldToCam[1][2], playerCam->GetRuntimeData().worldToCam[1][3]);
+	logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[2][0], playerCam->GetRuntimeData().worldToCam[2][1], playerCam->GetRuntimeData().worldToCam[2][2], playerCam->GetRuntimeData().worldToCam[2][3]);
+	logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[3][0], playerCam->GetRuntimeData().worldToCam[3][1], playerCam->GetRuntimeData().worldToCam[3][2], playerCam->GetRuntimeData().worldToCam[3][3]);*/
 	RE::NiPoint3  translation = tps->translation;
 	logger::info("Camera position reported by thirdPersonState.translation: {}, {}, {}", translation.x, translation.y, translation.z);
 	//translation = playerCam->world.translate;
 	//logger::info("Camera position reported by nicamera world.translate: {}, {}, {}", translation.x, translation.y, translation.z);
 	RE::NiQuaternion rotation = tps->rotation;
-	glm::vec3 cameraPos = glm::vec3(translation.x, translation.y, translation.z);
-	glm::quat glm_rotate = glm::quat{ rotation.w, rotation.x, rotation.y, rotation.z };
-	float pitch = glm::pitch(glm_rotate) * -1.0f;
-	float yaw = glm::roll(glm_rotate) * -1.0f;  // The game stores yaw in the Z axis
-	glm::vec2 cameraRot = glm::vec2(pitch, yaw);
-	glm::mat4 viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
+	glm::vec3        cameraPos = glm::vec3(translation.x, translation.y, translation.z);
+	glm::vec3        cameraPosScaled = Util::ToRenderScale(cameraPos);
+	glm::quat        glm_rotate = glm::quat{ rotation.w, rotation.x, rotation.y, rotation.z };
+	float            pitch = glm::pitch(glm_rotate) * -1.0f;
+	float            yaw = glm::roll(glm_rotate) * -1.0f;  // The game stores yaw in the Z axis
+	glm::vec2        cameraRot = glm::vec2(pitch, yaw);
+	RE::NiMatrix3    rotation_nimatrix = playerCam->world.rotate;  //playerSkeleton->skeleton->world.rotate;
+	float            x = 0;
+	float            y = 0;
+	float            z = 0;
+	rotation_nimatrix.ToEulerAnglesXYZ(x, y, z);
+	//glm::mat3 camera_rotation = glm::eulerAngleXYZ(x, y, z);
+	glm::mat3        camera_rotation = glm::mat3({ { rotation_nimatrix.entry[0][0], rotation_nimatrix.entry[0][1], rotation_nimatrix.entry[0][2] },
+			   { rotation_nimatrix.entry[1][0], rotation_nimatrix.entry[1][1], rotation_nimatrix.entry[1][2] },
+			   { rotation_nimatrix.entry[2][0], rotation_nimatrix.entry[2][1], rotation_nimatrix.entry[2][2] } });
+	camera_rotation = glm::transpose(camera_rotation);
+	glm::mat4 viewMatrix = glm::mat4({ { playerCam->GetRuntimeData().worldToCam[0][0], playerCam->GetRuntimeData().worldToCam[0][1], playerCam->GetRuntimeData().worldToCam[0][2], playerCam->GetRuntimeData().worldToCam[0][3] },
+		{ playerCam->GetRuntimeData().worldToCam[1][0], playerCam->GetRuntimeData().worldToCam[1][1], playerCam->GetRuntimeData().worldToCam[1][2], playerCam->GetRuntimeData().worldToCam[1][3] },
+		{ playerCam->GetRuntimeData().worldToCam[2][0], playerCam->GetRuntimeData().worldToCam[2][1], playerCam->GetRuntimeData().worldToCam[2][2], playerCam->GetRuntimeData().worldToCam[2][3] },
+		{ playerCam->GetRuntimeData().worldToCam[3][0], playerCam->GetRuntimeData().worldToCam[3][1], playerCam->GetRuntimeData().worldToCam[3][2], playerCam->GetRuntimeData().worldToCam[3][3] } });
+
+	viewMatrix[0][0] = camera_rotation[0][0];
+	viewMatrix[0][1] = camera_rotation[1][0];
+	viewMatrix[0][2] = camera_rotation[2][0];
+
+	viewMatrix[1][0] = camera_rotation[0][1];
+	viewMatrix[1][1] = camera_rotation[1][1];
+	viewMatrix[1][2] = camera_rotation[2][1];
+
+	viewMatrix[2][0] = camera_rotation[0][2];
+	viewMatrix[2][1] = camera_rotation[1][2];
+	viewMatrix[2][2] = camera_rotation[2][2];
+
+	glm::vec3 vEye = cameraPosScaled;
+	viewMatrix[0][3] = glm::dot(vEye, glm::vec3(viewMatrix[0][0], viewMatrix[0][1], viewMatrix[0][2]));
+	viewMatrix[1][3] = glm::dot(vEye, glm::vec3(viewMatrix[1][0], viewMatrix[1][1], viewMatrix[1][2]));
+	viewMatrix[2][3] = glm::dot(vEye, glm::vec3(viewMatrix[2][0], viewMatrix[2][1], viewMatrix[2][2]));
+
+	viewMatrix[3][0] = 0;
+	viewMatrix[3][1] = 0;
+	viewMatrix[3][2] = 0;
+	viewMatrix[3][3] = 1;
+	//viewMatrix = glm::transpose(viewMatrix);
+	//viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
 	logger::info("View:");
 	logger::info("{}, {}, {}, {}", viewMatrix[0][0], viewMatrix[0][1], viewMatrix[0][2], viewMatrix[0][3]);
 	logger::info("{}, {}, {}, {}", viewMatrix[1][0], viewMatrix[1][1], viewMatrix[1][2], viewMatrix[1][3]);
 	logger::info("{}, {}, {}, {}", viewMatrix[2][0], viewMatrix[2][1], viewMatrix[2][2], viewMatrix[2][3]);
 	logger::info("{}, {}, {}, {}", viewMatrix[3][0], viewMatrix[3][1], viewMatrix[3][2], viewMatrix[3][3]);
 	//model matrix
-	RE::NiNode* root = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]")->AsNode();
+	/*RE::NiNode* root = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]")->AsNode();
 	RE::NiMatrix3 modelRotate = root->world.rotate;
 	RE::NiPoint3  modelTranslate = root->world.translate;
 	glm::vec3     modelTranslateScaled = Util::ToRenderScale(glm::vec3(modelTranslate.x, modelTranslate.y, modelTranslate.z));
@@ -124,23 +170,22 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	logger::info("{}, {}, {}, {}", modelMatrix[0][0], modelMatrix[0][1], modelMatrix[0][2], modelMatrix[0][3]);
 	logger::info("{}, {}, {}, {}", modelMatrix[1][0], modelMatrix[1][1], modelMatrix[1][2], modelMatrix[1][3]);
 	logger::info("{}, {}, {}, {}", modelMatrix[2][0], modelMatrix[2][1], modelMatrix[2][2], modelMatrix[2][3]);
-	logger::info("{}, {}, {}, {}", modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2], modelMatrix[3][3]);
+	logger::info("{}, {}, {}, {}", modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2], modelMatrix[3][3]);*/
 	//RE::NiMatrix3 rotate = playerCam->world.rotate;
 	/*glm::mat4         viewMatrix = { { rotate.entry[0][0], rotate.entry[0][1], rotate.entry[0][2], translation.x },
 				{ rotate.entry[1][0], rotate.entry[1][1], rotate.entry[1][2], translation.y },
 				{ rotate.entry[2][0], rotate.entry[2][1], rotate.entry[2][2], translation.z },
 				{ 0, 0, 0, 1 } };*/
-	// 
+	//
 	//projection matrix
 	glm::mat4 projMatrix = Util::GetPlayerProjectionMatrix(playerCam->GetRuntimeData2().viewFrustum, swapDesc.BufferDesc.Width, swapDesc.BufferDesc.Height);
-	projMatrix = glm::inverse(projMatrix);
 	logger::info("Proj:");
 	logger::info("{}, {}, {}, {}", projMatrix[0][0], projMatrix[0][1], projMatrix[0][2], projMatrix[0][3]);
 	logger::info("{}, {}, {}, {}", projMatrix[1][0], projMatrix[1][1], projMatrix[1][2], projMatrix[1][3]);
 	logger::info("{}, {}, {}, {}", projMatrix[2][0], projMatrix[2][1], projMatrix[2][2], projMatrix[2][3]);
 	logger::info("{}, {}, {}, {}", projMatrix[3][0], projMatrix[3][1], projMatrix[3][2], projMatrix[3][3]);
 	//model-view-projection matrix
-	glm::mat4 viewProjectionMatrix = viewMatrix*projMatrix;
+	glm::mat4 viewProjectionMatrix = glm::transpose(projMatrix*viewMatrix);
 	//glm::mat4 viewProjectionMatrix = modelMatrix * viewMatrix * projMatrix;
 	//DirectX::XMMATRIX viewProjectionMatrix = DirectX::XMMatrixMultiply(pM, vM);
 	glm::mat4 viewProjectionMatrixInverse = glm::inverse(viewProjectionMatrix);
@@ -149,7 +194,6 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewMatrix));
 	m_pStrandEffect->GetVariableByName("g_mProjection")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&projMatrix));
 	//get camera position
-	glm::vec3         cameraPosScaled = Util::ToRenderScale(cameraPos);
 	DirectX::XMVECTOR cameraPosVectorScaled = DirectX::XMVectorSet(cameraPosScaled.x, cameraPosScaled.y, cameraPosScaled.z, 0);
 	m_pStrandEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&cameraPosVectorScaled));
 	//viewport
@@ -214,14 +258,13 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	settings.m_windDirection[1] = 0;
 	settings.m_windDirection[2] = 0;
 	settings.m_localConstraintsIterations = 3;
-	settings.m_lengthConstraintsIterations = 3; //?
+	settings.m_lengthConstraintsIterations = 3;  //?
 
 	logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
 }
 void Hair::Draw()
 {
-
 	//start draw
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Draw");
@@ -231,6 +274,10 @@ void Hair::Draw()
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
 	//RunTestEffect();
 	pContext->RSSetState(m_pWireframeRSState);
+	//UINT counter[2] = { 0, 0 };
+	//ID3D11UnorderedAccessView* uavs;
+	//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 3, 2, &uavs);
+	//pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, NULL, NULL, 3, 2, &uavs, counter);
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("End of TFX Draw Debug");
@@ -241,21 +288,21 @@ void Hair::Draw()
 	//necessary?
 	//UnbindUAVS();
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
-	//m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
+	m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
 	//end draw
-	
 }
 
-void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int currentOffset=0) {
+void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int currentOffset = 0)
+{
 	for (uint16_t i = 0; i < nodes.size(); i++) {
 		//logger::info("\nlayer: {}", currentOffset);
-		auto node = nodes[i].get();
+		auto        node = nodes[i].get();
 		std::string output = "    ";
 		for (int j = 0; j < currentOffset; j++) {
 			output.append("    ");
 		}
-		if (node == nullptr){
+		if (node == nullptr) {
 			output.append("null node");
 			logger::info("{}", output);
 			continue;
@@ -305,64 +352,77 @@ void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int 
 	}
 }
 
-bool Hair::Simulate() {
-	const int numBones = 8;
+bool Hair::Simulate()
+{
 	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Simulate");
-	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-	if (playerSkeleton != NULL) {
-		logger::info("Got player skeleton: {}", playerSkeleton->name());
-		RE::NiNode* bones[numBones];
-		bones[0] = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]")->AsNode();
-		bones[1] = playerSkeleton->skeleton->GetObjectByName("NPC COM [COM ]")->AsNode();
-		bones[2] = playerSkeleton->skeleton->GetObjectByName("NPC Pelvis [Pelv]")->AsNode();
-		bones[3] = playerSkeleton->skeleton->GetObjectByName("NPC Spine [Spn0]")->AsNode();
-		bones[4] = playerSkeleton->skeleton->GetObjectByName("NPC Spine1 [Spn1]")->AsNode();
-		bones[5] = playerSkeleton->skeleton->GetObjectByName("NPC Spine2 [Spn2]")->AsNode();
-		bones[6] = playerSkeleton->skeleton->GetObjectByName("NPC Neck [Neck]")->AsNode();
-		bones[7] = playerSkeleton->skeleton->GetObjectByName("NPC Head MagicNode [Hmag]")->AsNode();
-		//float scale = playerSkeleton->skeleton->world.scale;
-		std::vector<float>* matrices = new std::vector<float>();
-		//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
-		//auto& children = playerSkeleton->skeleton->GetChildren(); 
-		//ListChildren(children);
-		for (uint16_t i = 0; i < numBones; i++) {
-			auto          child = bones[i];
-			RE::NiPoint3* translation = &child->world.translate;
-			glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(translation->x, translation->y, translation->z));
-			//logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
-			RE::NiMatrix3* rotation_nimatrix = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
-			glm::mat3      rotation = glm::mat3({{rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2]}, 
-				{ rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2]}, 
-				{rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2]}});
-			rotation = glm::transpose(rotation);
-			matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], translation_vector_scaled.x,
-												rotation[1][0], rotation[1][1], rotation[1][2], translation_vector_scaled.y,
-												rotation[2][0], rotation[2][1], rotation[2][2], translation_vector_scaled.z,
-										  0,					  0,					0,					  1 });
-			/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
+	if (!m_gotSkeleton) {
+		hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
+		logger::info("Skeleton address: {}", ptr_to_string(playerSkeleton));
+		if (playerSkeleton != NULL) {
+			logger::info("Got player skeleton");
+			m_gotSkeleton = true;
+			m_bones[0] = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]")->AsNode();
+			logger::info("Got bone 1");
+			m_bones[1] = playerSkeleton->skeleton->GetObjectByName("NPC COM [COM ]")->AsNode();
+			logger::info("Got bone 2");
+			m_bones[2] = playerSkeleton->skeleton->GetObjectByName("NPC Pelvis [Pelv]")->AsNode();
+			m_bones[3] = playerSkeleton->skeleton->GetObjectByName("NPC Spine [Spn0]")->AsNode();
+			m_bones[4] = playerSkeleton->skeleton->GetObjectByName("NPC Spine1 [Spn1]")->AsNode();
+			m_bones[5] = playerSkeleton->skeleton->GetObjectByName("NPC Spine2 [Spn2]")->AsNode();
+			m_bones[6] = playerSkeleton->skeleton->GetObjectByName("NPC Neck [Neck]")->AsNode();
+			m_bones[7] = playerSkeleton->skeleton->GetObjectByName("NPC Head MagicNode [Hmag]")->AsNode();
+			logger::info("Got all bones");
+		} else {
+			return false;
+		}
+	}
+	//float scale = playerSkeleton->skeleton->world.scale;
+	std::vector<float>* matrices = new std::vector<float>();
+	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
+	//auto& children = playerSkeleton->skeleton->GetChildren();
+	//ListChildren(children);
+	for (uint16_t i = 0; i < m_numBones; i++) {
+		auto          child = m_bones[i];
+		RE::NiPoint3* translation = &child->world.translate;
+		glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(translation->x, translation->y, translation->z));
+		//logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
+		RE::NiMatrix3* rotation_nimatrix = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
+		float          x = 0;
+		float          y = 0;
+		float          z = 0;
+		rotation_nimatrix->ToEulerAnglesXYZ(x, y, z);
+		//glm::mat3 rotation = glm::eulerAngleXYZ(x, y, z);
+		glm::mat3      rotation = glm::mat3({ { rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2] },
+				 { rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2] },
+				 { rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2] } });
+		rotation = glm::transpose(rotation);
+		matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], translation_vector_scaled.x,
+											  rotation[1][0], rotation[1][1], rotation[1][2], translation_vector_scaled.y,
+											  rotation[2][0], rotation[2][1], rotation[2][2], translation_vector_scaled.z,
+											  0, 0, 0, 1 });
+		/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
 												  rotation->entry[0][1], rotation->entry[1][1], rotation->entry[2][1], 0,
 												  rotation->entry[0][2], rotation->entry[1][2], rotation->entry[2][2], 0,
 												  translation->x, translation->y, translation->z, 1 });*/
-		}
-
-		logger::info("assembled matrices");
-		m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * numBones);
-		delete(matrices);
-		logger::info("updated matrices");
-		ID3D11DeviceContext* context;
-		m_pManager->m_pDevice->GetImmediateContext(&context);
-		logger::info("Before simulate call");
-		mSimulation.Simulate((EI_CommandContextRef)context, *m_pHairObject);
-		logger::info("After simulate call");
-		PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-		logger::info("End of TFX Simulate Debug");
-		ID3D11DeviceContext* pContext;
-		m_pManager->m_pDevice->GetImmediateContext(&pContext);
-		m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
-		logger::info("simulation complete");
-		return true;
 	}
+
+	logger::info("assembled matrices");
+	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * m_numBones);
+	delete (matrices);
+	logger::info("updated matrices");
+	ID3D11DeviceContext* context;
+	m_pManager->m_pDevice->GetImmediateContext(&context);
+	logger::info("Before simulate call");
+	mSimulation.Simulate((EI_CommandContextRef)context, *m_pHairObject);
+	logger::info("After simulate call");
+	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	logger::info("End of TFX Simulate Debug");
+	ID3D11DeviceContext* pContext;
+	m_pManager->m_pDevice->GetImmediateContext(&pContext);
+	m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
+	logger::info("simulation complete");
+	return true;
 	return false;
 }
 
@@ -403,7 +463,8 @@ ID3DX11Effect* Hair::create_effect(std::string_view filePath, std::vector<D3D_SH
 	}*/
 	return pEffect;
 }
-void Hair::initialize(SkyrimGPUResourceManager* pManager) {
+void Hair::initialize(SkyrimGPUResourceManager* pManager)
+{
 	//create texture and SRV (empty for now)
 	D3D11_TEXTURE2D_DESC desc;
 	desc.Width = 256;
@@ -433,7 +494,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	printEffectVariables(m_pQuadEffect);
 	logger::info("Create simulation effect");
 	std::vector<D3D_SHADER_MACRO> macros;
-	std::string s = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
+	std::string                   s = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
 	macros.push_back({ "AMD_TRESSFX_MAX_NUM_BONES", s.c_str() });
 	m_pTressFXSimEffect = create_effect("data\\Shaders\\TressFX\\cTressFXSimulation.fx"sv);
 	printEffectVariables(m_pTressFXSimEffect);
@@ -457,7 +518,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager) {
 	logger::info("Got strand PSO");
 	m_pReadPSO = GetPSO("TressFX2", m_pQuadEffect);
 
-	//m_pFullscreenPass = new FullscreenPass(pManager);
+	m_pFullscreenPass = new FullscreenPass(pManager);
 
 	if (m_pPPLL) {
 		logger::info("destroying old pll object");

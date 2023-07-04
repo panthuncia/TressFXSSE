@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-
+include(AddGitSubmodule.cmake)
 project(
 	TressFXSSE
 	VERSION 0.1.0
@@ -30,6 +30,16 @@ find_package( glm REQUIRED )
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 
+add_git_submodule(FX11)
+target_include_directories(${PROJECT_NAME} 
+	PUBLIC
+		"FX11/inc"
+)
+
+#add_library(fx11 ${PROJECT_SOURCE_DIR}/FX11/EffectAPI.cpp)
+
+#include_directories(${PROJECT_SOURCE_DIR}/FX11)
+
 target_link_libraries(${PROJECT_NAME}
  	PUBLIC 
 		CommonLibSSE::CommonLibSSE
@@ -42,7 +52,8 @@ target_link_libraries(${PROJECT_NAME}
 		Microsoft::DirectX-Guids 
 		Microsoft::DirectX-Headers
 		Microsoft::DirectXTK
-		D:/Modding/dev/TressFXSSE/build/vcpkg_installed/x64-windows-static-md/lib/Effects11.lib
+		Effects11
+		#D:/Modding/dev/TressFXSSE/build/vcpkg_installed/x64-windows-static-md/lib/Effects11.lib
 )
 
 if(MSVC)

@@ -24,7 +24,6 @@ namespace hdt
 {
 	ActorManager::ActorManager()
 	{
-		m_playerSkeleton = nullptr;
 	}
 
 	ActorManager::~ActorManager()

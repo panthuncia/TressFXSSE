@@ -24,6 +24,8 @@ public:
 	static inline D3D11_VIEWPORT                         currentViewport;
 
 private:
+	static const int                 m_numBones = 8;
+
 	void                      initialize(SkyrimGPUResourceManager* pManager);
 	ID3DX11Effect*            create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
 	ID3D11Texture2D*          m_hairTexture;
@@ -44,4 +46,6 @@ private:
 	TressFXSDFCollisionSystem mSDFCollisionSystem;
 	int                       m_nPPLLNodes;
 	ID3D11RasterizerState*    m_pWireframeRSState;
+	bool                      m_gotSkeleton = false;
+	RE::NiNode*               m_bones[m_numBones];
 };
