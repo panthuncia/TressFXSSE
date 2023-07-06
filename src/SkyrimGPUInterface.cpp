@@ -590,7 +590,7 @@ extern "C"
 		if (hr != S_OK) {
 			printHResult(hr);
 		}
-		auto manager = RE::BSRenderManager::GetSingleton();
+		auto manager = RE::BSGraphics::Renderer::GetSingleton();
 		auto device = manager->GetRuntimeData().forwarder;
 		PrintAllD3D11DebugMessages(device);
 		return (void*)mapped_buffer.pData;

@@ -51,7 +51,8 @@ void Load()
 	hdt::g_skinAllHeadGeometryEventDispatcher.addListener(hdt::ActorManager::instance());
 	//hdt::g_skinSingleHeadGeometryEventDispatcher.addListener(hdt::ActorManager::instance());
 	hookFacegen();
-	hookGameLoop();
+	hookMainDraw();
+	//hookGameLoop();
 	logger::info("Installed skeleton hook");
 }
 

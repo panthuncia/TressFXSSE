@@ -161,10 +161,10 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	asset->ProcessAsset();
 	logger::info("Accessing render device information");
 
-	auto manager = RE::BSRenderManager::GetSingleton();
+	auto manager = RE::BSGraphics::Renderer::GetSingleton();
 	auto device = manager->GetRuntimeData().forwarder;
 	auto context = manager->GetRuntimeData().context;
-	auto swapchain = manager->GetRuntimeData().swapChain;
+	auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
 
 	SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device, swapchain);
 	//init hair resources
@@ -176,19 +176,6 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
 	//Clustered::GetSingleton()->OnPresent();
-	//draw hair
-	auto camera = RE::PlayerCamera::GetSingleton();
-	logger::info("Got camera");
-	if (camera != nullptr && camera->currentState != nullptr && camera->currentState->id == RE::CameraState::kThirdPerson) {
-		RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
-		auto hair = Hair::hairs.find("hairTest");
-		hair->second->UpdateVariables(tps);
-		if (hair->second->Simulate()) {
-			hair->second->Draw();
-		} else {
-			logger::info("Simulate failed");
-		}
-	}
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 
@@ -284,10 +271,10 @@ struct Hooks
 
 			func();
 
-			auto manager = RE::BSRenderManager::GetSingleton();
+			auto manager = RE::BSGraphics::Renderer::GetSingleton();
 			//auto device = manager->GetRuntimeData().forwarder;
 			auto context = manager->GetRuntimeData().context;
-			auto swapchain = manager->GetRuntimeData().swapChain;
+			auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
 
 			logger::info("Detouring virtual function tables");
 

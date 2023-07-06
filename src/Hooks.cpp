@@ -50,10 +50,38 @@ struct Main_Update
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
+struct Hooks
+{
+	struct Main_DrawWorld_MainDraw
+	{
+		static void thunk(INT64 BSGraphics_Renderer, int unk)
+		{
+			func(BSGraphics_Renderer, unk);
+			//draw hair
+			auto camera = RE::PlayerCamera::GetSingleton();
+			logger::info("Got camera");
+			if (camera != nullptr && camera->currentState != nullptr && camera->currentState->id == RE::CameraState::kThirdPerson) {
+				RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+				auto                  hair = Hair::hairs.find("hairTest");
+				hair->second->UpdateVariables(tps);
+				if (hair->second->Simulate()) {
+					hair->second->Draw();
+				} else {
+					logger::info("Simulate failed");
+				}
+			}
+		}
+		static inline REL::Relocation<decltype(thunk)> func;
+	};
+};
 void hookGameLoop() {
 	REL::Relocation<uintptr_t> update{ RELOCATION_ID(35551, NULL) };
 	stl::write_thunk_call<Main_Update>(update.address()+ RELOCATION_OFFSET(0x11F, NULL));
 }
-void hookFacegen() {
+void hookMainDraw() {
+	//credit Doodlez
+	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x16F, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A)
+}
+void hookFacegen(){
 	stl::write_vfunc<0x3E, BSFaceGenNiNode_FixSkinInstances>(RE::VTABLE_BSFaceGenNiNode[0]);
 }

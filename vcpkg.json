@@ -4,7 +4,10 @@
   "description": "",
   "license": "MIT",
   "dependencies": [
-    "commonlibsse-ng",
+    "fmt",
+    "spdlog",
+    "catch2",
+    "rapidcsv",
     "magic-enum",
     "nlohmann-json",
     "xbyak",

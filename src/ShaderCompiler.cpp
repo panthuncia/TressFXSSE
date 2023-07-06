@@ -14,7 +14,7 @@ namespace ShaderCompiler
 	}
 	ID3D11DeviceChild* CompileShader(const wchar_t* FilePath, const std::vector<std::pair<const char*, const char*>>& Defines, const char* ProgramType)
 	{
-		auto device = RE::BSRenderManager::GetSingleton()->GetRuntimeData().forwarder;
+		auto device = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 
 		// Build defines (aka convert vector->D3DCONSTANT array)
 		std::vector<D3D_SHADER_MACRO> macros;

@@ -30,19 +30,13 @@ find_package( glm REQUIRED )
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 
-add_git_submodule(FX11)
+add_git_submodule(extern/FX11)
 target_include_directories(${PROJECT_NAME} 
 	PUBLIC
-		"FX11/inc"
+		"extern/FX11/inc"
 )
 
-#add_library(fx11 ${PROJECT_SOURCE_DIR}/FX11/EffectAPI.cpp)
-
-#include_directories(${PROJECT_SOURCE_DIR}/FX11)
-
 target_link_libraries(${PROJECT_NAME}
- 	PUBLIC 
-		CommonLibSSE::CommonLibSSE
 	PRIVATE
 		debug ${CMAKE_CURRENT_SOURCE_DIR}/extern/detours/x64/Debug/detours.lib
 		optimized ${CMAKE_CURRENT_SOURCE_DIR}/extern/detours/x64/Release/detours.lib

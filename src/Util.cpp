@@ -134,7 +134,7 @@ namespace Util
 
 		float fov = GetFOV();
 		logger::info("FOV: {}", fov);
-		//return glm::transpose(glm::perspective(fov, aspect, f.fNear, f.fFar));
+		//return glm::perspective(fov, aspect, f.fNear, f.fFar);
 		return Perspective(fov, aspect, f);
 	}
 	glm::mat4 LookAt(const glm::vec3& pos, const glm::vec3& at, const glm::vec3& up) noexcept
@@ -169,7 +169,6 @@ namespace Util
 		result[3][2] = 0.0f;
 		result[3][3] = 1.0f;
 
-		//return result;
 		return glm::transpose(result);
 	}
 	// Return the forward view vector

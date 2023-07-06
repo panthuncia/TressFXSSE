@@ -13,8 +13,6 @@
 #include "RE/N/NiCloningProcess.h"
 #include "RE/P/PlayerCharacter.h"
 #include "RE/A/Actor.h"
-#include "BSFaceGenModel.h"
-#include "NiStreamEx.h"
 #pragma warning(push)
 #pragma warning(disable: 4100)
 #pragma warning(disable: 4189)
