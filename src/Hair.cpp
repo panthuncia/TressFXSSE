@@ -93,12 +93,14 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pQuadEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
 	//get view, projection, viewProj, and inverse viewProj matrix
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
+	logger::info("Current zoom: {}", tps->currentZoomOffset);
 	///*logger::info("WorldToCam:");
 	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[0][0], playerCam->GetRuntimeData().worldToCam[0][1], playerCam->GetRuntimeData().worldToCam[0][2], playerCam->GetRuntimeData().worldToCam[0][3]);
 	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[1][0], playerCam->GetRuntimeData().worldToCam[1][1], playerCam->GetRuntimeData().worldToCam[1][2], playerCam->GetRuntimeData().worldToCam[1][3]);
 	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[2][0], playerCam->GetRuntimeData().worldToCam[2][1], playerCam->GetRuntimeData().worldToCam[2][2], playerCam->GetRuntimeData().worldToCam[2][3]);
 	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[3][0], playerCam->GetRuntimeData().worldToCam[3][1], playerCam->GetRuntimeData().worldToCam[3][2], playerCam->GetRuntimeData().worldToCam[3][3]);*/
-	RE::NiPoint3 translation = tps->translation;
+	RE::NiPoint3 translation = playerCam->world.translate;  //tps->translation;
+	//tps->thirdPersonFOVControl->local.translate.z
 	//logger::info("Camera position reported by thirdPersonState.translation: {}, {}, {}", translation.x, translation.y, translation.z);
 	////translation = playerCam->world.translate;
 	////logger::info("Camera position reported by nicamera world.translate: {}, {}, {}", translation.x, translation.y, translation.z);
@@ -157,10 +159,12 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 
 	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	auto viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
-	//auto projMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMat;
+	//auto projMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
 	auto                projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
 	auto                projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
-	auto viewProjectionMatrix = DirectX::XMMatrixMultiply(viewXMMatrix, projXMMatrix);  //shadowState->GetRuntimeData().cameraData.getEye().unknownMat1;
+	auto viewProjectionMatrix = DirectX::XMMatrixMultiply(viewXMMatrix, projXMMatrix);
+	//auto viewProjectionMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewProjMat;
+
 	/*DirectX::XMFLOAT4X4 viewProjTest;
 	DirectX::XMStoreFloat4x4(&viewProjTest, viewProjectionMatrix);
 	logger::info("ViewProj:");
@@ -378,9 +382,10 @@ bool Hair::Simulate()
 				 { rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2] } });
 		rotation = glm::transpose(rotation);
 		matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], translation_vector_scaled.x,
-											  rotation[1][0], rotation[1][1], rotation[1][2], -translation_vector_scaled.y,
+											  rotation[1][0], rotation[1][1], rotation[1][2], translation_vector_scaled.y,
 											  rotation[2][0], rotation[2][1], rotation[2][2], translation_vector_scaled.z,
 											  0, 0, 0, 1 });
+
 		/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
 												  rotation->entry[0][1], rotation->entry[1][1], rotation->entry[2][1], 0,
 												  rotation->entry[0][2], rotation->entry[1][2], rotation->entry[2][2], 0,

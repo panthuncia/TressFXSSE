@@ -261,21 +261,21 @@ namespace hdt
 		{
 			return *iter;
 		}
-		if (!isFirstPersonSkeleton(skeleton))
-		{
-			auto ownerIter = std::find_if(m_skeletons.begin(), m_skeletons.end(), [=](Skeleton& i)
-				{
-					return !isFirstPersonSkeleton(i.skeleton) && i.skeletonOwner && skeleton->GetUserData() && i.skeletonOwner ==
-					RE::NiPointer(skeleton->GetUserData());
-				});
-			if (ownerIter != m_skeletons.end())
-			{
-#ifdef _DEBUG
-				logger::info("new skeleton found for formid %08x", skeleton->GetUserData()->formID);
-#endif // _DEBUG
-				//ownerIter->cleanHead(true);
-			}
-		}
+//		if (!isFirstPersonSkeleton(skeleton))
+//		{
+//			auto ownerIter = std::find_if(m_skeletons.begin(), m_skeletons.end(), [=](Skeleton& i)
+//				{
+//					return !isFirstPersonSkeleton(i.skeleton) && i.skeletonOwner && skeleton->GetUserData() && i.skeletonOwner ==
+//					RE::NiPointer(skeleton->GetUserData());
+//				});
+//			if (ownerIter != m_skeletons.end())
+//			{
+//#ifdef _DEBUG
+//				logger::info("new skeleton found for formid %08x", skeleton->GetUserData()->formID);
+//#endif // _DEBUG
+//				//ownerIter->cleanHead(true);
+//			}
+//		}
 		m_skeletons.push_back(Skeleton());
 		m_skeletons.back().skeleton = skeleton;
 		return m_skeletons.back();
