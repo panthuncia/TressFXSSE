@@ -34,11 +34,15 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 }
 void Hair::DrawDebugMarkers() {
 	//bone debug markers
-	std::vector<DirectX::XMFLOAT3> positions;
+	std::vector<DirectX::XMMATRIX> positions;
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		logger::info("bone: {}", i);
 		auto bonePos = m_bones[i]->world.translate;
-		positions.push_back(DirectX::XMFLOAT3(bonePos.x, bonePos.y, bonePos.z));
+		auto boneRot = m_bones[i]->world.rotate;
+		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
+		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
+		auto transform = translation*rotation;
+		positions.push_back(transform);
 	}
 	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	/*auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;

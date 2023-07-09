@@ -20,9 +20,8 @@ void MarkerRender::InitRenderResources()
 	logger::info("Created marker layouts");
 }
 
-void MarkerRender::DrawMarkers(std::vector<DirectX::XMFLOAT3> worldPositions, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
+void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
-	logger::info("In draw markers");
 	// Set the vertex buffer and index buffer
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
 	UINT stride = sizeof(Vertex);
@@ -31,14 +30,12 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMFLOAT3> worldPositions, Di
 	pDeviceContext->IASetIndexBuffer(m_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pDeviceContext->IASetInputLayout(m_pInputLayout);
-	logger::info("1");
 	// Set the vertex shader and input layout
 	pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
 	pDeviceContext->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
 
 	// Set the pixel shader
 	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
-	logger::info("2");
 	CBMatrix cbMatrix;
 	cbMatrix.viewMatrix = viewMatrix;
 	cbMatrix.projectionMatrix = projectionMatrix;
@@ -47,11 +44,9 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMFLOAT3> worldPositions, Di
 	pDeviceContext->RSSetState(m_pWireframeRSState);
 
 	//draw markers
-	for (const DirectX::XMFLOAT3& worldPosition : worldPositions) {
-		logger::info("Drawing marker");
-		auto worldMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(worldPosition.x, worldPosition.y, worldPosition.z));
+	for (const DirectX::XMMATRIX worldTransform : worldTransforms) {
 		// Set the constant buffer data
-		cbMatrix.worldMatrix = worldMatrix;
+		cbMatrix.worldMatrix = worldTransform;
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		// Render the cube
 		pDeviceContext->DrawIndexed(36, 0, 0);

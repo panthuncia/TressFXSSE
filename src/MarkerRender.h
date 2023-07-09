@@ -7,7 +7,7 @@ public:
 	MarkerRender();
 	~MarkerRender();
 	void InitRenderResources();
-	void DrawMarkers(std::vector<DirectX::XMFLOAT3> worldPositions, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
+	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 
 private:
 	void CompileShaders(ID3D11Device* pDevice);
