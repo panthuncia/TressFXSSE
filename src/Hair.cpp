@@ -32,6 +32,23 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	logger::info("Created hair object");
 	hairs["hairTest"] = this;
 }
+void Hair::DrawDebugMarkers() {
+	//bone debug markers
+	std::vector<DirectX::XMFLOAT3> positions;
+	for (uint16_t i = 0; i < m_numBones; i++) {
+		logger::info("bone: {}", i);
+		auto bonePos = m_bones[i]->world.translate;
+		positions.push_back(DirectX::XMFLOAT3(bonePos.x, -bonePos.z, -bonePos.y));
+	}
+	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
+	/*auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
+
+	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
+	RE::NiPoint3  translation = playerCam->world.translate;
+	viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
+
+	m_pMarkerRenderer->DrawMarkers(positions, viewXMMatrix, projXMMatrix);
+}
 void Hair::RunTestEffect()
 {
 	ID3D11DeviceContext* pContext;
@@ -76,9 +93,11 @@ void Hair::RunTestEffect()
 void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 {
 	logger::info("In UpdateVariables");
-	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-	if (playerSkeleton == NULL)
+	if (!m_gotSkeleton)
 		return;
+	/*hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
+	if (playerSkeleton == NULL)
+		return;*/
 	//setup variables
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	m_pManager->m_pSwapChain->GetDesc(&swapDesc);
@@ -127,23 +146,20 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	//		{ 0, 0, 1, -cameraPosScaled[2] },
 	//		{ 0, 0, 0, 1 } });
 	////camera_rotation = glm::transpose(camera_rotation);
-
+	
+	//view matrix
 	glm::mat4 viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
-	////glm::mat4 viewMatrix = camera_translation * camera_rotation;
-	//logger::info("View:");
-	//logger::info("{}, {}, {}, {}", viewMatrix[0][0], viewMatrix[0][1], viewMatrix[0][2], viewMatrix[0][3]);
-	//logger::info("{}, {}, {}, {}", viewMatrix[1][0], viewMatrix[1][1], viewMatrix[1][2], viewMatrix[1][3]);
-	//logger::info("{}, {}, {}, {}", viewMatrix[2][0], viewMatrix[2][1], viewMatrix[2][2], viewMatrix[2][3]);
-	//logger::info("{}, {}, {}, {}", viewMatrix[3][0], viewMatrix[3][1], viewMatrix[3][2], viewMatrix[3][3]);
-	////projection matrix
+	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
+	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
+
+	//projection matrix
 	glm::mat4 projMatrix = Util::GetPlayerProjectionMatrix(playerCam->GetRuntimeData2().viewFrustum, swapDesc.BufferDesc.Width, swapDesc.BufferDesc.Height);
-	//logger::info("Proj:");
-	//logger::info("{}, {}, {}, {}", projMatrix[0][0], projMatrix[0][1], projMatrix[0][2], projMatrix[0][3]);
-	//logger::info("{}, {}, {}, {}", projMatrix[1][0], projMatrix[1][1], projMatrix[1][2], projMatrix[1][3]);
-	//logger::info("{}, {}, {}, {}", projMatrix[2][0], projMatrix[2][1], projMatrix[2][2], projMatrix[2][3]);
-	//logger::info("{}, {}, {}, {}", projMatrix[3][0], projMatrix[3][1], projMatrix[3][2], projMatrix[3][3]);
-	////model-view-projection matrix
-	//glm::mat4 viewProjectionMatrix = projMatrix*viewMatrix;
+	auto projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
+	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
+
+	//view-projection matrix
+	glm::mat4 viewProjectionMatrix = viewMatrix * projMatrix;
+
 
 	//glm::mat4 viewProjectionMatrixInverse = glm::inverse(viewProjectionMatrix);
 
@@ -157,12 +173,12 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	logger::info("{}, {}, {}, {}", viewTest._31, viewTest._32, viewTest._33, viewTest._34);
 	logger::info("{}, {}, {}, {}", viewTest._41, viewTest._42, viewTest._43, viewTest._44);*/
 
-	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
-	auto viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
+	//auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
+	//auto viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
 	//auto projMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
-	auto                projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
-	auto                projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
-	auto viewProjectionMatrix = DirectX::XMMatrixMultiply(viewXMMatrix, projXMMatrix);
+	//auto                projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
+	//auto                projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
+	//auto viewProjectionMatrix = DirectX::XMMatrixMultiply(viewXMMatrix, projXMMatrix);
 	//auto viewProjectionMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewProjMat;
 
 	/*DirectX::XMFLOAT4X4 viewProjTest;
@@ -172,7 +188,8 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	logger::info("{}, {}, {}, {}", viewProjTest._21, viewProjTest._22, viewProjTest._23, viewProjTest._24);
 	logger::info("{}, {}, {}, {}", viewProjTest._31, viewProjTest._32, viewProjTest._33, viewProjTest._34);
 	logger::info("{}, {}, {}, {}", viewProjTest._41, viewProjTest._42, viewProjTest._43, viewProjTest._44);*/
-	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
+	//auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
+	glm::mat4 viewProjectionMatrixInverse = viewMatrix * projMatrix;
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
 	m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
 	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewMatrix));
@@ -242,7 +259,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	settings.m_windDirection[1] = 0;
 	settings.m_windDirection[2] = 0;
 	settings.m_localConstraintsIterations = 3;
-	settings.m_lengthConstraintsIterations = 3;  //?
+	settings.m_lengthConstraintsIterations = 20;  //?
 
 	logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
@@ -369,7 +386,7 @@ bool Hair::Simulate()
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto          child = m_bones[i];
 		RE::NiPoint3* translation = &child->world.translate;
-		glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(translation->x, translation->y-10000, translation->z));
+		glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(-translation->x, -translation->z, translation->y));
 		//logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
 		RE::NiMatrix3* rotation_nimatrix = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
 		float          x = 0;
@@ -377,14 +394,16 @@ bool Hair::Simulate()
 		float          z = 0;
 		rotation_nimatrix->ToEulerAnglesXYZ(x, y, z);
 		//glm::mat3 rotation = glm::eulerAngleXYZ(x, y, z);
-		glm::mat3      rotation = glm::mat3({ { rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2] },
-				 { rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2] },
-				 { rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2] } });
+		glm::mat4      rotation = glm::mat4({ { rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2],0 },
+				 { rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2],0 },
+				 { rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2],0 },
+				 { 0, 0, 0, 1 } });
+		rotation = glm::translate(rotation, translation_vector_scaled);
 		rotation = glm::transpose(rotation);
-		matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], translation_vector_scaled.x,
-											  rotation[1][0], rotation[1][1], rotation[1][2], translation_vector_scaled.y,
-											  rotation[2][0], rotation[2][1], rotation[2][2], translation_vector_scaled.z,
-											  0, 0, 0, 1 });
+		matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], rotation[0][3],
+											  rotation[1][0], rotation[1][1], rotation[1][2], rotation[1][3],
+											  rotation[2][0], rotation[2][1], rotation[2][2], rotation[2][3],
+											  rotation[3][0], rotation[3][1], rotation[3][2], rotation[3][3] });
 
 		/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
 												  rotation->entry[0][1], rotation->entry[1][1], rotation->entry[2][1], 0,
@@ -521,8 +540,8 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager)
 	m_pPPLL->Create((EI_Device*)pManager->m_pDevice, swapChainDesc.BufferDesc.Width, swapChainDesc.BufferDesc.Height, m_nPPLLNodes, PPLL_NODE_SIZE);
 	logger::info("Created PLL object");
 
-	if (g_TressFXLayouts == 0)
-		g_TressFXLayouts = new TressFXLayouts;
+	//if (g_TressFXLayouts == 0)
+	g_TressFXLayouts = new TressFXLayouts;
 
 	EI_LayoutManagerRef renderStrandsLayoutManager = (EI_LayoutManagerRef&)*m_pStrandEffect;
 	CreateRenderPosTanLayout2((EI_Device*)pManager->m_pDevice, renderStrandsLayoutManager);
@@ -574,4 +593,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager)
 	rsState.MultisampleEnable = true;
 	rsState.AntialiasedLineEnable = false;
 	pManager->m_pDevice->CreateRasterizerState(&rsState, &m_pWireframeRSState);
+
+	//create debug marker renderer
+	m_pMarkerRenderer = new MarkerRender();
 }

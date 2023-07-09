@@ -107,31 +107,6 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		ppDevice,
 		pFeatureLevel,
 		ppImmediateContext);
-	/*logger::info("Creating D3D12 device");
-	ID3D12Device* d12Device;
-	D3D12CreateDevice(pAdapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d12Device));
-	logger::info("Creating Command Queue");
-	D3D12_COMMAND_QUEUE_DESC desc;
-	desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-	desc.NodeMask = 0;
-	ID3D12CommandQueue* pQueue;
-	d12Device->CreateCommandQueue(&desc, IID_PPV_ARGS(&pQueue));
-	IDXGIFactory* pFactory;
-	CreateDXGIFactory(IID_PPV_ARGS(&pFactory));
-	DXGI_SWAP_CHAIN_DESC swapChainDesc;
-	swapChainDesc.BufferCount = pSwapChainDesc->BufferCount;
-	swapChainDesc.BufferDesc = pSwapChainDesc->BufferDesc;
-	swapChainDesc.BufferUsage = pSwapChainDesc->BufferUsage;
-	swapChainDesc.Flags = pSwapChainDesc->Flags;
-	swapChainDesc.OutputWindow = pSwapChainDesc->OutputWindow;
-	swapChainDesc.SampleDesc = pSwapChainDesc->SampleDesc;
-	swapChainDesc.SwapEffect = pSwapChainDesc->SwapEffect;
-	swapChainDesc.Windowed = pSwapChainDesc->Windowed;
-	pFactory->CreateSwapChain(pQueue, &swapChainDesc, ppSwapChain);
-	logger::info("Creating D3D11on12 device");
-	HRESULT hr = D3D11On12CreateDevice(d12Device, Flags, pFeatureLevels, FeatureLevels, reinterpret_cast<IUnknown**>(&pQueue), 1, 0, ppDevice, ppImmediateContext, nullptr);*/
 	
 	logger::info("Loading hair API");
 	setCallbacks();

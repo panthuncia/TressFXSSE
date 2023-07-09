@@ -123,7 +123,8 @@ namespace Util
 
 		// exact match, save for 2,0 2,1 - looks like XMMatrixPerspectiveOffCenterLH with a slightly
 		// different frustum or something. whatever, close enough.
-		return proj; 
+		//return proj;
+		return glm::transpose(proj);
 	}
 	glm::mat4 GetPlayerProjectionMatrix(const RE::NiFrustum& frustum, UINT resolution_x, UINT resolution_y) noexcept
 	{
@@ -168,8 +169,8 @@ namespace Util
 		result[3][1] = 0.0f;
 		result[3][2] = 0.0f;
 		result[3][3] = 1.0f;
-
-		return glm::transpose(result);
+		return result;
+		//return glm::transpose(result);
 	}
 	// Return the forward view vector
 	glm::vec3 GetViewVector(const glm::vec3& forwardRefer, float pitch, float yaw) noexcept

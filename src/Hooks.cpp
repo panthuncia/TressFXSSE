@@ -66,6 +66,7 @@ struct Hooks
 				hair->second->UpdateVariables(tps);
 				if (hair->second->Simulate()) {
 					hair->second->Draw();
+					hair->second->DrawDebugMarkers();
 				} else {
 					logger::info("Simulate failed");
 				}

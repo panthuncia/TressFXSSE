@@ -5,6 +5,7 @@
 #include "TressFXHairObject.h"
 #include "TressFXSDFCollision.h"
 #include "TressFXSimulation.h"
+#include "MarkerRender.h"
 #include <d3d11.h>
 typedef float BoneMatrix[4][4];
 #define BONE_MATRIX_SIZE 16 * sizeof(float)
@@ -16,6 +17,7 @@ public:
 	void                      UpdateVariables(RE::ThirdPersonState* tps);
 	void                      Draw();
 	bool                      Simulate();
+	void                      DrawDebugMarkers();
 	void                      RunTestEffect();
 	SkyrimGPUResourceManager* m_pManager;
 
@@ -45,7 +47,13 @@ private:
 	TressFXSimulation         mSimulation;
 	TressFXSDFCollisionSystem mSDFCollisionSystem;
 	int                       m_nPPLLNodes;
-	ID3D11RasterizerState*    m_pWireframeRSState;
 	bool                      m_gotSkeleton = false;
 	RE::NiNode*               m_bones[m_numBones];
+	DirectX::XMMATRIX         viewXMMatrix;
+	DirectX::XMMATRIX         projXMMatrix;
+
+
+	//debug
+	ID3D11RasterizerState* m_pWireframeRSState;
+	MarkerRender*          m_pMarkerRenderer;
 };
