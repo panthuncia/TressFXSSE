@@ -38,7 +38,7 @@ void Hair::DrawDebugMarkers() {
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		logger::info("bone: {}", i);
 		auto bonePos = m_bones[i]->world.translate;
-		positions.push_back(DirectX::XMFLOAT3(bonePos.x, -bonePos.z, -bonePos.y));
+		positions.push_back(DirectX::XMFLOAT3(bonePos.x, bonePos.y, bonePos.z));
 	}
 	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	/*auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
