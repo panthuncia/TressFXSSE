@@ -19,9 +19,7 @@ private:
 	};
 	struct CBMatrix
 	{
-		DirectX::XMMATRIX worldMatrix;
-		DirectX::XMMATRIX viewMatrix;
-		DirectX::XMMATRIX projectionMatrix;
+		DirectX::XMMATRIX worldViewProjectionMatrix;
 	};
 	// Cube vertices
 	Vertex m_cubeVertices[8] = {

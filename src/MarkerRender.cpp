@@ -36,9 +36,6 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 	// Set the pixel shader
 	pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
-	CBMatrix cbMatrix;
-	cbMatrix.viewMatrix = viewMatrix;
-	cbMatrix.projectionMatrix = projectionMatrix;
 
 	//set rasterizer state
 	pDeviceContext->RSSetState(m_pWireframeRSState);
@@ -46,7 +43,8 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	//draw markers
 	for (const DirectX::XMMATRIX worldTransform : worldTransforms) {
 		// Set the constant buffer data
-		cbMatrix.worldMatrix = worldTransform;
+		CBMatrix cbMatrix;
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		// Render the cube
 		pDeviceContext->DrawIndexed(36, 0, 0);
