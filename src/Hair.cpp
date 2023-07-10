@@ -35,11 +35,10 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 void Hair::DrawDebugMarkers() {
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
-	for (uint16_t i = 0; i < 1; i++) {
+	for (uint16_t i = 0; i < m_numBones; i++) {
 		logger::info("bone: {}", i);
 		auto bonePos = m_bones[i]->world.translate;
 		auto boneRot = m_bones[i]->world.rotate;
-		logger::info("Bone pos: {}, {}, {}", bonePos.x, bonePos.y, bonePos.z);
 		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		auto transform = translation*rotation;
@@ -335,14 +334,14 @@ bool Hair::Simulate()
 	//ListChildren(children);
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = m_bones[i]->world.translate;
-		auto boneRot = m_bones[i]->world.rotate;
-		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
-		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
-		auto                translation = DirectX::XMMatrixTranslation(bonePos.z, bonePos.y, bonePos.x);
-		auto                rotation = DirectX::XMMatrixSet(boneRot.entry[2][2], boneRot.entry[2][1], boneRot.entry[2][0], 0, boneRot.entry[1][2], boneRot.entry[1][1], boneRot.entry[1][0], 0, boneRot.entry[0][2], boneRot.entry[0][1], boneRot.entry[0][0], 0, 0, 0, 0, 1);
+		auto boneRot = m_bones[i]->world.rotate.Transpose();
+		auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
+		auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
+		//auto                translation = DirectX::XMMatrixTranslation(bonePos.z, bonePos.y, bonePos.x);
+		//auto                rotation = DirectX::XMMatrixSet(boneRot.entry[2][2], boneRot.entry[2][1], boneRot.entry[2][0], 0, boneRot.entry[1][2], boneRot.entry[1][1], boneRot.entry[1][0], 0, boneRot.entry[0][2], boneRot.entry[0][1], boneRot.entry[0][0], 0, 0, 0, 0, 1);
 		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.z, bonePos.y);
 		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][2], boneRot.entry[0][1], 0, boneRot.entry[2][0], boneRot.entry[2][2], boneRot.entry[2][1], 0, boneRot.entry[1][0], boneRot.entry[1][2], boneRot.entry[1][1], 0, 0, 0, 0, 1);
-		auto transform = translation*rotation;
+		auto transform = DirectX::XMMatrixMultiply(translation, rotation);
 		DirectX::XMFLOAT4X4 transformFloats;
 		DirectX::XMStoreFloat4x4(&transformFloats, transform);
 		matrices->push_back(transformFloats);

@@ -77,18 +77,18 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
-		logger::info("cube world:");
-		PrintXMMatrix(worldTransform);
+		//logger::info("cube world:");
+		//PrintXMMatrix(worldTransform);
 		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 1.0, 1.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		// Render the cube
-		logger::info("Drawing cube");
+		//logger::info("Drawing cube");
 		pDeviceContext->DrawIndexed(36, 0, 0);
 	}
 
 
-	////draw arrows
+	////draw world arrows
 	for (int i = 0; i < m_pArrowMesh.get()->meshParts.size(); i++) {
 		auto part = m_pArrowMesh.get()->meshParts.at(i).get();
 
@@ -162,16 +162,16 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 
 		auto arrowWorldMatrix = XMMatrixTranspose(DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&targetPosition)));
-		logger::info("Arrow world:");
-		PrintXMMatrix(arrowWorldMatrix);
-		logger::info("view:");
-		PrintXMMatrix(viewMatrix);
+		//logger::info("Arrow world:");
+		//PrintXMMatrix(arrowWorldMatrix);
+		//logger::info("view:");
+		//PrintXMMatrix(viewMatrix);
 		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * arrowWorldMatrix * scale;
 		cbMatrix.color = DirectX::XMVectorSet(0.0, 1.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 
 		//draw
-		logger::info("Drawing arrow part");
+		//logger::info("Drawing arrow part");
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 
 		//rotate other axes
@@ -188,6 +188,33 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 
+	}
+	//draw cube arrows
+	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(2, 2, 2);
+	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
+		// Set the constant buffer data
+		CBMatrix cbMatrix;
+		
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform * scale;
+		cbMatrix.color = DirectX::XMVectorSet(0.0, 1.0, 0.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
+
+		auto part = m_pArrowMesh.get()->meshParts.at(0).get();
+		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
+
+		//rotate other axes
+		constexpr float angle = DirectX::XMConvertToRadians(90.0f);
+		auto            currentMatrix = worldTransform * XMMatrixTranspose(DirectX::XMMatrixRotationZ(-angle));
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.color = DirectX::XMVectorSet(1.0, 0.0, 0.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
+		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
+
+		currentMatrix = worldTransform * XMMatrixTranspose(DirectX::XMMatrixRotationX(angle));
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.color = DirectX::XMVectorSet(0.0, 0.0, 1.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
+		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 	}
 	//re-set DSV
 	//pDeviceContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargets, currentDSV);
