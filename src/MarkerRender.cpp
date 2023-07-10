@@ -115,15 +115,6 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		//set position
 		CBMatrix cbMatrix;
 		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(4, 4, 4);
-		//DirectX::XMVECTOR outScale;
-		//DirectX::XMVECTOR outRotQuat;
-		////DirectX::XMFLOAT4 quatToLH;
-		//DirectX::XMVECTOR outTrans;
-		//DirectX::XMMatrixDecompose(&outScale, &outRotQuat, &outTrans, viewMatrix);
-		////DirectX::XMStoreFloat4(&quatToLH, outRotQuat);
-		////outRotQuat = DirectX::XMVectorSet(-quatToLH.x, quatToLH.z, quatToLH.y, quatToLH.w);
-		//DirectX::XMMATRIX viewRotation = XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(outRotQuat));
-		//// Extract the view vector
 		
 		DirectX::XMFLOAT4X4 camWorldFloats;
 		DirectX::XMStoreFloat4x4(&camWorldFloats, cameraWorldTransform);
@@ -131,6 +122,8 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		cameraPosition.x = camWorldFloats._14;
 		cameraPosition.y = camWorldFloats._24;
 		cameraPosition.z = camWorldFloats._34;
+		
+		//forward
 		DirectX::XMFLOAT3 cameraForward;
 		cameraForward.x = camWorldFloats._11;
 		cameraForward.y = camWorldFloats._21;
@@ -142,6 +135,32 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		targetPosition.x = cameraPosition.x + (cameraForward.x * distanceAhead);
 		targetPosition.y = cameraPosition.y + (cameraForward.y * distanceAhead);
 		targetPosition.z = cameraPosition.z + (cameraForward.z * distanceAhead);
+		
+		// left
+		DirectX::XMFLOAT3 cameraRight;
+		cameraRight.x = camWorldFloats._13;
+		cameraRight.y = camWorldFloats._23;
+		cameraRight.z = camWorldFloats._33;
+		DirectX::XMVECTOR rightVector = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&cameraRight));
+		XMStoreFloat3(&cameraRight, rightVector);
+		const float distanceRight = -60.0f;
+		targetPosition.x = targetPosition.x + (cameraRight.x * distanceRight);
+		targetPosition.y = targetPosition.y + (cameraRight.y * distanceRight);
+		targetPosition.z = targetPosition.z + (cameraRight.z * distanceRight);
+
+		// Down
+		DirectX::XMFLOAT3 cameraUp;
+		cameraUp.x = camWorldFloats._12;
+		cameraUp.y = camWorldFloats._22;
+		cameraUp.z = camWorldFloats._32;
+		DirectX::XMVECTOR upVector = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&cameraUp));
+		XMStoreFloat3(&cameraUp, upVector);
+		const float distanceUp = -30.0f;
+		targetPosition.x = targetPosition.x + (cameraUp.x * distanceUp);
+		targetPosition.y = targetPosition.y + (cameraUp.y * distanceUp);
+		targetPosition.z = targetPosition.z + (cameraUp.z * distanceUp);
+
+
 		auto arrowWorldMatrix = XMMatrixTranspose(DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&targetPosition)));
 		logger::info("Arrow world:");
 		PrintXMMatrix(arrowWorldMatrix);
@@ -156,6 +175,20 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 		//draw
 		logger::info("Drawing arrow part");
+		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
+
+		//rotate other axes
+		constexpr float angle = DirectX::XMConvertToRadians(90.0f);
+		auto currentMatrix = arrowWorldMatrix*XMMatrixTranspose(DirectX::XMMatrixRotationZ(angle));
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.color = DirectX::XMVectorSet(0.0, 1.0, 0.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
+		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
+
+		currentMatrix = arrowWorldMatrix * XMMatrixTranspose(DirectX::XMMatrixRotationX(angle));
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.color = DirectX::XMVectorSet(0.0, 0.0, 1.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 
 	}
@@ -354,4 +387,26 @@ void MarkerRender::CompileShaders(ID3D11Device* pDevice) {
 
 	logger::info("Result:");
 	printHResult(psResult);
+}
+
+DirectX::XMFLOAT3 MarkerRender::OffsetPositionToLeft(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& cameraForward)
+{
+	const float offsetDistance = 50.0f;  // Offset distance to the left
+
+	// Calculate the cross product of the camera forward vector and the up vector
+	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	DirectX::XMVECTOR crossProduct = DirectX::XMVector3Cross(XMLoadFloat3(&cameraForward), upVector);
+
+	// Normalize the cross product
+	crossProduct = DirectX::XMVector3Normalize(crossProduct);
+
+	// Calculate the offset position
+	DirectX::XMVECTOR offsetVector = DirectX::XMVectorScale(crossProduct, -offsetDistance);
+	DirectX::XMVECTOR newPosition = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&position), offsetVector);
+
+	// Store the offset position in an XMFLOAT3 variable
+	DirectX::XMFLOAT3 offsetPosition;
+	DirectX::XMStoreFloat3(&offsetPosition, newPosition);
+
+	return offsetPosition;
 }
