@@ -35,10 +35,11 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 void Hair::DrawDebugMarkers() {
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
-	for (uint16_t i = 0; i < m_numBones; i++) {
+	for (uint16_t i = 0; i < 1; i++) {
 		logger::info("bone: {}", i);
 		auto bonePos = m_bones[i]->world.translate;
 		auto boneRot = m_bones[i]->world.rotate;
+		logger::info("Bone pos: {}, {}, {}", bonePos.x, bonePos.y, bonePos.z);
 		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		auto transform = translation*rotation;
@@ -50,6 +51,7 @@ void Hair::DrawDebugMarkers() {
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	RE::NiPoint3  translation = playerCam->world.translate;
 	RE::NiMatrix3 rotation = playerCam->world.rotate;
+	
 	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
 	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
 	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0, 
