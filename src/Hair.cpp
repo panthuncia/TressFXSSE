@@ -45,13 +45,19 @@ void Hair::DrawDebugMarkers() {
 		positions.push_back(transform);
 	}
 	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
-	/*auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
+	//auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
 
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	RE::NiPoint3  translation = playerCam->world.translate;
-	viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
-
-	m_pMarkerRenderer->DrawMarkers(positions, viewXMMatrix, projXMMatrix);
+	RE::NiMatrix3 rotation = playerCam->world.rotate;
+	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
+	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
+	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0, 
+											rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0, 
+											rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0, 
+											0, 0, 0, 1);
+	auto cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
+	m_pMarkerRenderer->DrawMarkers(positions, cameraWorld, viewXMMatrix, projXMMatrix);
 }
 void Hair::RunTestEffect()
 {

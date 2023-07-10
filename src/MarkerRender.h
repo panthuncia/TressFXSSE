@@ -9,7 +9,7 @@ public:
 	MarkerRender();
 	~MarkerRender();
 	void InitRenderResources();
-	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
+	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 
 private:
 	void CompileShaders(ID3D11Device* pDevice);
@@ -140,5 +140,31 @@ private:
 		}
 
 		d3dInfoQueue->ClearStoredMessages();
+	}
+	DirectX::XMVECTOR XMMatrixGetColumn(DirectX::XMMATRIX mat, uint8_t column){
+		DirectX::XMFLOAT4X4 floats;
+		DirectX::XMStoreFloat4x4(&floats, mat);
+		if (column == 0)
+			return DirectX::XMVectorSet(floats._11, floats._21, floats._31, floats._41);
+		if (column == 1)
+			return DirectX::XMVectorSet(floats._12, floats._22, floats._32, floats._42);
+		if (column == 2)
+			return DirectX::XMVectorSet(floats._13, floats._23, floats._33, floats._43);
+		if (column == 3)
+			return DirectX::XMVectorSet(floats._14, floats._24, floats._34, floats._44);
+	}
+	void PrintXMMatrix(DirectX::XMMATRIX mat) {
+		DirectX::XMFLOAT4X4 floats;
+		DirectX::XMStoreFloat4x4(&floats, mat);
+		logger::info("{}, {}, {}, {}", floats._11, floats._12, floats._13, floats._14);
+		logger::info("{}, {}, {}, {}", floats._21, floats._22, floats._23, floats._24);
+		logger::info("{}, {}, {}, {}", floats._31, floats._32, floats._33, floats._34);
+		logger::info("{}, {}, {}, {}", floats._41, floats._42, floats._43, floats._44);
+	}
+	void PrintXMVector(DirectX::XMVECTOR vec)
+	{
+		DirectX::XMFLOAT4 floats;
+		DirectX::XMStoreFloat4(&floats, vec);
+		logger::info("{}, {}, {}, {}", floats.x, floats.y, floats.z, floats.w);
 	}
 };

@@ -38,7 +38,7 @@ void MarkerRender::InitRenderResources()
 	LoadMeshes(pDevice);
 }
 
-void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
+void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
 
 	// Set the vertex buffer and index buffer
@@ -77,6 +77,8 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
+		logger::info("cube world:");
+		PrintXMMatrix(worldTransform);
 		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 1.0, 1.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
@@ -112,8 +114,43 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 		//set position
 		CBMatrix cbMatrix;
-		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(15, 15, 15);
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransforms[5] * scale;
+		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(4, 4, 4);
+		//DirectX::XMVECTOR outScale;
+		//DirectX::XMVECTOR outRotQuat;
+		////DirectX::XMFLOAT4 quatToLH;
+		//DirectX::XMVECTOR outTrans;
+		//DirectX::XMMatrixDecompose(&outScale, &outRotQuat, &outTrans, viewMatrix);
+		////DirectX::XMStoreFloat4(&quatToLH, outRotQuat);
+		////outRotQuat = DirectX::XMVectorSet(-quatToLH.x, quatToLH.z, quatToLH.y, quatToLH.w);
+		//DirectX::XMMATRIX viewRotation = XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(outRotQuat));
+		//// Extract the view vector
+		
+		DirectX::XMFLOAT4X4 camWorldFloats;
+		DirectX::XMStoreFloat4x4(&camWorldFloats, cameraWorldTransform);
+		DirectX::XMFLOAT3 cameraPosition;
+		cameraPosition.x = camWorldFloats._14;
+		cameraPosition.y = camWorldFloats._24;
+		cameraPosition.z = camWorldFloats._34;
+		DirectX::XMFLOAT3 cameraForward;
+		cameraForward.x = camWorldFloats._11;
+		cameraForward.y = camWorldFloats._21;
+		cameraForward.z = camWorldFloats._31;
+		DirectX::XMVECTOR forwardVector = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&cameraForward));
+		XMStoreFloat3(&cameraForward, forwardVector);
+		const float       distanceAhead = 100.0f;
+		DirectX::XMFLOAT3          targetPosition;
+		targetPosition.x = cameraPosition.x + (cameraForward.x * distanceAhead);
+		targetPosition.y = cameraPosition.y + (cameraForward.y * distanceAhead);
+		targetPosition.z = cameraPosition.z + (cameraForward.z * distanceAhead);
+		auto arrowWorldMatrix = XMMatrixTranspose(DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&targetPosition)));
+		logger::info("Arrow world:");
+		PrintXMMatrix(arrowWorldMatrix);
+		logger::info("view:");
+		PrintXMMatrix(viewMatrix);
+		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * arrowWorldMatrix * scale;
+		cbMatrix.color = DirectX::XMVectorSet(1.0, 0.0, 0.0, 1.0);
+		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransforms[5] * scale;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 0.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 
