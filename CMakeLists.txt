@@ -31,9 +31,11 @@ find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 
 add_git_submodule(extern/FX11)
+add_git_submodule(extern/DirectXMesh)
 target_include_directories(${PROJECT_NAME} 
 	PUBLIC
 		"extern/FX11/inc"
+		"extern/DirectXMesh/Utilities"
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -1,6 +1,8 @@
 #pragma once
-#include <string>
+#include <DirectXTK/Model.h>
 #include <d3d11.h>
+#include <string>
+
 class MarkerRender
 {
 public:
@@ -13,6 +15,7 @@ private:
 	void CompileShaders(ID3D11Device* pDevice);
 	void CreateBuffers(ID3D11Device* pDevice);
 	void CreateLayoutsAndStates(ID3D11Device* pDevice);
+	void LoadMeshes(ID3D11Device* pDevice);
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
@@ -20,17 +23,18 @@ private:
 	struct CBMatrix
 	{
 		DirectX::XMMATRIX worldViewProjectionMatrix;
+		DirectX::XMVECTOR color;
 	};
 	// Cube vertices
 	Vertex m_cubeVertices[8] = {
-		{ DirectX::XMFLOAT3(-0.5f, 0.5f, -0.5f) },
-		{ DirectX::XMFLOAT3(0.5f, 0.5f, -0.5f) },
-		{ DirectX::XMFLOAT3(-0.5f, -0.5f, -0.5f) },
-		{ DirectX::XMFLOAT3(0.5f, -0.5f, -0.5f) },
-		{ DirectX::XMFLOAT3(-0.5f, 0.5f, 0.5f) },
-		{ DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f) },
-		{ DirectX::XMFLOAT3(-0.5f, -0.5f, 0.5f) },
-		{ DirectX::XMFLOAT3(0.5f, -0.5f, 0.5f) }
+		{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f) },
+		{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f) },
+		{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f) },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f) },
+		{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f) },
+		{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f) },
+		{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f) },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f) }
 	};
 
 	// Cube indices
@@ -48,45 +52,40 @@ private:
 		3, 7, 2,  // Side 5
 		2, 7, 6
 	};
-	ID3D11Buffer* m_pVertexBuffer = nullptr;
-	ID3D11Buffer* m_pIndexBuffer = nullptr;
-	ID3D11Buffer* m_pConstantBuffer = nullptr;
-	ID3D10Blob* m_pVertexShaderBlob = nullptr;
-	ID3D10Blob* m_pPixelShaderBlob = nullptr;
-	ID3D11VertexShader* m_pVertexShader = nullptr;
-	ID3D11PixelShader* m_pPixelShader = nullptr;
-	ID3D11InputLayout* m_pInputLayout = nullptr;
+	ID3D11Buffer*          m_pVertexBuffer = nullptr;
+	ID3D11Buffer*          m_pIndexBuffer = nullptr;
+	ID3D11Buffer*          m_pConstantBuffer = nullptr;
+	ID3D10Blob*            m_pVertexShaderBlob = nullptr;
+	ID3D10Blob*            m_pPixelShaderBlob = nullptr;
+	ID3D11VertexShader*    m_pVertexShader = nullptr;
+	ID3D11PixelShader*     m_pPixelShader = nullptr;
+	ID3D11InputLayout*     m_pInputLayout = nullptr;
 	ID3D11RasterizerState* m_pWireframeRSState = nullptr;
+
+	std::unique_ptr<DirectX::Model>     m_pArrowModel;
+	std::shared_ptr<DirectX::ModelMesh> m_pArrowMesh;
+	ID3D11Buffer*                       m_pArrowVertexBuffer = nullptr;
+	ID3D11Buffer*                       m_pArrowIndexBuffer = nullptr;
+
+	std::unique_ptr<DirectX::DX11::CommonStates> m_pStates;
 
 	void printHResult(HRESULT hr)
 	{
 		if (hr == S_OK) {
 			logger::info("S_OK");
-		}
-		else if (hr == E_INVALIDARG) {
+		} else if (hr == E_INVALIDARG) {
 			logger::error("E_INVALIDARG");
-		}
-		else if (hr == S_FALSE) {
+		} else if (hr == S_FALSE) {
 			logger::error("S_FALSE");
-		}
-		else if(hr == E_NOTIMPL)
-		{
+		} else if (hr == E_NOTIMPL) {
 			logger::error("E_NOTIMPL");
-		}
-		else if(hr == E_OUTOFMEMORY)
-		{
+		} else if (hr == E_OUTOFMEMORY) {
 			logger::error("E_OUTOFMEMORY");
-		}
-		else if(hr == E_FAIL)
-		{
+		} else if (hr == E_FAIL) {
 			logger::error("E_FAIL");
-		}
-		else if(hr == DXGI_ERROR_INVALID_CALL)
-		{
+		} else if (hr == DXGI_ERROR_INVALID_CALL) {
 			logger::error("DXGI_ERROR_INVALID_CALL");
-		}
-		else if(hr == E_UNEXPECTED)
-		{
+		} else if (hr == E_UNEXPECTED) {
 			logger::error("E_UNEXPECTED");
 		}
 	}

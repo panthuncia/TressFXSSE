@@ -117,11 +117,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	//get view, projection, viewProj, and inverse viewProj matrix
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	logger::info("Current zoom: {}", tps->currentZoomOffset);
-	///*logger::info("WorldToCam:");
-	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[0][0], playerCam->GetRuntimeData().worldToCam[0][1], playerCam->GetRuntimeData().worldToCam[0][2], playerCam->GetRuntimeData().worldToCam[0][3]);
-	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[1][0], playerCam->GetRuntimeData().worldToCam[1][1], playerCam->GetRuntimeData().worldToCam[1][2], playerCam->GetRuntimeData().worldToCam[1][3]);
-	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[2][0], playerCam->GetRuntimeData().worldToCam[2][1], playerCam->GetRuntimeData().worldToCam[2][2], playerCam->GetRuntimeData().worldToCam[2][3]);
-	//logger::info("{}, {}, {}, {}", playerCam->GetRuntimeData().worldToCam[3][0], playerCam->GetRuntimeData().worldToCam[3][1], playerCam->GetRuntimeData().worldToCam[3][2], playerCam->GetRuntimeData().worldToCam[3][3]);*/
+
 	RE::NiPoint3 translation = playerCam->world.translate;  //tps->translation;
 	//tps->thirdPersonFOVControl->local.translate.z
 	//logger::info("Camera position reported by thirdPersonState.translation: {}, {}, {}", translation.x, translation.y, translation.z);
@@ -134,22 +130,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	float            pitch = glm::pitch(glm_rotate) * -1.0f;
 	float            yaw = glm::roll(glm_rotate) * -1.0f;  // The game stores yaw in the Z axis
 	glm::vec2        cameraRot = glm::vec2(pitch, yaw);
-	//RE::NiMatrix3    rotation_nimatrix = playerCam->world.rotate;  //playerSkeleton->skeleton->world.rotate;
-	//float            x = 0;
-	//float            y = 0;
-	//float            z = 0;
-	//rotation_nimatrix.ToEulerAnglesXYZ(x, y, z);
-	////glm::mat3 camera_rotation = glm::eulerAngleXYZ(x, y, z);
-	//glm::mat4 camera_rotation = glm::mat3({ { rotation_nimatrix.entry[0][0], rotation_nimatrix.entry[0][1], rotation_nimatrix.entry[0][2], 0 },
-	//										{ rotation_nimatrix.entry[1][0], rotation_nimatrix.entry[1][1], rotation_nimatrix.entry[1][2], 0 },
-	//										{ rotation_nimatrix.entry[2][0], rotation_nimatrix.entry[2][1], rotation_nimatrix.entry[2][2], 0 },
-	//										{ 0, 0, 0, 1 } });
-	//glm::mat4 camera_translation = glm::mat4(
-	//	{ { 1, 0, 0, -cameraPosScaled[0] },
-	//		{ 0, 1, 0, -cameraPosScaled[1] },
-	//		{ 0, 0, 1, -cameraPosScaled[2] },
-	//		{ 0, 0, 0, 1 } });
-	////camera_rotation = glm::transpose(camera_rotation);
+
 	
 	//view matrix
 	glm::mat4 viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
@@ -162,38 +143,10 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
 
 	//view-projection matrix
-	glm::mat4 viewProjectionMatrix = viewMatrix * projMatrix;
+	DirectX::XMMATRIX viewProjectionMatrix = projXMMatrix * viewXMMatrix;
 
 
-	//glm::mat4 viewProjectionMatrixInverse = glm::inverse(viewProjectionMatrix);
-
-	//auto shadowState = RE::BSGraphics::RendererShadowState::GetSingleton();
-	//auto viewMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewMat;
-	/*DirectX::XMFLOAT4X4 viewTest;
-	DirectX::XMStoreFloat4x4(&viewTest, viewMatrix);
-	logger::info("View:");
-	logger::info("{}, {}, {}, {}", viewTest._11, viewTest._12, viewTest._13, viewTest._14);
-	logger::info("{}, {}, {}, {}", viewTest._21, viewTest._22, viewTest._23, viewTest._24);
-	logger::info("{}, {}, {}, {}", viewTest._31, viewTest._32, viewTest._33, viewTest._34);
-	logger::info("{}, {}, {}, {}", viewTest._41, viewTest._42, viewTest._43, viewTest._44);*/
-
-	//auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
-	//auto viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
-	//auto projMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
-	//auto                projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
-	//auto                projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
-	//auto viewProjectionMatrix = DirectX::XMMatrixMultiply(viewXMMatrix, projXMMatrix);
-	//auto viewProjectionMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewProjMat;
-
-	/*DirectX::XMFLOAT4X4 viewProjTest;
-	DirectX::XMStoreFloat4x4(&viewProjTest, viewProjectionMatrix);
-	logger::info("ViewProj:");
-	logger::info("{}, {}, {}, {}", viewProjTest._11, viewProjTest._12, viewProjTest._13, viewProjTest._14);
-	logger::info("{}, {}, {}, {}", viewProjTest._21, viewProjTest._22, viewProjTest._23, viewProjTest._24);
-	logger::info("{}, {}, {}, {}", viewProjTest._31, viewProjTest._32, viewProjTest._33, viewProjTest._34);
-	logger::info("{}, {}, {}, {}", viewProjTest._41, viewProjTest._42, viewProjTest._43, viewProjTest._44);*/
-	//auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
-	glm::mat4 viewProjectionMatrixInverse = viewMatrix * projMatrix;
+	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
 	m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
 	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewMatrix));
@@ -232,22 +185,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	//int4   g_SimInts;      // Length iterations, local iterations, collision flag.
 	//int4   g_Counts;       // num strands per thread group, num follow hairs per guid hair, num verts per strand.
 	//float4 g_VSP;          // VSP parmeters
-	/*DirectX::XMVECTOR windVector = DirectX::XMVectorSet(0, 0, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_Wind")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&windVector));
-	DirectX::XMVECTOR wind1Vector = DirectX::XMVectorSet(0, 0, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_Wind1")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&wind1Vector));
-	DirectX::XMVECTOR wind2Vector = DirectX::XMVectorSet(0, 0, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_Wind2")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&wind2Vector));
-	DirectX::XMVECTOR wind3Vector = DirectX::XMVectorSet(0, 0, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_Wind3")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&wind3Vector));
-	DirectX::XMVECTOR shapeVector = DirectX::XMVectorSet(0.035, 0.800, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_Shape")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&shapeVector));
-	DirectX::XMVECTOR gravTipTimeVector = DirectX::XMVectorSet(0, 0.0908, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_GravTipTime")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&gravTipTimeVector));
-	DirectX::XMVECTOR simIntsVector = DirectX::XMVectorSetInt(1, 1, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_SimInts")->AsVector()->SetIntVector(reinterpret_cast<int*>(&shapeVector));
-	DirectX::XMVECTOR vspVector = DirectX::XMVectorSet(0.758, 1.208, 0, 0);
-	m_pStrandEffect->GetVariableByName("g_VSP")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&vspVector));*/
+
 	TressFXSimulationSettings settings;
 	settings.m_damping = 0.035;
 	settings.m_localConstraintStiffness = 1.0;  //0.8;
@@ -293,7 +231,7 @@ void Hair::Draw()
 	//necessary?
 	//UnbindUAVS();
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
-	m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
+	//m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
 	//end draw
 }
@@ -383,40 +321,27 @@ bool Hair::Simulate()
 		}
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
-	std::vector<float>* matrices = new std::vector<float>();
+	std::vector<DirectX::XMFLOAT4X4>* matrices = new std::vector<DirectX::XMFLOAT4X4>();
 	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
 	for (uint16_t i = 0; i < m_numBones; i++) {
-		auto          child = m_bones[i];
-		RE::NiPoint3* translation = &child->world.translate;
-		glm::vec3     translation_vector_scaled = Util::ToRenderScale(glm::vec3(-translation->x, -translation->z, translation->y));
-		//logger::info("Current bone translation: {}, {}, {}",translation->x, translation->y, translation->z);
-		RE::NiMatrix3* rotation_nimatrix = &child->world.rotate;  //playerSkeleton->skeleton->world.rotate;
-		float          x = 0;
-		float          y = 0;
-		float          z = 0;
-		rotation_nimatrix->ToEulerAnglesXYZ(x, y, z);
-		//glm::mat3 rotation = glm::eulerAngleXYZ(x, y, z);
-		glm::mat4      rotation = glm::mat4({ { rotation_nimatrix->entry[0][0], rotation_nimatrix->entry[0][1], rotation_nimatrix->entry[0][2],0 },
-				 { rotation_nimatrix->entry[1][0], rotation_nimatrix->entry[1][1], rotation_nimatrix->entry[1][2],0 },
-				 { rotation_nimatrix->entry[2][0], rotation_nimatrix->entry[2][1], rotation_nimatrix->entry[2][2],0 },
-				 { 0, 0, 0, 1 } });
-		rotation = glm::translate(rotation, translation_vector_scaled);
-		rotation = glm::transpose(rotation);
-		matrices->insert(matrices->end(), { rotation[0][0], rotation[0][1], rotation[0][2], rotation[0][3],
-											  rotation[1][0], rotation[1][1], rotation[1][2], rotation[1][3],
-											  rotation[2][0], rotation[2][1], rotation[2][2], rotation[2][3],
-											  rotation[3][0], rotation[3][1], rotation[3][2], rotation[3][3] });
-
-		/*matrices->insert(matrices->end(), { rotation->entry[0][0], rotation->entry[1][0], rotation->entry[2][0], 0,
-												  rotation->entry[0][1], rotation->entry[1][1], rotation->entry[2][1], 0,
-												  rotation->entry[0][2], rotation->entry[1][2], rotation->entry[2][2], 0,
-												  translation->x, translation->y, translation->z, 1 });*/
+		auto bonePos = m_bones[i]->world.translate;
+		auto boneRot = m_bones[i]->world.rotate;
+		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
+		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
+		auto                translation = DirectX::XMMatrixTranslation(bonePos.z, bonePos.y, bonePos.x);
+		auto                rotation = DirectX::XMMatrixSet(boneRot.entry[2][2], boneRot.entry[2][1], boneRot.entry[2][0], 0, boneRot.entry[1][2], boneRot.entry[1][1], boneRot.entry[1][0], 0, boneRot.entry[0][2], boneRot.entry[0][1], boneRot.entry[0][0], 0, 0, 0, 0, 1);
+		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.z, bonePos.y);
+		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][2], boneRot.entry[0][1], 0, boneRot.entry[2][0], boneRot.entry[2][2], boneRot.entry[2][1], 0, boneRot.entry[1][0], boneRot.entry[1][2], boneRot.entry[1][1], 0, 0, 0, 0, 1);
+		auto transform = translation*rotation;
+		DirectX::XMFLOAT4X4 transformFloats;
+		DirectX::XMStoreFloat4x4(&transformFloats, transform);
+		matrices->push_back(transformFloats);
 	}
 
 	logger::info("assembled matrices");
-	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * m_numBones);
+	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()._11), BONE_MATRIX_SIZE * m_numBones);
 	delete (matrices);
 	logger::info("updated matrices");
 	ID3D11DeviceContext* context;

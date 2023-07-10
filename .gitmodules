@@ -16,3 +16,6 @@
 [submodule "extern/CommonLibVR"]
 	path = extern/CommonLibVR
 	url = https://github.com/alandtse/CommonLibVR.git
+[submodule "extern/DirectXMesh"]
+	path = extern/DirectXMesh
+	url = https://github.com/microsoft/DirectXMesh.git
