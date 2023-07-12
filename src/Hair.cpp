@@ -8,6 +8,8 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
 #include <RE/S/ShadowState.h>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
 void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 void        printEffectVariables(ID3DX11Effect* pEffect);
 std::string ptr_to_string(void* ptr);
@@ -36,9 +38,14 @@ void Hair::DrawDebugMarkers() {
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
 	for (uint16_t i = 0; i < m_numBones; i++) {
-		logger::info("bone: {}", i);
-		auto bonePos = m_bones[i]->world.translate;
-		auto boneRot = m_bones[i]->world.rotate;
+		
+		auto              boneTransform = m_boneTransforms[i];
+		auto              bonePos = boneTransform.translate;
+		auto              boneRot = boneTransform.rotate;
+
+		//auto bonePos = m_bones[i]->world.translate;
+		//auto boneRot = m_bones[i]->world.rotate;
+		
 		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		auto transform = translation*rotation;
@@ -123,35 +130,29 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pQuadEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
 	//get view, projection, viewProj, and inverse viewProj matrix
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
-	logger::info("Current zoom: {}", tps->currentZoomOffset);
 
 	RE::NiPoint3 translation = playerCam->world.translate;  //tps->translation;
-	//tps->thirdPersonFOVControl->local.translate.z
-	//logger::info("Camera position reported by thirdPersonState.translation: {}, {}, {}", translation.x, translation.y, translation.z);
-	////translation = playerCam->world.translate;
-	////logger::info("Camera position reported by nicamera world.translate: {}, {}, {}", translation.x, translation.y, translation.z);
+
 	RE::NiQuaternion rotation = tps->rotation;
 	glm::vec3        cameraPos = glm::vec3(translation.x, translation.y, translation.z);
 	glm::vec3        cameraPosScaled = Util::ToRenderScale(cameraPos);
-	glm::quat        glm_rotate = glm::quat{ rotation.w, rotation.x, rotation.y, rotation.z };
-	float            pitch = glm::pitch(glm_rotate) * -1.0f;
-	float            yaw = glm::roll(glm_rotate) * -1.0f;  // The game stores yaw in the Z axis
+	glm::dquat        glm_rotate = glm::dquat{ rotation.w, rotation.x, rotation.y, rotation.z };
+	double            pitch = glm::pitch(glm_rotate) * -1.0;
+	double            yaw = glm::roll(glm_rotate) * -1.0;  // The game stores yaw in the Z axis
 	glm::vec2        cameraRot = glm::vec2(pitch, yaw);
 
-	
 	//view matrix
 	glm::mat4 viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
-	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
+	auto      viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
 
 	//projection matrix
 	glm::mat4 projMatrix = Util::GetPlayerProjectionMatrix(playerCam->GetRuntimeData2().viewFrustum, swapDesc.BufferDesc.Width, swapDesc.BufferDesc.Height);
-	auto projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
+	auto      projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
 	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
 
 	//view-projection matrix
 	DirectX::XMMATRIX viewProjectionMatrix = projXMMatrix * viewXMMatrix;
-
 
 	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
@@ -216,7 +217,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 void Hair::Draw()
 {
 	//start draw
-	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Draw");
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
@@ -229,7 +230,7 @@ void Hair::Draw()
 	//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 3, 2, &uavs);
 	//pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, NULL, NULL, 3, 2, &uavs, counter);
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *m_pBuildPSO);
-	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("End of TFX Draw Debug");
 	m_pPPLL->DoneBuilding((EI_CommandContextRef)pContext);
 
@@ -301,31 +302,38 @@ void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int 
 		}
 	}
 }
-
+void Hair::UpdateBones()
+{
+	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
+	if (playerSkeleton == NULL) {
+		logger::warn("Player skeleton is null!");
+		return;
+	}
+	if (!m_gotSkeleton) {
+		logger::info("Skeleton address: {}", ptr_to_string(playerSkeleton));
+		//ListChildren(playerSkeleton->skeleton->GetChildren());
+		logger::info("Got player skeleton");
+		m_gotSkeleton = true;
+		m_pBones[0] = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]");
+		m_pBones[1] = playerSkeleton->skeleton->GetObjectByName("NPC COM [COM ]");
+		m_pBones[2] = playerSkeleton->skeleton->GetObjectByName("NPC Pelvis [Pelv]");
+		m_pBones[3] = playerSkeleton->skeleton->GetObjectByName("NPC Spine [Spn0]");
+		m_pBones[4] = playerSkeleton->skeleton->GetObjectByName("NPC Spine1 [Spn1]");
+		m_pBones[5] = playerSkeleton->skeleton->GetObjectByName("NPC Spine2 [Spn2]");
+		m_pBones[6] = playerSkeleton->skeleton->GetObjectByName("NPC Neck [Neck]");
+		m_pBones[7] = playerSkeleton->skeleton->GetObjectByName("NPC Head [Head]");
+		logger::info("Got all bones");
+	}
+	//get current transforms now, because they're borked later
+	for (uint16_t i = 0; i < m_numBones; i++) {
+		m_boneTransforms[i] = m_pBones[i]->world;
+	}
+}
 bool Hair::Simulate()
 {
-	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	logger::info("Starting TFX Simulate");
-	if (!m_gotSkeleton) {
-		hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-		logger::info("Skeleton address: {}", ptr_to_string(playerSkeleton));
-		if (playerSkeleton != NULL) {
-			logger::info("Got player skeleton");
-			m_gotSkeleton = true;
-			m_bones[0] = playerSkeleton->skeleton->GetObjectByName("NPC Root [Root]")->AsNode();
-			logger::info("Got bone 1");
-			m_bones[1] = playerSkeleton->skeleton->GetObjectByName("NPC COM [COM ]")->AsNode();
-			logger::info("Got bone 2");
-			m_bones[2] = playerSkeleton->skeleton->GetObjectByName("NPC Pelvis [Pelv]")->AsNode();
-			m_bones[3] = playerSkeleton->skeleton->GetObjectByName("NPC Spine [Spn0]")->AsNode();
-			m_bones[4] = playerSkeleton->skeleton->GetObjectByName("NPC Spine1 [Spn1]")->AsNode();
-			m_bones[5] = playerSkeleton->skeleton->GetObjectByName("NPC Spine2 [Spn2]")->AsNode();
-			m_bones[6] = playerSkeleton->skeleton->GetObjectByName("NPC Neck [Neck]")->AsNode();
-			m_bones[7] = playerSkeleton->skeleton->GetObjectByName("NPC Head MagicNode [Hmag]")->AsNode();
-			logger::info("Got all bones");
-		} else {
-			return false;
-		}
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	if (!m_gotSkeleton){
+		return false;
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
 	std::vector<DirectX::XMFLOAT4X4>* matrices = new std::vector<DirectX::XMFLOAT4X4>();
@@ -333,8 +341,8 @@ bool Hair::Simulate()
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
 	for (uint16_t i = 0; i < m_numBones; i++) {
-		auto bonePos = m_bones[i]->world.translate;
-		auto boneRot = m_bones[i]->world.rotate.Transpose();
+		auto bonePos = m_boneTransforms[i].translate;
+		auto boneRot = m_boneTransforms[i].rotate;
 		auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
 		auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		//auto                translation = DirectX::XMMatrixTranslation(bonePos.z, bonePos.y, bonePos.x);
@@ -356,7 +364,7 @@ bool Hair::Simulate()
 	logger::info("Before simulate call");
 	mSimulation.Simulate((EI_CommandContextRef)context, *m_pHairObject);
 	logger::info("After simulate call");
-	PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("End of TFX Simulate Debug");
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);

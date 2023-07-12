@@ -25,7 +25,7 @@
 *.la
 *.a
 *.lib
-
+!extern/detours/x64/Release/detours.lib
 # Executables
 *.exe
 *.out

@@ -43,15 +43,16 @@ void Load()
 	if (!hL) {
 		logger::info("Could not acquire PIX dll");
 	}
-	/**(FARPROC*)&ptrForceD3D11on12 = GetProcAddress(hL, "ForceD3D11On12");
-	logger::info("Forcing D3D11on12");
-	ptrForceD3D11on12();*/
+
 	PatchD3D11();
 
 	hdt::g_skinAllHeadGeometryEventDispatcher.addListener(hdt::ActorManager::instance());
 	//hdt::g_skinSingleHeadGeometryEventDispatcher.addListener(hdt::ActorManager::instance());
 	hookFacegen();
 	hookMainDraw();
+
+	SKSE::AllocTrampoline(1 << 10);
+	BoneHooks::Install();
 	//hookGameLoop();
 	logger::info("Installed skeleton hook");
 }

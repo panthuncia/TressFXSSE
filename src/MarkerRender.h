@@ -16,14 +16,16 @@ private:
 	void CreateBuffers(ID3D11Device* pDevice);
 	void CreateLayoutsAndStates(ID3D11Device* pDevice);
 	void LoadMeshes(ID3D11Device* pDevice);
-	DirectX::XMFLOAT3 OffsetPositionToLeft(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& cameraForward);
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
 	};
 	struct CBMatrix
 	{
-		DirectX::XMMATRIX worldViewProjectionMatrix;
+		//DirectX::XMMATRIX worldViewProjectionMatrix;
+		DirectX::XMMATRIX world;
+		DirectX::XMMATRIX view;
+		DirectX::XMMATRIX projection;
 		DirectX::XMVECTOR color;
 	};
 	// Cube vertices

@@ -82,3 +82,4 @@ namespace hdt
 		constexpr std::uintptr_t BSFaceGenNiNode_SkinSingleGeometry_bug = BSFaceGenNiNode_SkinSingleGeometry + 0x96;
 	}
 }
+static float* g_worldScaleInverse = (float*)RELOCATION_ID(230692, 187407).address();

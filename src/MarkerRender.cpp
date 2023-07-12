@@ -79,7 +79,10 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		CBMatrix cbMatrix;
 		//logger::info("cube world:");
 		//PrintXMMatrix(worldTransform);
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
+		cbMatrix.world = worldTransform;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 1.0, 1.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		// Render the cube
@@ -166,7 +169,10 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		//PrintXMMatrix(arrowWorldMatrix);
 		//logger::info("view:");
 		//PrintXMMatrix(viewMatrix);
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * arrowWorldMatrix * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * arrowWorldMatrix * scale;
+		cbMatrix.world = arrowWorldMatrix * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(0.0, 1.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 
@@ -177,13 +183,19 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		//rotate other axes
 		constexpr float angle = DirectX::XMConvertToRadians(90.0f);
 		auto currentMatrix = arrowWorldMatrix*XMMatrixTranspose(DirectX::XMMatrixRotationZ(-angle));
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.world = currentMatrix * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 0.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 
 		currentMatrix = arrowWorldMatrix * XMMatrixTranspose(DirectX::XMMatrixRotationX(angle));
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.world = currentMatrix * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(0.0, 0.0, 1.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
@@ -195,7 +207,10 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
 		
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform * scale;
+		cbMatrix.world = worldTransform * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(0.0, 1.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 
@@ -205,13 +220,19 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 		//rotate other axes
 		constexpr float angle = DirectX::XMConvertToRadians(90.0f);
 		auto            currentMatrix = worldTransform * XMMatrixTranspose(DirectX::XMMatrixRotationZ(-angle));
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.world = currentMatrix * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 0.0, 0.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 
 		currentMatrix = worldTransform * XMMatrixTranspose(DirectX::XMMatrixRotationX(angle));
-		cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * currentMatrix * scale;
+		cbMatrix.world = currentMatrix * scale;
+		cbMatrix.view = viewMatrix;
+		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(0.0, 0.0, 1.0, 1.0);
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
@@ -411,26 +432,4 @@ void MarkerRender::CompileShaders(ID3D11Device* pDevice) {
 
 	logger::info("Result:");
 	printHResult(psResult);
-}
-
-DirectX::XMFLOAT3 MarkerRender::OffsetPositionToLeft(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& cameraForward)
-{
-	const float offsetDistance = 50.0f;  // Offset distance to the left
-
-	// Calculate the cross product of the camera forward vector and the up vector
-	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	DirectX::XMVECTOR crossProduct = DirectX::XMVector3Cross(XMLoadFloat3(&cameraForward), upVector);
-
-	// Normalize the cross product
-	crossProduct = DirectX::XMVector3Normalize(crossProduct);
-
-	// Calculate the offset position
-	DirectX::XMVECTOR offsetVector = DirectX::XMVectorScale(crossProduct, -offsetDistance);
-	DirectX::XMVECTOR newPosition = DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&position), offsetVector);
-
-	// Store the offset position in an XMFLOAT3 variable
-	DirectX::XMFLOAT3 offsetPosition;
-	DirectX::XMStoreFloat3(&offsetPosition, newPosition);
-
-	return offsetPosition;
 }

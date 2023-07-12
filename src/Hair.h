@@ -19,14 +19,19 @@ public:
 	bool                      Simulate();
 	void                      DrawDebugMarkers();
 	void                      RunTestEffect();
+	void                      UpdateBones();
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
 	static inline std::unordered_map<std::string, Hair*> hairs;
 	static inline D3D11_VIEWPORT                         currentViewport;
+	static inline DirectX::XMMATRIX                             gameViewMatrix;
+	static inline DirectX::XMMATRIX                             gameProjMatrix;
+	static inline DirectX::XMMATRIX                             gameViewProjMatrix;
+	static inline DirectX::XMMATRIX                             gameProjMatrixUnjittered;
 
 private:
-	static const int                 m_numBones = 8;
+	static const int         m_numBones = 8;
 
 	void                      initialize(SkyrimGPUResourceManager* pManager);
 	ID3DX11Effect*            create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
@@ -48,7 +53,8 @@ private:
 	TressFXSDFCollisionSystem mSDFCollisionSystem;
 	int                       m_nPPLLNodes;
 	bool                      m_gotSkeleton = false;
-	RE::NiNode*               m_bones[m_numBones];
+	RE::NiAVObject*           m_pBones[AMD_TRESSFX_MAX_NUM_BONES];
+	RE::NiTransform           m_boneTransforms[AMD_TRESSFX_MAX_NUM_BONES];
 	DirectX::XMMATRIX         viewXMMatrix;
 	DirectX::XMMATRIX         projXMMatrix;
 

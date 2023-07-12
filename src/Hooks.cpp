@@ -5,6 +5,7 @@
 #include <sstream> //for std::stringstream 
 #include <string>  //for std::string
 #include <d3d11.h>
+#include "Util.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
 struct BSFaceGenNiNode_FixSkinInstances
@@ -50,6 +51,7 @@ struct Main_Update
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
+
 struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
@@ -74,6 +76,19 @@ struct Hooks
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
+	struct Main_DrawWorld_MainDraw_2 {
+		static void thunk(){
+			func();
+			logger::info("in unknown function");
+			Hair::gameViewMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewMat;
+			logger::info("Got view mat: ");
+			Util::PrintXMMatrix(Hair::gameViewMatrix);
+			Hair::gameProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMat;
+			Hair::gameProjMatrixUnjittered = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
+			Hair::gameViewProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewProjMat;
+		}
+		static inline REL::Relocation<decltype(thunk)> func;
+	};
 };
 void hookGameLoop() {
 	REL::Relocation<uintptr_t> update{ RELOCATION_ID(35551, NULL) };
@@ -82,7 +97,22 @@ void hookGameLoop() {
 void hookMainDraw() {
 	//credit Doodlez
 	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x16F, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A)
+	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A));
 }
-void hookFacegen(){
+void hookFacegen()
+{
 	stl::write_vfunc<0x3E, BSFaceGenNiNode_FixSkinInstances>(RE::VTABLE_BSFaceGenNiNode[0]);
+}
+namespace BoneHooks{
+	void Install(){
+		logger::info("Installing bone hooks");
+		UpdateHooks::Hook();
+	}
+	void UpdateHooks::Nullsub()
+	{
+		_Nullsub();
+		for (auto hairPair : Hair::hairs){
+			hairPair.second->UpdateBones();
+		}
+	}
 }

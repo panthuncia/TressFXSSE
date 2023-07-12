@@ -261,7 +261,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	srv_ss << srv_address;
 	std::string srv_addr = srv_ss.str();
 	logger::info("Addr. of srv: {}", srv_addr);
-	PrintAllD3D11DebugMessages(pManager->m_pDevice);
+	//PrintAllD3D11DebugMessages(pManager->m_pDevice);
 	return pSB;
 }
 
@@ -590,9 +590,9 @@ extern "C"
 		if (hr != S_OK) {
 			printHResult(hr);
 		}
-		auto manager = RE::BSGraphics::Renderer::GetSingleton();
-		auto device = manager->GetRuntimeData().forwarder;
-		PrintAllD3D11DebugMessages(device);
+		//auto manager = RE::BSGraphics::Renderer::GetSingleton();
+		//auto device = manager->GetRuntimeData().forwarder;
+		//PrintAllD3D11DebugMessages(device);
 		return (void*)mapped_buffer.pData;
 		//sb.data = calloc(sb.structCount, sb.structSize);
 		//return sb.data;

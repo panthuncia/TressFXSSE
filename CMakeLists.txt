@@ -23,21 +23,23 @@ target_include_directories(
 		${SIMPLEINI_INCLUDE_DIRS}
 		magic_enum::magic_enum
 		nlohmann_json::nlohmann_json
+		Eigen3::Eigen
 )
 
 find_package(xbyak CONFIG REQUIRED)
 find_package( glm REQUIRED )
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
 
 add_git_submodule(extern/FX11)
 add_git_submodule(extern/DirectXMesh)
+#include_directories(${CMAKE_SOURCE_DIR}/extern/eigen/)
 target_include_directories(${PROJECT_NAME} 
 	PUBLIC
 		"extern/FX11/inc"
 		"extern/DirectXMesh/Utilities"
 )
-
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
 		debug ${CMAKE_CURRENT_SOURCE_DIR}/extern/detours/x64/Debug/detours.lib
