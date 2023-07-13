@@ -174,7 +174,7 @@ namespace Util
 		//return glm::transpose(result);
 	}
 	// Return the forward view vector
-	glm::dvec3 GetViewVector(const glm::dvec3& forwardRefer, double pitch, double yaw) noexcept
+	glm::dvec3 GetViewVector(const glm::dvec3& forwardRefer, double pitch, double roll, double yaw) noexcept
 	{
 		auto aproxNormal = glm::dvec4(forwardRefer.x, forwardRefer.y, forwardRefer.z, 1.0);
 
@@ -183,12 +183,16 @@ namespace Util
 		aproxNormal = m * aproxNormal;
 
 		m = glm::identity<glm::dmat4>();
+		m = glm::rotate(m, -roll, glm::dvec3(0.0l, 1.0l, 0.0l));
+		aproxNormal = m * aproxNormal;
+
+		m = glm::identity<glm::dmat4>();
 		m = glm::rotate(m, -yaw, glm::dvec3(0.0l, 0.0l, 1.0l));
 		aproxNormal = m * aproxNormal;
 
 		return static_cast<glm::vec3>(aproxNormal);
 	}
-	glm::mat4 BuildViewMatrix(const glm::vec3& position, const glm::dvec2& rotation) noexcept
+	glm::mat4 BuildViewMatrix(const glm::vec3& position, const glm::dvec3& rotation) noexcept
 	{
 		const glm::dvec3 pos = ToRenderScale(position);
 		constexpr auto limit = M_PI_2 * 0.9999;
@@ -196,7 +200,8 @@ namespace Util
 		const glm::dvec3 dir = GetViewVector(
             { 0.0, 1.0, 0.0 },
 			glm::clamp(rotation.x, -limit, limit),
-            rotation.y);
+			rotation.y, 
+            rotation.z);
 		logger::info("dir: {}, {}, {}", dir.x, dir.y, dir.z);
 		return LookAt(pos, pos + dir, { 0.0l, 0.0l, 1.0l });
 	}

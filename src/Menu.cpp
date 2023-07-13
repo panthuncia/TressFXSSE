@@ -3,7 +3,6 @@
 #include <dinput.h>
 #include <magic_enum.hpp>
 #include "Hair.h"
-
 #define SETTING_MENU_TOGGLEKEY "Toggle Key"
 
 void SetupImGuiStyle()
@@ -275,40 +274,91 @@ void Menu::DrawSettings()
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	for (auto hair : Hair::hairs) {
-		auto bones = hair.second->GetBoneTransforms();
-		for (int i = 0; i < hair.second->m_numBones; i++) {
-			ImGui::BeginTable("Bone", 4);
+		//auto bones = hair.second->GetBoneTransforms();
+		//for (int i = 0; i < hair.second->m_numBones; i++) {
+		//	ImGui::BeginTable("Bone", 4);
 
-			// Display the table headers
-			for (int j = 0; j < 4; ++j) {
-				ImGui::TableSetupColumn(("" + std::to_string(i + 1)).c_str());
-			}
-			ImGui::TableHeadersRow();
+		//	// Display the table headers
+		//	for (int j = 0; j < 4; ++j) {
+		//		ImGui::TableSetupColumn(("" + std::to_string(i + 1)).c_str());
+		//	}
+		//	ImGui::TableHeadersRow();
 
-			// Display the table data
-			for (int row = 0; row < 4; ++row) {
-				ImGui::TableNextRow();
-				for (int col = 0; col < 4; ++col) {
-					ImGui::TableSetColumnIndex(col);
-					if (row<3){
-						if (col < 3) {
-							ImGui::Text(std::to_string(bones[i].rotate.entry[row][col]).c_str());
-						} else {
-							ImGui::Text("0");
-						}
-					} else {
-						if (col < 3) {
-							ImGui::Text(std::to_string(bones[i].translate[col]).c_str());
-						} else {
-							ImGui::Text("1");
-						}
-					}
-				}
-			}
-			ImGui::EndTable();
-		}
+		//	// Display the table data
+		//	for (int row = 0; row < 4; ++row) {
+		//		ImGui::TableNextRow();
+		//		for (int col = 0; col < 4; ++col) {
+		//			ImGui::TableSetColumnIndex(col);
+		//			if (row<3){
+		//				if (col < 3) {
+		//					ImGui::Text(std::to_string(bones[i].rotate.entry[row][col]).c_str());
+		//				} else {
+		//					ImGui::Text("0");
+		//				}
+		//			} else {
+		//				if (col < 3) {
+		//					ImGui::Text(std::to_string(bones[i].translate[col]).c_str());
+		//				} else {
+		//					ImGui::Text("1");
+		//				}
+		//			}
+		//		}
+		//	}
+		//	ImGui::EndTable();
+		//}
 	}
+	int i = 0;
+	for (glm::mat4 mat : matrices) {
+		ImGui::BeginTable("matrix", 4);
+		// Display the table headers
+		for (int j = 0; j < 4; ++j) {
+			ImGui::TableSetupColumn((matrixNames[i] + std::to_string(i + 1)).c_str());
+		}
+		ImGui::TableHeadersRow();
 
+		//Display the table data
+		for (int row = 0; row < 4; ++row) {
+			ImGui::TableNextRow();
+			for (int col = 0; col < 4; ++col) {
+				ImGui::TableSetColumnIndex(col);
+				ImGui::Text(std::to_string(mat[row][col]).c_str());
+			}
+		}
+		ImGui::EndTable();
+		i += 1;
+	}
+	matrices.clear();
+	matrixNames.clear();
+
+	int k = 0;
+	for (glm::vec3 vec : vector3s) {
+		ImGui::BeginTable(vector3Names[k].c_str(), 4);
+		// Display the table headers
+		for (int j = 0; j < 3; ++j) {
+			ImGui::TableSetupColumn(vector3Names[k].c_str());
+		}
+		ImGui::TableHeadersRow();
+		ImGui::TableNextRow();
+		for (int col = 0; col < 3; ++col) {
+			ImGui::TableSetColumnIndex(col);
+			ImGui::Text(std::to_string(vec[col]).c_str());
+		}
+		ImGui::EndTable();
+		k += 1;
+	}
+	vector3s.clear();
+	vector3Names.clear();
+
+	ImGui::Spacing();
+	int j = 0;
+	for (float val: floats){
+		ImGui::Text(floatNames[j].c_str());
+		ImGui::Text(std::to_string(val).c_str());
+		ImGui::Spacing();
+		j += 1;
+	}
+	floats.clear();
+	floatNames.clear();
 
 	ImGui::End();
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -352,8 +402,46 @@ void Menu::DrawOverlay()
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
+void Menu::DrawVector3(glm::vec3 vec, std::string name)
+{
+	vector3s.push_back(vec);
+	vector3Names.push_back(name);
+}
+void Menu::DrawVector3(RE::NiPoint3 vec, std::string name)
+{
+	glm::vec3 glmvec = glm::vec3(vec.x, vec.y, vec.z);
+	vector3s.push_back(glmvec);
+	vector3Names.push_back(name);
+}
 
-const char* Menu::KeyIdToString(uint32_t key)
+void Menu::DrawFloat(float val, std::string name) {
+	floats.push_back(val);
+	floatNames.push_back(name);
+}
+void Menu::DrawMatrix(glm::mat4 mat, std::string name)
+{
+	matrices.push_back(mat);
+	matrixNames.push_back(name);
+}
+void Menu::DrawMatrix(RE::NiMatrix3 mat, std::string name)
+{
+	glm::mat4 glmmat = glm::mat4({ mat.entry[0][0], mat.entry[0][1], mat.entry[0][2], 0 }, 
+								 { mat.entry[1][0], mat.entry[1][1], mat.entry[1][2], 0 }, 
+								 { mat.entry[2][0], mat.entry[2][1], mat.entry[2][2], 0 }, 
+								 { 0, 0, 0, 1 });
+	DrawMatrix(glmmat, name);
+}
+void Menu::DrawMatrix(DirectX::XMMATRIX mat, std::string name)
+{
+	DirectX::XMFLOAT4X4 temp;
+	DirectX::XMStoreFloat4x4(&temp, mat);
+	glm::mat4 glmmat = glm::mat4({ temp._11, temp._12, temp._13, temp._14 },
+		{ temp._21, temp._22, temp._23, temp._24 },
+		{ temp._31, temp._32, temp._33, temp._34 },
+		{ temp._41, temp._42, temp._43, temp._44 });
+	DrawMatrix(glmmat, name);
+}
+	const char* Menu::KeyIdToString(uint32_t key)
 {
 	if (key >= 256)
 		return "";

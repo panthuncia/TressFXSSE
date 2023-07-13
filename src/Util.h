@@ -27,7 +27,7 @@ namespace Util
 	std::string                 GetNameFromRTV(ID3D11RenderTargetView* a_rtv);
 	RE::NiPointer<RE::NiCamera> GetPlayerNiCamera();
 	glm::mat4                   GetPlayerProjectionMatrix(const RE::NiFrustum& frustum, UINT resolution_x, UINT resolution_y) noexcept;
-	glm::mat4                   BuildViewMatrix(const glm::vec3& position, const glm::dvec2& rotation) noexcept;
+	glm::mat4                   BuildViewMatrix(const glm::vec3& position, const glm::dvec3& rotation) noexcept;
 	void                        PrintXMMatrix(DirectX::XMMATRIX mat);
 	[[nodiscard]] inline RE::NiPoint3 HkVectorToNiPoint(const RE::hkVector4& vec) { return { vec.quad.m128_f32[0], vec.quad.m128_f32[1], vec.quad.m128_f32[2] }; }
 	[[nodiscard]] RE::NiTransform     HkTransformToNiTransform(const RE::hkTransform& a_hkTransform);
