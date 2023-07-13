@@ -1,5 +1,5 @@
 {
-"name": "commonlibsse-plugin",
+  "name": "commonlibsse-plugin",
   "version-string": "1.0.0",
   "description": "",
   "license": "MIT",
@@ -15,6 +15,11 @@
     "directx-headers",
     "directxtk",
     "detours",
-    "eigen3"
-  ]
+    {
+      "name": "imgui",
+      "features": [ "dx11-binding", "win32-binding" ],
+      "version>=": "1.88"
+    }
+  ],
+  "builtin-baseline": "6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2"
 }

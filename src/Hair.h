@@ -20,6 +20,7 @@ public:
 	void                      DrawDebugMarkers();
 	void                      RunTestEffect();
 	void                      UpdateBones();
+	RE::NiTransform*          GetBoneTransforms();
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
@@ -29,9 +30,9 @@ public:
 	static inline DirectX::XMMATRIX                             gameProjMatrix;
 	static inline DirectX::XMMATRIX                             gameViewProjMatrix;
 	static inline DirectX::XMMATRIX                             gameProjMatrixUnjittered;
+	static const int                                            m_numBones = 8;
 
 private:
-	static const int         m_numBones = 8;
 
 	void                      initialize(SkyrimGPUResourceManager* pManager);
 	ID3DX11Effect*            create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());

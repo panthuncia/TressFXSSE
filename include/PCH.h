@@ -20,7 +20,6 @@
 #include <Windows.h>
 
 #include "imgui.h"
-#include "reshade/reshade.hpp"
 
 #ifdef NDEBUG
 #	include <spdlog/sinks/basic_file_sink.h>

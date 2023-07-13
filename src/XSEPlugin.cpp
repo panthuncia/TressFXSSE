@@ -4,13 +4,15 @@
 #include "Hooks.h"
 #include "ActorManager.h"
 #include "HookEvents.h"
+#include "Menu.h"
 ENB_API::ENBSDKALT1002* g_ENB = nullptr;
 
 HMODULE m_hModule;
-FARPROC ptrForceD3D11on12;
 
 extern "C" __declspec(dllexport) const char* NAME = "TressFXSSE";
 extern "C" __declspec(dllexport) const char* DESCRIPTION = "AMD TressFX 4.0 implementation for Skyrim SE";
+
+std::list<std::string> errors;
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID)
 {
@@ -18,10 +20,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID)
 	return TRUE;
 }
 
-
-void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
+void MessageHandler(SKSE::MessagingInterface::Message* message)
 {
-	switch (a_msg->type) {
+	switch (message->type) {
 	case SKSE::MessagingInterface::kPostLoad:
 		g_ENB = reinterpret_cast<ENB_API::ENBSDKALT1002*>(ENB_API::RequestENBAPI(ENB_API::SDKVersion::V1002));
 		if (g_ENB) {
@@ -29,6 +30,19 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		} else
 			logger::info("Unable to acquire ENB API");
 		break;
+	case SKSE::MessagingInterface::kDataLoaded:
+		{
+			for (auto it = errors.begin(); it != errors.end(); ++it) {
+				auto& errorMessage = *it;
+				RE::DebugMessageBox(std::format("TressFXSSE\n{}, will disable all hooks and features", errorMessage).c_str());
+			}
+
+			if (errors.empty()) {
+				RE::BSInputDeviceManager::GetSingleton()->AddEventSink(Menu::GetSingleton());
+			}
+
+			break;
+		}
 	}
 }
 
@@ -43,6 +57,8 @@ void Load()
 	if (!hL) {
 		logger::info("Could not acquire PIX dll");
 	}
+	auto messaging = SKSE::GetMessagingInterface();
+	messaging->RegisterListener("SKSE", MessageHandler);
 
 	PatchD3D11();
 

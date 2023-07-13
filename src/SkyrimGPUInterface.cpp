@@ -83,8 +83,7 @@ static void Transition(EI_CommandContextRef context,
 	AMD::EI_ResourceState  from,
 	AMD::EI_ResourceState  to)
 {
-	//TODO disable warning
-	pResource = pResource;
+	UNREFERENCED_PARAMETER(pResource);
 	if (from == to)
 	{
 		if (from == AMD::EI_STATE_UAV)
@@ -180,9 +179,6 @@ EI_Resource* CreateSB(EI_Device* pContext,
 {
 	SU_ASSERT(!bCounter ||
 		(bCounter && bUAV));  // you can't have a counter if you don't also have a UAV.
-	//TODO fix
-	bCounter = bCounter;
-	pContext = pContext;
 	EI_Resource* pSB = new EI_Resource;
 
 	EI_Resource& r = *pSB;
@@ -274,7 +270,7 @@ extern "C"
 		const size_t                   arraySize,
 		EI_StringHash                  strHash)
 	{
-		(void)strHash;
+		UNREFERENCED_PARAMETER(strHash);
 		EI_Resource* pRW2D = new EI_Resource;
 		SkyrimGPUResourceManager* pManager = (SkyrimGPUResourceManager*)pContext;
 
@@ -400,8 +396,8 @@ extern "C"
 
 	EI_BindLayout* CreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description)
 	{
+		UNREFERENCED_PARAMETER(pDevice);
 		logger::info("In CreateLayout");
-		(void)pDevice;
 
 		EI_BindLayout* pLayout = new EI_BindLayout();
 		pLayout->uavNames = description.uavNames;
@@ -435,7 +431,7 @@ extern "C"
 
 	void DestroyLayout(EI_Device* pDevice, EI_BindLayout* pLayout)
 	{
-		(void)pDevice;
+		UNREFERENCED_PARAMETER(pDevice);
 		AMD_SAFE_DELETE(pLayout);
 	}
 
@@ -472,7 +468,7 @@ extern "C"
 	void Destroy(EI_Device* pDevice, EI_Resource* pRW2D)
 	{
 		logger::info("In destroy:");
-		(void*)pDevice;
+		UNREFERENCED_PARAMETER(pDevice);
 		if (pRW2D->uav != NULL)
 			pRW2D->uav->Release();
 		if (pRW2D->srv != NULL)
@@ -487,8 +483,7 @@ extern "C"
 	}
 	EI_BindSet* CreateBindSet(EI_Device* commandContext, AMD::TressFXBindSet& bindSet)
 	{
-		//TODO ignore
-		commandContext = commandContext;
+		UNREFERENCED_PARAMETER(commandContext);
 		logger::info("creating bind set");
 		EI_BindSet* pBindSet = new EI_BindSet;
 
@@ -769,7 +764,7 @@ extern "C"
 	}
 	void Clear2D(EI_CommandContext* pContext, EI_RWTexture2D* pResource, AMD::uint32 clearValue)
 	{
-		pResource;
+		UNREFERENCED_PARAMETER(pResource);
 		//logger::info("Clear 2d");
 		ID3D11DeviceContext* pDeviceContext = (ID3D11DeviceContext*)*((ID3D11DeviceContext**)pContext);
 		uint32_t clearVector[4];
@@ -784,11 +779,13 @@ extern "C"
 		EI_StructuredBufferRef               sb,
 		AMD::uint32                          clearValue)
 	{
-		sb;
-		clearValue;
+		//for now, counter reset is handled by modified Effects11
+		UNREFERENCED_PARAMETER(sb);
+		UNREFERENCED_PARAMETER(clearValue);
+		UNREFERENCED_PARAMETER(pContext);
 		//logger::info("Clear counter");
-		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext));
-		pDeviceContext;
+		//ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext));
+		//pDeviceContext;
 		//pDeviceContext->Count
 		//sb.uav->SetInitialCount(clearValue);
 	}

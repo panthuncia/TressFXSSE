@@ -8,8 +8,6 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
 #include <RE/S/ShadowState.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Core>
 void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 void        printEffectVariables(ID3DX11Effect* pEffect);
 std::string ptr_to_string(void* ptr);
@@ -34,7 +32,11 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	logger::info("Created hair object");
 	hairs["hairTest"] = this;
 }
-void Hair::DrawDebugMarkers() {
+RE::NiTransform* Hair::GetBoneTransforms() {
+	return m_boneTransforms;
+}
+void             Hair::DrawDebugMarkers()
+{
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
 	for (uint16_t i = 0; i < m_numBones; i++) {
@@ -336,27 +338,42 @@ bool Hair::Simulate()
 		return false;
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
-	std::vector<DirectX::XMFLOAT4X4>* matrices = new std::vector<DirectX::XMFLOAT4X4>();
+	std::vector<float>* matrices = new std::vector<float>();
 	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = m_boneTransforms[i].translate;
 		auto boneRot = m_boneTransforms[i].rotate;
-		auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
-		auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
+		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z);
+		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		//auto                translation = DirectX::XMMatrixTranslation(bonePos.z, bonePos.y, bonePos.x);
 		//auto                rotation = DirectX::XMMatrixSet(boneRot.entry[2][2], boneRot.entry[2][1], boneRot.entry[2][0], 0, boneRot.entry[1][2], boneRot.entry[1][1], boneRot.entry[1][0], 0, boneRot.entry[0][2], boneRot.entry[0][1], boneRot.entry[0][0], 0, 0, 0, 0, 1);
 		//auto translation = DirectX::XMMatrixTranslation(bonePos.x, bonePos.z, bonePos.y);
 		//auto rotation = DirectX::XMMatrixSet(boneRot.entry[0][0], boneRot.entry[0][2], boneRot.entry[0][1], 0, boneRot.entry[2][0], boneRot.entry[2][2], boneRot.entry[2][1], 0, boneRot.entry[1][0], boneRot.entry[1][2], boneRot.entry[1][1], 0, 0, 0, 0, 1);
-		auto transform = DirectX::XMMatrixMultiply(translation, rotation);
-		DirectX::XMFLOAT4X4 transformFloats;
-		DirectX::XMStoreFloat4x4(&transformFloats, transform);
-		matrices->push_back(transformFloats);
+		//auto transform = translation * rotation;
+		//DirectX::XMFLOAT4X4 transformFloats;
+		//DirectX::XMStoreFloat4x4(&transformFloats, transform);
+		matrices->push_back(boneRot.entry[0][0]);
+		matrices->push_back(boneRot.entry[0][1]);
+		matrices->push_back(boneRot.entry[0][2]);
+		matrices->push_back(0.0);
+		matrices->push_back(boneRot.entry[1][0]);
+		matrices->push_back(boneRot.entry[1][1]);
+		matrices->push_back(boneRot.entry[1][2]);
+		matrices->push_back(0.0);
+		matrices->push_back(boneRot.entry[2][0]);
+		matrices->push_back(boneRot.entry[2][1]);
+		matrices->push_back(boneRot.entry[2][2]);
+		matrices->push_back(0.0);
+		matrices->push_back(bonePos.x);
+		matrices->push_back(bonePos.y);
+		matrices->push_back(bonePos.z);
+		matrices->push_back(1.0);
 	}
 
 	logger::info("assembled matrices");
-	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()._11), BONE_MATRIX_SIZE * m_numBones);
+	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)m_pManager, &(matrices->front()), BONE_MATRIX_SIZE * m_numBones);
 	delete (matrices);
 	logger::info("updated matrices");
 	ID3D11DeviceContext* context;

@@ -14,6 +14,7 @@
 #include "SkyrimGPUInterface.h"
 #include "SkeletonInterface.h"
 #include "ActorManager.h"
+#include "Menu.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
@@ -145,12 +146,14 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	//init hair resources
 	new Hair(asset, gpuResourceManager, context, "hairTest");
 
+	Menu::GetSingleton()->Init(swapchain, device, context);
+
 	return hr;
 }
 
 HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
 {
-	//Clustered::GetSingleton()->OnPresent();
+	Menu::GetSingleton()->DrawOverlay();
 	return (This->*ptrPresent)(SyncInterval, Flags);
 }
 
