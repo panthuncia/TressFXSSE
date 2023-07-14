@@ -113,6 +113,7 @@ void Hair::RunTestEffect()
 };
 void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 {
+	UNREFERENCED_PARAMETER(tps);
 	logger::info("In UpdateVariables");
 	if (!m_gotSkeleton)
 		return;
@@ -133,62 +134,43 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pQuadEffect->GetVariableByName("vFragmentBufferSize")->AsVector()->SetFloatVector(&vFragmentBufferSize.x);
 	//get view, projection, viewProj, and inverse viewProj matrix
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
-	RE::NiAVObject* tpsPlayerCam = tps->thirdPersonCameraObj;
 	auto          wtc = playerCam->worldToCam;
+	//transpose rotation
 	glm::mat      worldToCamMat = glm::mat4({ wtc[0][0], wtc[1][0], wtc[2][0], wtc[0][3] }, 
 											{ wtc[0][1], wtc[1][1], wtc[2][1], wtc[1][3] }, 
 											{ wtc[0][2], wtc[1][2], wtc[2][2], wtc[2][3] }, 
 											{ wtc[3][0], wtc[3][1], wtc[3][2], wtc[3][3] });
-	Menu::GetSingleton()->DrawMatrix(worldToCamMat, "wtc");
 
 	RE::NiPoint3 translation = playerCam->world.translate;  //tps->translation;
 
-	RE::NiQuaternion rotation = tps->rotation;
-	glm::vec3        cameraPos = glm::vec3(translation.x, translation.y, translation.z);
-	glm::vec3        cameraPosScaled = Util::ToRenderScale(cameraPos);
-	glm::dquat        glm_rotate = glm::dquat{ rotation.w, rotation.x, rotation.y, rotation.z };
-	double            pitch = glm::pitch(glm_rotate) * -1.0;
-	double            roll = glm::yaw(glm_rotate) * -1.0;  // The game stores yaw in the Z axis
-	double            yaw = glm::roll(glm_rotate) * -1.0;  // The game stores yaw in the Z axis
-	glm::vec3        cameraRot = glm::vec3(pitch, roll, yaw);
-
-	//view matrix
-	glm::mat4 viewMatrix = Util::BuildViewMatrix(cameraPos, cameraRot);
-	auto      viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
-	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
-	
-	Menu::GetSingleton()->DrawMatrix(viewMatrix, "view matrix");
-	Menu::GetSingleton()->DrawMatrix(glm::inverse(viewMatrix), "view matrix inverse");
+	glm::vec3 cameraPos = Util::ToRenderScale(glm::vec3(translation.x, translation.y, translation.z));
 
 	//projection matrix
 	glm::mat4 projMatrix = Util::GetPlayerProjectionMatrix(playerCam->GetRuntimeData2().viewFrustum, swapDesc.BufferDesc.Width, swapDesc.BufferDesc.Height);
-	auto      projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
-	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
 
+	//calculate view matrix from worldToCam
 	auto projCalcInverse = glm::inverse(projMatrix);
-	auto wtcInvVP = projCalcInverse * worldToCamMat;
-	Menu::GetSingleton()->DrawMatrix(wtcInvVP, "???");
+	auto wtcInvProj = projCalcInverse * worldToCamMat;
 
-	glm::mat4 reViewMat = glm::inverse(glm::mat4({ wtcInvVP[0][0], wtcInvVP[0][1], worldToCamMat[0][2], 0 }, 
-									{ wtcInvVP[1][0], wtcInvVP[1][1], worldToCamMat[1][2], 0 }, 
-									{ wtcInvVP[2][0], wtcInvVP[2][1], worldToCamMat[2][2], 0 }, 
-									{ 0, 0, 0, 1 }));
-	Menu::GetSingleton()->DrawMatrix(reViewMat, "re-calculated");
+	glm::mat4 camRotCalc = (glm::mat4({ wtcInvProj[0][0], wtcInvProj[0][1], worldToCamMat[0][2], 0 },
+		{ wtcInvProj[1][0], wtcInvProj[1][1], worldToCamMat[1][2], 0 },
+		{ wtcInvProj[2][0], wtcInvProj[2][1], worldToCamMat[2][2], 0 },
+		{ 0, 0, 0, 1 }));
+	auto camRotCalcTransp = glm::transpose(camRotCalc);
 
-	Menu::GetSingleton()->DrawMatrix(playerCam->world.rotate.Transpose(), "cameraRot");
-	
-	Menu::GetSingleton()->DrawMatrix(projMatrix, "proj calc");
-	Menu::GetSingleton()->DrawMatrix(projCalcInverse, "proj calc inverse");
-	auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
-	auto gameProj = state->GetRuntimeData().cameraData.getEye().projMat;
-	Menu::GetSingleton()->DrawMatrix(gameProj, "game proj");
+	glm::vec3 eye = -cameraPos;
+	glm::mat4 viewMatrix = glm::mat4({ camRotCalcTransp[0][0], camRotCalcTransp[0][1], camRotCalcTransp[0][2], glm::dot(eye, glm::vec3(camRotCalcTransp[0][0], camRotCalcTransp[0][1], camRotCalcTransp[0][2])) },
+		{ camRotCalcTransp[1][0], camRotCalcTransp[1][1], camRotCalcTransp[1][2], glm::dot(eye, glm::vec3(camRotCalcTransp[1][0], camRotCalcTransp[1][1], camRotCalcTransp[1][2])) },
+		{ camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2], glm::dot(eye, glm::vec3(camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2])) },
+		{ 0, 0, 0, 1 });
 
-	Menu::GetSingleton()->DrawFloat(tps->currentZoomOffset, "zoomOffset");
-	Menu::GetSingleton()->DrawFloat(tps->currentYaw, "currentYaw");
-	Menu::GetSingleton()->DrawFloat(tps->pitchZoomOffset, "pitchZoomOffset");
-	Menu::GetSingleton()->DrawVector3(tps->posOffsetActual, "posOffsetActual");
-	Menu::GetSingleton()->DrawVector3(playerCam->world.translate, "niCamTranslation");
-	Menu::GetSingleton()->DrawVector3(tpsPlayerCam->world.translate, "tpsCamTranslation");
+	//move to DirectXMath
+	auto projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
+	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
+	auto      viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
+	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
+
+
 
 	//tps->thirdPersonCameraObj->world.rotate
 	//view-projection matrix
@@ -200,7 +182,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewMatrix));
 	m_pStrandEffect->GetVariableByName("g_mProjection")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&projMatrix));
 	//get camera position
-	DirectX::XMVECTOR cameraPosVectorScaled = DirectX::XMVectorSet(cameraPosScaled.x, cameraPosScaled.y, cameraPosScaled.z, 0);
+	DirectX::XMVECTOR cameraPosVectorScaled = DirectX::XMVectorSet(cameraPos.x, cameraPos.y, cameraPos.z, 0);
 	m_pStrandEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&cameraPosVectorScaled));
 	//viewport
 	DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(currentViewport.TopLeftX, currentViewport.TopLeftY, currentViewport.Width, currentViewport.Height);

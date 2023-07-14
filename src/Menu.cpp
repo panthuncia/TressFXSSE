@@ -312,7 +312,7 @@ void Menu::DrawSettings()
 		ImGui::BeginTable("matrix", 4);
 		// Display the table headers
 		for (int j = 0; j < 4; ++j) {
-			ImGui::TableSetupColumn((matrixNames[i] + std::to_string(i + 1)).c_str());
+			ImGui::TableSetupColumn((matrixNames[i]).c_str());
 		}
 		ImGui::TableHeadersRow();
 
