@@ -14,7 +14,7 @@ class Hair
 {
 public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
-	void                      UpdateVariables(RE::ThirdPersonState* tps);
+	void                      UpdateVariables();
 	void                      Draw();
 	bool                      Simulate();
 	void                      DrawDebugMarkers();

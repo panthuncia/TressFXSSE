@@ -62,10 +62,11 @@ struct Hooks
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
 			logger::info("Got camera");
-			if (camera != nullptr && camera->currentState != nullptr && camera->currentState->id == RE::CameraState::kThirdPerson) {
-				RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
-				auto                  hair = Hair::hairs.find("hairTest");
-				hair->second->UpdateVariables(tps);
+			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+				auto hair = Hair::hairs.find("hairTest");
+				hair->second->UpdateVariables();
 				if (hair->second->Simulate()) {
 					hair->second->Draw();
 					hair->second->DrawDebugMarkers();

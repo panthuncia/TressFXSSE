@@ -111,9 +111,8 @@ void Hair::RunTestEffect()
 	pContext->Draw(1000, 0);
 	//m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
 };
-void Hair::UpdateVariables(RE::ThirdPersonState* tps)
+void Hair::UpdateVariables()
 {
-	UNREFERENCED_PARAMETER(tps);
 	logger::info("In UpdateVariables");
 	if (!m_gotSkeleton)
 		return;
@@ -167,7 +166,7 @@ void Hair::UpdateVariables(RE::ThirdPersonState* tps)
 	//move to DirectXMath
 	auto projXMFloat = DirectX::XMFLOAT4X4(&projMatrix[0][0]);
 	projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
-	auto      viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
+	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
 
 
@@ -364,7 +363,9 @@ bool Hair::Simulate()
 	//ListChildren(children);
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = m_boneTransforms[i].translate;
-		auto boneRot = m_boneTransforms[i].rotate;
+		auto boneRot = m_boneTransforms[i].rotate.Transpose();
+		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
+		
 		matrices->push_back(boneRot.entry[0][0]);
 		matrices->push_back(boneRot.entry[0][1]);
 		matrices->push_back(boneRot.entry[0][2]);

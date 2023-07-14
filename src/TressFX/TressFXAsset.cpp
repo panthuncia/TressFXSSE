@@ -616,9 +616,16 @@ namespace AMD
                 //skinData.boneIndex[j] = (float)skeletonData.GetBoneIndexByName(boneNames[(int)skinData.boneIndex[j]].c_str()); // Change the joint index to be what the engine wants
                 EI_Read((char*)&skinData.weight[j], sizeof(AMD::real32), ioObject);
             }
-
+			
             // If bone index is -1, then it means that there is no bone associated to this. In this case we simply replace it with zero.
             // This is safe because the corresonding weight should be zero anyway.
+			if (skinData.boneIndex[0] == -1.f || skinData.boneIndex[1] == -1.f || skinData.boneIndex[2] == -1.f || skinData.boneIndex[1] == -1.f) {
+				TressFXBoneSkinningData emptyData = {};
+				m_boneSkinningData[i * (m_numFollowStrandsPerGuide + 1)] = emptyData;
+				logger::warn("Negative bone index found");
+				continue;
+			}
+
             skinData.boneIndex[0] = skinData.boneIndex[0] == -1.f ? 0 : skinData.boneIndex[0];
             skinData.boneIndex[1] = skinData.boneIndex[1] == -1.f ? 0 : skinData.boneIndex[1];
             skinData.boneIndex[2] = skinData.boneIndex[2] == -1.f ? 0 : skinData.boneIndex[2];
