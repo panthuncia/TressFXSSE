@@ -51,7 +51,7 @@ struct Main_Update
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
-
+uint8_t skipFrame = 10;
 struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
@@ -60,11 +60,16 @@ struct Hooks
 		{
 			func(BSGraphics_Renderer, unk);
 			//draw hair
-			auto camera = RE::PlayerCamera::GetSingleton();
+			//auto camera = RE::PlayerCamera::GetSingleton();
 			logger::info("Got camera");
-			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
-				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+			if (true/*camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)*/) {
 				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+				if (skipFrame) {
+					skipFrame--;
+					logger::info("skipping frame");
+					return;
+				}
 				auto hair = Hair::hairs.find("hairTest");
 				hair->second->UpdateVariables();
 				if (hair->second->Simulate()) {

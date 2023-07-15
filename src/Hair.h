@@ -24,6 +24,8 @@ public:
 	SkyrimGPUResourceManager* m_pManager;
 
 	//static
+	static void ReloadAllHairs();
+
 	static inline std::unordered_map<std::string, Hair*> hairs;
 	static inline D3D11_VIEWPORT                         currentViewport;
 	static inline DirectX::XMMATRIX                             gameViewMatrix;
@@ -36,6 +38,8 @@ private:
 
 	void                      initialize(SkyrimGPUResourceManager* pManager);
 	ID3DX11Effect*            create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
+	EI_StringHash             m_hairName;
+	AMD::TressFXAsset*        m_hairAsset;
 	ID3D11Texture2D*          m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource*              m_hairEIResource;

@@ -273,39 +273,8 @@ void Menu::DrawSettings()
 	ImGui::SetNextWindowSize({ 1000, 1000 }, ImGuiCond_Once);
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
-	for (auto hair : Hair::hairs) {
-		//auto bones = hair.second->GetBoneTransforms();
-		//for (int i = 0; i < hair.second->m_numBones; i++) {
-		//	ImGui::BeginTable("Bone", 4);
-
-		//	// Display the table headers
-		//	for (int j = 0; j < 4; ++j) {
-		//		ImGui::TableSetupColumn(("" + std::to_string(i + 1)).c_str());
-		//	}
-		//	ImGui::TableHeadersRow();
-
-		//	// Display the table data
-		//	for (int row = 0; row < 4; ++row) {
-		//		ImGui::TableNextRow();
-		//		for (int col = 0; col < 4; ++col) {
-		//			ImGui::TableSetColumnIndex(col);
-		//			if (row<3){
-		//				if (col < 3) {
-		//					ImGui::Text(std::to_string(bones[i].rotate.entry[row][col]).c_str());
-		//				} else {
-		//					ImGui::Text("0");
-		//				}
-		//			} else {
-		//				if (col < 3) {
-		//					ImGui::Text(std::to_string(bones[i].translate[col]).c_str());
-		//				} else {
-		//					ImGui::Text("1");
-		//				}
-		//			}
-		//		}
-		//	}
-		//	ImGui::EndTable();
-		//}
+	if (ImGui::Button("Reload hairs")) {
+		Hair::ReloadAllHairs();
 	}
 	int i = 0;
 	for (glm::mat4 mat : matrices) {

@@ -26,17 +26,33 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	mSimulation(), mSDFCollisionSystem()
 {
 	m_pHairObject = new TressFXHairObject;
+	m_hairAsset = asset;
 	m_hairEIResource = new EI_Resource;
 	initialize(resourceManager);
 	m_hairEIResource->srv = m_hairSRV;
 	m_pHairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, m_hairEIResource);
 	logger::info("Created hair object");
-	hairs["hairTest"] = this;
+	hairs[name] = this;
+	m_hairName = name;
 }
+
+void Hair::ReloadAllHairs(){
+	for (auto hair : hairs) {
+		EI_StringHash name = hair.second->m_hairName;
+		auto asset = hair.second->m_hairAsset;
+		hairs.erase(name);
+		delete(hair.second);
+		auto pManager = SkyrimGPUResourceManager::GetInstance();
+		ID3D11DeviceContext* pContext;
+		pManager->m_pDevice->GetImmediateContext(&pContext);
+		new Hair(asset, pManager, pContext, name);
+	}
+}
+
 RE::NiTransform* Hair::GetBoneTransforms() {
 	return m_boneTransforms;
 }
-void             Hair::DrawDebugMarkers()
+void Hair::DrawDebugMarkers()
 {
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
@@ -52,6 +68,7 @@ void             Hair::DrawDebugMarkers()
 		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		auto transform = translation*rotation;
+		//Menu::GetSingleton()->DrawMatrix(transform, "bone");
 		positions.push_back(transform);
 	}
 	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
@@ -169,16 +186,31 @@ void Hair::UpdateVariables()
 	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
 
+	//model matrix
+	auto bonePos = m_boneTransforms[0].translate;
+	auto boneRot = m_boneTransforms[0].rotate.Transpose();
+	auto modelTranslation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
+	auto modelRotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
+	auto modelTransform = modelTranslation * modelRotation;
+
+	Menu::GetSingleton()->DrawMatrix(modelTransform, "TFX model");
+	Menu::GetSingleton()->DrawMatrix(projXMMatrix, "TFX projection");
+	Menu::GetSingleton()->DrawMatrix(viewXMMatrix, "TFX VP");
 
 
 	//tps->thirdPersonCameraObj->world.rotate
 	//view-projection matrix
-	DirectX::XMMATRIX viewProjectionMatrix = projXMMatrix * viewXMMatrix;
+
+	//auto tfxViewMatrix = DirectX::XMMatrixTranspose(viewXMMatrix);
+
+	DirectX::XMMATRIX viewProjectionMatrix = projXMMatrix*viewXMMatrix;
+
+	Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "TFX VP");
 
 	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
 	m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
-	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewMatrix));
+	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewXMMatrix));
 	m_pStrandEffect->GetVariableByName("g_mProjection")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&projMatrix));
 	//get camera position
 	DirectX::XMVECTOR cameraPosVectorScaled = DirectX::XMVectorSet(cameraPos.x, cameraPos.y, cameraPos.z, 0);
@@ -380,7 +412,7 @@ bool Hair::Simulate()
 		matrices->push_back(0.0);
 		matrices->push_back(bonePos.x);
 		matrices->push_back(bonePos.y);
-		matrices->push_back(bonePos.z);
+		matrices->push_back(bonePos.z-180);
 		matrices->push_back(1.0);
 	}
 
