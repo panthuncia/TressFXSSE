@@ -674,12 +674,12 @@ extern "C"
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			logger::info("Binding SRV: {}", pLayout->srvNames[i]);
+			//logger::info("Binding SRV: {}", pLayout->srvNames[i]);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 		}
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
 		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
-			logger::info("Binding UAV: {}", pLayout->uavNames[i]);
+			//logger::info("Binding UAV: {}", pLayout->uavNames[i]);
 			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);

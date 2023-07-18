@@ -105,4 +105,41 @@ namespace ShaderCompiler
 		logger::info("Done creating effect");
 		return effect;
 	}
+	ID3DX11Effect* ShaderCompiler::CreateEffect(std::string_view filePath, ID3D11Device* pDevice, std::vector<D3D_SHADER_MACRO> defines)
+	{
+		//compile effect
+		const auto  path = std::filesystem::current_path() /= filePath;
+		struct stat buffer;
+		if (stat(path.string().c_str(), &buffer) == 0) {
+			logger::info("file exists");
+		} else {
+			logger::error("Effect file {} missing!", path.string());
+			throw std::runtime_error("File not found");
+		}
+		logger::info("Compiling hair effect shader");
+		ID3DX11Effect* pEffect = ShaderCompiler::CompileAndRegisterEffectShader(path.wstring(), pDevice, defines);
+		if (pEffect->IsValid())
+			logger::info("Effect is valid");
+		else
+			logger::info("Error: Effect is invalid!");
+		/*D3DX11_EFFECT_DESC effectDesc;
+	pStrandEffect->GetDesc(&effectDesc);
+	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
+	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
+	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
+	for (uint16_t i = 0; i < effectDesc.ConstantBuffers; ++i) {
+		auto var = pStrandEffect->GetConstantBufferByIndex(i);
+		D3DX11_EFFECT_VARIABLE_DESC vardesc;
+		var->GetDesc(&vardesc);
+		logger::info("{}", vardesc.Name);
+	}
+	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
+	for (uint16_t i = 0; i < effectDesc.GlobalVariables; ++i) {
+		auto var = pStrandEffect->GetVariableByIndex(i);
+		D3DX11_EFFECT_VARIABLE_DESC vardesc;
+		var->GetDesc(&vardesc);
+		logger::info("{}", vardesc.Name);
+	}*/
+		return pEffect;
+	}
 }

@@ -6,6 +6,7 @@
 #include <string>  //for std::string
 #include <d3d11.h>
 #include "Util.h"
+#include "PPLLObject.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
 struct BSFaceGenNiNode_FixSkinInstances
@@ -60,24 +61,19 @@ struct Hooks
 		{
 			func(BSGraphics_Renderer, unk);
 			//draw hair
-			//auto camera = RE::PlayerCamera::GetSingleton();
-			logger::info("Got camera");
-			if (true/*camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
-				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)*/) {
+			auto camera = RE::PlayerCamera::GetSingleton();
+			auto ppll = PPLLObject::GetSingleton();
+			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
 				if (skipFrame) {
 					skipFrame--;
 					logger::info("skipping frame");
 					return;
 				}
-				auto hair = Hair::hairs.find("hairTest");
-				hair->second->UpdateVariables();
-				if (hair->second->Simulate()) {
-					hair->second->Draw();
-					hair->second->DrawDebugMarkers();
-				} else {
-					logger::info("Simulate failed");
-				}
+				ppll->UpdateVariables();
+				ppll->Simulate();
+				ppll->Draw();
 			}
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
@@ -86,12 +82,13 @@ struct Hooks
 		static void thunk(){
 			func();
 			logger::info("in unknown function");
-			Hair::gameViewMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewMat;
+			auto ppll = PPLLObject::GetSingleton();
+			ppll->m_gameViewMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewMat;
 			logger::info("Got view mat: ");
-			Util::PrintXMMatrix(Hair::gameViewMatrix);
-			Hair::gameProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMat;
-			Hair::gameProjMatrixUnjittered = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
-			Hair::gameViewProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewProjMat;
+			Util::PrintXMMatrix(ppll->m_gameViewMatrix);
+			ppll->m_gameProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMat;
+			ppll->m_gameProjMatrixUnjittered = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
+			ppll->m_gameViewProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewProjMat;
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
@@ -103,7 +100,7 @@ void hookGameLoop() {
 void hookMainDraw() {
 	//credit Doodlez
 	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x16F, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A)
-	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A));
+	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A));
 }
 void hookFacegen()
 {
@@ -117,7 +114,7 @@ namespace BoneHooks{
 	void UpdateHooks::Nullsub()
 	{
 		_Nullsub();
-		for (auto hairPair : Hair::hairs){
+		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs){
 			hairPair.second->UpdateBones();
 		}
 	}

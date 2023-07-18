@@ -6,12 +6,17 @@
 class MarkerRender
 {
 public:
-	MarkerRender();
 	~MarkerRender();
+	static MarkerRender* GetSingleton()
+	{
+		static MarkerRender markerRender;
+		return &markerRender;
+	}
 	void InitRenderResources();
 	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 
 private:
+	MarkerRender() {}
 	void CompileShaders(ID3D11Device* pDevice);
 	void CreateBuffers(ID3D11Device* pDevice);
 	void CreateLayoutsAndStates(ID3D11Device* pDevice);
@@ -69,8 +74,6 @@ private:
 	std::shared_ptr<DirectX::ModelMesh> m_pArrowMesh;
 	ID3D11Buffer*                       m_pArrowVertexBuffer = nullptr;
 	ID3D11Buffer*                       m_pArrowIndexBuffer = nullptr;
-
-	std::unique_ptr<DirectX::DX11::CommonStates> m_pStates;
 
 	void printHResult(HRESULT hr)
 	{

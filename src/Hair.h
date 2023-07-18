@@ -1,11 +1,11 @@
 #pragma once
 #include "AMD_TressFX.h"
+#include "MarkerRender.h"
 #include "ShaderCompiler.h"
 #include "SkyrimGPUInterface.h"
 #include "TressFXHairObject.h"
 #include "TressFXSDFCollision.h"
 #include "TressFXSimulation.h"
-#include "MarkerRender.h"
 #include <d3d11.h>
 typedef float BoneMatrix[4][4];
 #define BONE_MATRIX_SIZE 16 * sizeof(float)
@@ -13,58 +13,29 @@ class TressFXPPLL;
 class Hair
 {
 public:
-	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name);
-	void                      UpdateVariables();
-	void                      Draw();
-	bool                      Simulate();
-	void                      DrawDebugMarkers();
-	void                      RunTestEffect();
-	void                      UpdateBones();
-	RE::NiTransform*          GetBoneTransforms();
-	SkyrimGPUResourceManager* m_pManager;
+	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames);
+	void UpdateVariables();
+	void Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO);
+	bool Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation);
+	void TransitionRenderingToSim(ID3D11DeviceContext* pContext);
+	void DrawDebugMarkers();
+	void UpdateBones();
 
-	//static
-	static void ReloadAllHairs();
+	EI_StringHash      m_hairName;
+	AMD::TressFXAsset* m_hairAsset;
 
-	static inline std::unordered_map<std::string, Hair*> hairs;
-	static inline D3D11_VIEWPORT                         currentViewport;
-	static inline DirectX::XMMATRIX                             gameViewMatrix;
-	static inline DirectX::XMMATRIX                             gameProjMatrix;
-	static inline DirectX::XMMATRIX                             gameViewProjMatrix;
-	static inline DirectX::XMMATRIX                             gameProjMatrixUnjittered;
-	static const int                                            m_numBones = 8;
+	size_t          m_numBones = 0;
+	std::string     m_boneNames[AMD_TRESSFX_MAX_NUM_BONES];
+	RE::NiAVObject* m_pBones[AMD_TRESSFX_MAX_NUM_BONES];
+	RE::NiTransform m_boneTransforms[AMD_TRESSFX_MAX_NUM_BONES];
 
 private:
-
 	void                      initialize(SkyrimGPUResourceManager* pManager);
-	ID3DX11Effect*            create_effect(std::string_view filePath, std::vector<D3D_SHADER_MACRO> defines = std::vector<D3D_SHADER_MACRO>());
-	EI_StringHash             m_hairName;
-	AMD::TressFXAsset*        m_hairAsset;
 	ID3D11Texture2D*          m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource*              m_hairEIResource;
 	ID3D11InputLayout*        renderInputLayout;
 	TressFXHairObject*        m_pHairObject;
-	ID3DX11Effect*            m_pStrandEffect;
-	ID3DX11Effect*            m_pQuadEffect;
-	ID3DX11Effect*            m_pTressFXSimEffect;
-	ID3DX11Effect*            m_pTressFXSDFCollisionEffect;
-	ID3DX11Effect*            m_pTestEffect;
-	EI_PSO*                   m_pBuildPSO;
-	EI_PSO*                   m_pReadPSO;
-	FullscreenPass*           m_pFullscreenPass;
-	TressFXPPLL*              m_pPPLL = NULL;
-	TressFXSimulation         mSimulation;
-	TressFXSDFCollisionSystem mSDFCollisionSystem;
-	int                       m_nPPLLNodes;
-	bool                      m_gotSkeleton = false;
-	RE::NiAVObject*           m_pBones[AMD_TRESSFX_MAX_NUM_BONES];
-	RE::NiTransform           m_boneTransforms[AMD_TRESSFX_MAX_NUM_BONES];
-	DirectX::XMMATRIX         viewXMMatrix;
-	DirectX::XMMATRIX         projXMMatrix;
 
-
-	//debug
-	ID3D11RasterizerState* m_pWireframeRSState;
-	MarkerRender*          m_pMarkerRenderer;
+	bool m_gotSkeleton = false;
 };

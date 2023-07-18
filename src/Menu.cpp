@@ -2,7 +2,7 @@
 
 #include <dinput.h>
 #include <magic_enum.hpp>
-#include "Hair.h"
+#include "PPLLObject.h"
 #define SETTING_MENU_TOGGLEKEY "Toggle Key"
 
 void SetupImGuiStyle()
@@ -274,7 +274,8 @@ void Menu::DrawSettings()
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	if (ImGui::Button("Reload hairs")) {
-		Hair::ReloadAllHairs();
+		
+		PPLLObject::GetSingleton()->ReloadAllHairs();
 	}
 	int i = 0;
 	for (glm::mat4 mat : matrices) {

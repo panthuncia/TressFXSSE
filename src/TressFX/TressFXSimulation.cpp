@@ -67,6 +67,7 @@ void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHai
         EI_Dispatch(commandContext, *mIntegrationAndGlobalShapeConstraintsPSO, numOfGroupsForCS_VertexLevel);
         hairObject.mPosTanCollection.UAVBarrier(commandContext);
     }
+	logger::info("2");
     // VelocityShockPropagation
     {
         EI_Dispatch(commandContext, *mVelocityShockPropagationPSO, numOfGroupsForCS_StrandLevel);

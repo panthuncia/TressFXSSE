@@ -1,7 +1,6 @@
 #include "MarkerRender.h"
 #include <d3dcompiler.h>
 #include <vector>
-#include <CommonStates.h>
 //why does windows.h brick std::min and max
 #undef max
 #undef min
@@ -17,9 +16,6 @@ struct float3
 		float v[3];
 	};
 };
-MarkerRender::MarkerRender() {
-	InitRenderResources();
-}
 
 MarkerRender::~MarkerRender() {
 
@@ -246,8 +242,6 @@ void MarkerRender::LoadMeshes(ID3D11Device* pDevice)
 	const auto modelPath = std::filesystem::current_path() /= "data\\Meshes\\MarkerRender\\arrow.vbo"sv;
 	m_pArrowModel = DirectX::Model::CreateFromVBO(pDevice, modelPath.c_str());
 	m_pArrowMesh = m_pArrowModel->meshes[0];
-
-	m_pStates = std::make_unique<DirectX::DX11::CommonStates>(pDevice);
 
 	WaveFrontReader<uint16_t> wfReader;
 
