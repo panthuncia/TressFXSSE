@@ -275,7 +275,7 @@ void Menu::DrawSettings()
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	if (ImGui::Button("Reload hairs")) {
 		
-		PPLLObject::GetSingleton()->ReloadAllHairs();
+		PPLLObject::GetSingleton()->m_doReload = true;
 	}
 	int i = 0;
 	for (glm::mat4 mat : matrices) {

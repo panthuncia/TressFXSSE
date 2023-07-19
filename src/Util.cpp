@@ -237,4 +237,12 @@ namespace Util
 
 		return result;
 	}
+	std::string ptr_to_string(void* ptr)
+	{
+		const void*       address = static_cast<const void*>(ptr);
+		std::stringstream ss;
+		ss << address;
+		std::string name = ss.str();
+		return name;
+	}
 }

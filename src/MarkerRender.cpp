@@ -1,6 +1,7 @@
 #include "MarkerRender.h"
 #include <d3dcompiler.h>
 #include <vector>
+#include "Util.h"
 //why does windows.h brick std::min and max
 #undef max
 #undef min
@@ -395,9 +396,9 @@ void MarkerRender::CompileShaders(ID3D11Device* pDevice) {
 
 	logger::info("Result:");
 	printHResult(psResult);
-	logger::info("Pixel blob address: {}", ptr_to_string(m_pPixelShaderBlob->GetBufferPointer()));
-	logger::info("Vertex blob address: {}", ptr_to_string(m_pVertexShaderBlob->GetBufferPointer()));
-	logger::info("D3D11Device address: {}", ptr_to_string(pDevice));
+	logger::info("Pixel blob address: {}", Util::ptr_to_string(m_pPixelShaderBlob->GetBufferPointer()));
+	logger::info("Vertex blob address: {}", Util::ptr_to_string(m_pVertexShaderBlob->GetBufferPointer()));
+	logger::info("D3D11Device address: {}", Util::ptr_to_string(pDevice));
 
 	logger::info("Create vertex shader");
 	vsResult = pDevice->CreateVertexShader(

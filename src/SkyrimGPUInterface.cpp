@@ -27,13 +27,6 @@ void printEffectVariables(ID3DX11Effect* pEffect){
 		logger::info("{}", varDesc.Name);
 	}
 }
-std::string ptr_to_string(void* ptr) {
-	const void* address = static_cast<const void*>(ptr);
-	std::stringstream ss;
-	ss << address;
-	std::string name = ss.str();
-	return name;
-}
 void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
 {
 	Microsoft::WRL::ComPtr<ID3D11Device> m_d3dDevice;
@@ -469,15 +462,15 @@ extern "C"
 	{
 		logger::info("In destroy:");
 		UNREFERENCED_PARAMETER(pDevice);
-		if (pRW2D->uav != NULL)
+		if (pRW2D->uav != nullptr)
 			pRW2D->uav->Release();
-		if (pRW2D->srv != NULL)
+		if (pRW2D->srv != nullptr)
 			pRW2D->srv->Release();
-		if (pRW2D->rtv != NULL)
+		if (pRW2D->rtv != nullptr)
 			pRW2D->rtv->Release();
-		if (pRW2D->buffer != NULL)
+		if (pRW2D->buffer != nullptr)
 			pRW2D->buffer->Release();
-		if (pRW2D->texture != NULL)
+		if (pRW2D->texture != nullptr)
 			pRW2D->texture->Release();
 		delete pRW2D;
 	}

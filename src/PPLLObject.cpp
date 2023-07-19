@@ -27,20 +27,10 @@ PPLLObject::~PPLLObject() {
 void PPLLObject::ReloadAllHairs()
 {
 	for (auto hair : m_hairs) {
-		EI_StringHash name = hair.second->m_hairName;
-		auto          asset = hair.second->m_hairAsset;
-		auto          pBoneNames = hair.second->m_boneNames;
-		std::vector<std::string> boneNames;
-		for (uint16_t i = 0; i < hair.second->m_numBones; i++) {
-			boneNames.push_back(pBoneNames[i]);
-		}
-		m_hairs.erase(name);
-		delete (hair.second);
-		auto                 pManager = SkyrimGPUResourceManager::GetInstance();
-		ID3D11DeviceContext* pContext;
-		pManager->m_pDevice->GetImmediateContext(&pContext);
-		m_hairs[name] = new Hair(asset, pManager, pContext, name, boneNames);
+		hair.second->Reload();
 	}
+	m_doReload = false;
+	logger::info("Done reloading");
 }
 
 void PPLLObject::Draw() {
@@ -171,9 +161,7 @@ void PPLLObject::Initialize() {
 	logger::info("Create collision effect");
 	m_pTressFXSDFCollisionEffect = ShaderCompiler::CreateEffect("data\\Shaders\\TressFX\\cTressFXSDFCollision.fx"sv, m_pManager->m_pDevice);
 	//printEffectVariables(m_pTressFXSDFCollisionEffect);
-	logger::info("Create test effect");
-	m_pTestEffect = ShaderCompiler::CreateEffect("data\\Shaders\\TressFX\\bufferTest.fx"sv, m_pManager->m_pDevice);
-	//printEffectVariables(m_pTestEffect);
+
 	// See TressFXLayouts.h
 	// Global storage for layouts.
 

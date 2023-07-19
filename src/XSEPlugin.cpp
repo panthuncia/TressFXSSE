@@ -66,10 +66,10 @@ void Load()
 	//hdt::g_skinSingleHeadGeometryEventDispatcher.addListener(hdt::ActorManager::instance());
 	hookFacegen();
 	hookMainDraw();
+	hookGameLoop();
 
 	SKSE::AllocTrampoline(1 << 10);
 	BoneHooks::Install();
-	//hookGameLoop();
 	logger::info("Installed skeleton hook");
 }
 

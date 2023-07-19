@@ -48,6 +48,10 @@ struct Main_Update
 	static void thunk()
 	{
 		//call main game loop
+		PPLLObject* ppll = PPLLObject::GetSingleton();
+		if (ppll->m_doReload) {
+			ppll->ReloadAllHairs();
+		}
 		func();
 	}
 	static inline REL::Relocation<decltype(thunk)> func;

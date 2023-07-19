@@ -10,7 +10,6 @@
 #include "PPLLObject.h"
 void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 void        printEffectVariables(ID3DX11Effect* pEffect);
-std::string ptr_to_string(void* ptr);
 
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames)
 {
@@ -27,6 +26,23 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	for (int i = 0; i < m_numBones; i++) {
 		m_boneNames[i] = boneNames[i];
 	}
+}
+
+Hair::~Hair() {
+	auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
+	logger::info("Destroying hair");
+	m_pHairObject->Destroy((EI_Device*)pDevice);
+	m_hairSRV->Release();
+	m_hairTexture->Release();
+	delete m_hairEIResource;
+}
+
+void Hair::Reload() {
+	auto pManager = SkyrimGPUResourceManager::GetInstance();
+	m_pHairObject->Destroy((EI_Device*)pManager->m_pDevice);
+	ID3D11DeviceContext* pContext;
+	pManager->m_pDevice->GetImmediateContext(&pContext);
+	m_pHairObject->Create(m_hairAsset, (EI_Device*)pManager, (EI_CommandContextRef)pContext, m_hairName, m_hairEIResource);
 }
 
 void Hair::DrawDebugMarkers()
@@ -201,14 +217,14 @@ void Hair::UpdateBones()
 		logger::warn("Player skeleton is null!");
 		return;
 	}
+	//ListChildren(playerSkeleton->skeleton->GetChildren());
 	if (!m_gotSkeleton) {
-		logger::info("Skeleton address: {}", ptr_to_string(playerSkeleton));
+		logger::info("Skeleton address: {}", Util::ptr_to_string(playerSkeleton));
 		//ListChildren(playerSkeleton->skeleton->GetChildren());
 		logger::info("Got player skeleton");
 		m_gotSkeleton = true;
 		logger::info("Num bones to get: {}", m_numBones);
 		for (uint16_t i = 0; i < m_numBones; i++) {
-			logger::info("?");
 			logger::info("Getting bone, name: {}", m_boneNames[i]);
 			m_pBones[i] = playerSkeleton->skeleton->GetObjectByName(m_boneNames[i]);
 		}

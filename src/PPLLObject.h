@@ -24,8 +24,8 @@ public:
 	void Simulate();
 	void Draw();
 
-	//static
 	void ReloadAllHairs();
+	bool m_doReload = false;
 
 	std::unordered_map<std::string, Hair*> m_hairs;
 	D3D11_VIEWPORT    m_currentViewport;
@@ -46,7 +46,6 @@ private:
 	PPLLObject();
 	ID3DX11Effect*            m_pTressFXSimEffect;
 	ID3DX11Effect*            m_pTressFXSDFCollisionEffect;
-	ID3DX11Effect*            m_pTestEffect;
 	EI_PSO*                   m_pBuildPSO;
 	EI_PSO*                   m_pReadPSO;
 	FullscreenPass*           m_pFullscreenPass;

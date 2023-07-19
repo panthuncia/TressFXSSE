@@ -95,14 +95,6 @@ private:
 			logger::error("E_UNEXPECTED");
 		}
 	}
-	std::string ptr_to_string(void* ptr)
-	{
-		const void*       address = static_cast<const void*>(ptr);
-		std::stringstream ss;
-		ss << address;
-		std::string name = ss.str();
-		return name;
-	}
 
 	void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
 	{

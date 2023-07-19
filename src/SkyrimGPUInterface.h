@@ -80,11 +80,11 @@ EXTERN_C
 class EI_Resource
 {
 public:
-	ID3D11Buffer* buffer;
-	ID3D11Texture2D* texture;
-	ID3D11UnorderedAccessView* uav;
-	ID3D11ShaderResourceView* srv;
-	ID3D11ShaderResourceView* rtv;//renderable texture view- same as SRV in DX11, sushi has a separate type
+	ID3D11Buffer* buffer = nullptr;
+	ID3D11Texture2D* texture = nullptr;
+	ID3D11UnorderedAccessView* uav = nullptr;
+	ID3D11ShaderResourceView*  srv = nullptr;
+	ID3D11ShaderResourceView*  rtv = nullptr;  //renderable texture view- same as SRV in DX11, sushi has a separate type
 	D3D11_BUFFER_DESC desc;
 	bool hasUAV;
 	uint32_t structCount;

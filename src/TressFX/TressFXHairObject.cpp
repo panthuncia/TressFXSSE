@@ -211,10 +211,11 @@ void TressFXHairObject::Destroy(EI_Device* pDevice)
         EI_Destroy(pDevice, mHairTexCoords);
     }
     AMD_SAFE_RESOURCE_DELETE(pDevice, mHairVertexRenderParams);
-
+	logger::info("1");
 
     // destroy Sim resources.
     EI_DestroyBindSet(pDevice, m_pSimBindSet);
+	logger::info("2");
     AMD_SAFE_RESOURCE_DELETE(pDevice, mInitialHairPositionsBuffer);
     AMD_SAFE_RESOURCE_DELETE(pDevice, mGlobalRotationsBuffer);
     AMD_SAFE_RESOURCE_DELETE(pDevice, mHairRestLengthSRVBuffer);
@@ -225,8 +226,9 @@ void TressFXHairObject::Destroy(EI_Device* pDevice)
 
     // destroy shared resources
     mPosTanCollection.Destroy(pDevice);
-
+	logger::info("3");
     EI_IB_Destroy(pDevice, mpIndexBuffer);
+	logger::info("4");
 }
 
 
