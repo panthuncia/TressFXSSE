@@ -43,6 +43,7 @@ void PPLLObject::Draw() {
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
 	pContext->RSSetState(m_pWireframeRSState);
 
+	//draw strands
 	for (auto hair : m_hairs) {
 		hair.second->Draw(pContext, m_pBuildPSO);
 	}
@@ -56,6 +57,11 @@ void PPLLObject::Draw() {
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
 	//m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
+
+	//draw debug markers
+	for (auto hair : m_hairs) {
+		hair.second->DrawDebugMarkers();
+	}
 	//end draw
 }
 

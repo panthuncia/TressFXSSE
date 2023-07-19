@@ -143,10 +143,9 @@ void Hair::UpdateVariables()
 }
 void Hair::Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO)
 {
-	DrawDebugMarkers();
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *pPSO);
-	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 }
+
 
 void Hair::TransitionRenderingToSim(ID3D11DeviceContext* pContext) {
 	m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
