@@ -130,31 +130,6 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 		asset->ProcessAsset();
 		ppll->m_hairs[assetName] = new Hair(asset, gpuResourceManager, pContext, assetName.c_str(), bones);
 	}
-	/*logger::info("Opening file");
-	fopen_s(&fp, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfx", "rb");
-	if (!fp) {
-		logger::info("File opening failed");
-	}
-	FILE* fpBone;
-	logger::info("Opening bone file");
-	fopen_s(&fpBone, "D:\\Skyrim installations\\1.5.97\\FoxHair.tfxbone", "rb");
-	if (!fpBone) {
-		logger::info("File opening failed");
-	}
-	AMD::TressFXAsset* asset = new AMD::TressFXAsset();
-	logger::info("Loading hair data");
-	asset->LoadHairData(fp);
-	logger::info("Closing file");
-	fclose(fp);
-	logger::info("Loading bone data");
-	SkeletonInterface placeholder;
-	asset->LoadBoneData(placeholder, fpBone);
-	logger::info("Closing file");
-	fclose(fp);
-	logger::info("Processing asset");
-	asset->ProcessAsset();
-	std::vector<std::string> boneNames = { "NPC Root [Root]", "NPC COM [COM ]", "NPC Pelvis [Pelv]", "NPC Spine [Spn0]", "NPC Spine1 [Spn1]", "NPC Spine2 [Spn2]", "NPC Neck [Neck]", "NPC Head [Head]" };
-	ppll->m_hairs["hairTest"] = new Hair(asset, gpuResourceManager, pContext, "hairTest", boneNames);*/
 }
 HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	IDXGIAdapter*               pAdapter,
