@@ -307,6 +307,16 @@ void Hair::UpdateOffsets(float x, float y, float z, float scale) {
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
 	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x, y, z, scale);
 }
+void Hair::ExportOffsets(float x, float y, float z, float scale) {
+	json offsets;
+	offsets["x"] = x;
+	offsets["y"] = y;
+	offsets["z"] = z;
+	offsets["scale"] = scale;
+	m_config["offsets"] = offsets;
+	std::ofstream file(m_configPath);
+	file << m_config;
+}
 void Hair::initialize(SkyrimGPUResourceManager* pManager)
 {
 	//create texture and SRV (empty for now)

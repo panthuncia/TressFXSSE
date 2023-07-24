@@ -322,17 +322,17 @@ void Menu::DrawSliders() {
 		ImGui::EndCombo();
 	}
 	slidersUpdated = false;
-	ImGui::SliderFloat("X", &xSliderValue, -100.0f, 100.0f);
+	ImGui::SliderFloat("X", &xSliderValue, -20.0f, 20.0f);
 	if (!(fabs(xSliderValue - lastXSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastXSliderValue = xSliderValue;
 		slidersUpdated = true;
 	}
-	ImGui::SliderFloat("Y", &ySliderValue, -100.0f, 100.0f);
+	ImGui::SliderFloat("Y", &ySliderValue, -20.0f, 20.0f);
 	if (!(fabs(ySliderValue - lastYSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastYSliderValue = ySliderValue;
 		slidersUpdated = true;
 	}
-	ImGui::SliderFloat("Z", &zSliderValue, -100.0f, 100.0f);
+	ImGui::SliderFloat("Z", &zSliderValue, -20.0f, 20.0f);
 	if (!(fabs(zSliderValue - lastZSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastZSliderValue = zSliderValue;
 		slidersUpdated = true;
@@ -341,6 +341,9 @@ void Menu::DrawSliders() {
 	if (!(fabs(sSliderValue - lastSSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastSSliderValue = sSliderValue;
 		slidersUpdated = true;
+	}
+	if (ImGui::Button("Export offsets")) {
+		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);
 	}
 }
 void Menu::DrawQueues()

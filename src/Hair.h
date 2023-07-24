@@ -7,6 +7,8 @@
 #include "TressFXSDFCollision.h"
 #include "TressFXSimulation.h"
 #include <d3d11.h>
+#include <nlohmann/json.hpp>
+
 typedef float BoneMatrix[4][4];
 #define BONE_MATRIX_SIZE 16 * sizeof(float)
 class TressFXPPLL;
@@ -22,9 +24,11 @@ public:
 	void TransitionRenderingToSim(ID3D11DeviceContext* pContext);
 	void DrawDebugMarkers();
 	void UpdateBones();
-
+	void ExportOffsets(float x, float y, float z, float scale);
 	void Reload();
 
+	std::string        m_configPath;
+	nlohmann::json               m_config;
 	EI_StringHash      m_hairName;
 	AMD::TressFXAsset* m_hairAsset;
 

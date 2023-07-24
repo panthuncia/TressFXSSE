@@ -136,6 +136,28 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 		logger::info("Processing asset");
 		asset->ProcessAsset();
 		ppll->m_hairs[assetName] = new Hair(asset, gpuResourceManager, pContext, assetName.c_str(), bones);
+		if (data.contains("offsets")) {
+			auto  offsets = data["offsets"];
+			float x = 0.0;
+			if (offsets.contains("x")) {
+				x = offsets["x"].get<float>();
+			}
+			float y = 0.0;
+			if (offsets.contains("y")) {
+				y = offsets["y"].get<float>();
+			}
+			float z = 0.0;
+			if (offsets.contains("z")) {
+				z = offsets["z"].get<float>();
+			}
+			float scale = 0.0;
+			if (offsets.contains("scale")) {
+				scale = offsets["scale"].get<float>();
+			}
+			ppll->m_hairs[assetName]->m_configPath = configFile;
+			ppll->m_hairs[assetName]->m_config = data;
+			ppll->m_hairs[assetName]->UpdateOffsets(x, y, z, scale);
+		}
 	}
 }
 HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
