@@ -123,8 +123,8 @@ void Hair::UpdateVariables()
 
 	TressFXSimulationSettings settings;
 	settings.m_damping = 0.035;
-	settings.m_localConstraintStiffness = 1.0;  //0.8;
-	settings.m_globalConstraintStiffness = 0.05;  //0.0;
+	settings.m_localConstraintStiffness = .8;  //0.8;
+	settings.m_globalConstraintStiffness = 0.01;  //0.0;
 	settings.m_globalConstraintsRange = 1.0;
 	settings.m_gravityMagnitude = 0.09;
 	settings.m_vspAccelThreshold = 1.208;
@@ -136,7 +136,7 @@ void Hair::UpdateVariables()
 	settings.m_windDirection[1] = 0;
 	settings.m_windDirection[2] = 0;
 	settings.m_localConstraintsIterations = 3;
-	settings.m_lengthConstraintsIterations = 20;  //?
+	settings.m_lengthConstraintsIterations = 6;  //?
 
 	logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
@@ -218,20 +218,32 @@ void Hair::UpdateBones()
 	}
 	//ListChildren(playerSkeleton->skeleton->GetChildren());
 	if (!m_gotSkeleton) {
-		logger::info("Skeleton address: {}", Util::ptr_to_string(playerSkeleton));
+		//logger::info("Skeleton address: {}", Util::ptr_to_string(playerSkeleton));
 		//ListChildren(playerSkeleton->skeleton->GetChildren());
 		logger::info("Got player skeleton");
 		m_gotSkeleton = true;
 		logger::info("Num bones to get: {}", m_numBones);
 		for (uint16_t i = 0; i < m_numBones; i++) {
 			logger::info("Getting bone, name: {}", m_boneNames[i]);
+			if (m_boneNames[i] == "SKIP_NODE") {
+				m_pBones[i] = nullptr;
+			}
 			m_pBones[i] = playerSkeleton->skeleton->GetObjectByName(m_boneNames[i]);
 		}
 		logger::info("Got all bones");
 	}
 	//get current transforms now, because they're borked later
 	for (uint16_t i = 0; i < m_numBones; i++) {
+		//skip unneeded nodes
+		if (m_pBones[i] == nullptr) {
+			m_boneTransforms[i] = RE::NiTransform();
+			continue;
+		}
 		m_boneTransforms[i] = m_pBones[i]->world;
+	}
+	for (uint16_t i = 0; i < m_numBones; i++) {
+		float size = m_pBones[i]->world.scale;
+		Menu::GetSingleton()->DrawFloat(size, "node scale:");
 	}
 }
 bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation)
@@ -245,11 +257,16 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
+	logger::info("num bones: {}", m_numBones);
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = m_boneTransforms[i].translate;
 		auto boneRot = m_boneTransforms[i].rotate.Transpose();
 		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
-		
+		logger::info("Bone transform:");
+		logger::info("{}, {}, {}, {}", boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0.0);
+		logger::info("{}, {}, {}, {}", boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0.0);
+		logger::info("{}, {}, {}, {}", boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0.0);
+		logger::info("{}, {}, {}, {}", bonePos.x, bonePos.y, bonePos.z, 0.0);
 		matrices->push_back(boneRot.entry[0][0]);
 		matrices->push_back(boneRot.entry[0][1]);
 		matrices->push_back(boneRot.entry[0][2]);
@@ -285,7 +302,11 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 	logger::info("simulation complete");
 	return true;
 }
-
+void Hair::UpdateOffsets(float x, float y, float z, float scale) {
+	ID3D11Device* pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
+	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
+	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x, y, z, scale);
+}
 void Hair::initialize(SkyrimGPUResourceManager* pManager)
 {
 	//create texture and SRV (empty for now)

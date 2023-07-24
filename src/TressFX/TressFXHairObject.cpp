@@ -70,6 +70,48 @@ static inline void InitialDataUpload(EI_CommandContextRef    commandContext,
 }
 
 
+void TressFXHairObject::UpdateStrandOffsets(AMD::TressFXAsset* asset, EI_Device* pDevice, EI_CommandContextRef commandContext, float x, float y, float z, float scale)
+{
+	UNREFERENCED_PARAMETER(scale);
+	UNREFERENCED_PARAMETER(pDevice);
+	uint32_t data_size = sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice;
+	AMD::TRESSFX::float4* updatedVertices = (AMD::TRESSFX::float4*)EI_Malloc(data_size);
+	memcpy(updatedVertices, asset->m_positions, data_size);
+	for (int i = 0; i < m_NumTotalVertice; i++) {
+		updatedVertices[i].x *= scale;
+		updatedVertices[i].y *= scale;
+		updatedVertices[i].z *= scale;
+		updatedVertices[i].x += x;
+		updatedVertices[i].y += y;
+		updatedVertices[i].z += z;
+	}
+	InitialDataUpload(commandContext, updatedVertices, data_size, *mInitialHairPositionsBuffer);
+	EI_Safe_Free(updatedVertices);
+
+	//destroy and recreate bind set
+	/*EI_DestroyBindSet(pDevice, m_pSimBindSet);
+	TressFXBindSet bindSet;
+
+	EI_SRV SRVs[7];
+
+	SRVs[0] = EI_GetSRV(mInitialHairPositionsBuffer);
+	SRVs[1] = EI_GetSRV(mGlobalRotationsBuffer);
+	SRVs[2] = EI_GetSRV(mHairRestLengthSRVBuffer);
+	SRVs[3] = EI_GetSRV(mHairStrandTypeBuffer);
+	SRVs[4] = EI_GetSRV(mHairRefVecsInLocalFrameBuffer);
+	SRVs[5] = EI_GetSRV(mFollowHairRootOffsetBuffer);
+	SRVs[6] = EI_GetSRV(mBoneSkinningDataBuffer);
+
+	bindSet.nSRVs = AMD_ARRAY_SIZE(SRVs);
+	bindSet.nUAVs = 0;
+	bindSet.uavs = nullptr;
+	bindSet.srvs = SRVs;
+	bindSet.values = &(mSimCB);
+	bindSet.nBytes = sizeof(TressFXSimulationConstantBuffer);
+
+	m_pSimBindSet = EI_CreateBindSet(pDevice, bindSet);*/
+	
+}
 
 // Load simulation compute shader and create all buffers
 // command context used to upload initial data.

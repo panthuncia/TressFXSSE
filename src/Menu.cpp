@@ -277,6 +277,74 @@ void Menu::DrawSettings()
 		
 		PPLLObject::GetSingleton()->m_doReload = true;
 	}
+	
+	DrawSliders();
+	DrawQueues();
+
+
+	ImGui::End();
+	ImGuiStyle& style = ImGui::GetStyle();
+	style = oldStyle;
+
+	ImGui::Render();
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+void Menu::DrawSliders() {
+	if (ImGui::BeginCombo("Select actor", activeActors[selectedActor].c_str())) {
+		for (uint32_t i = 0; i < activeActors.size(); i++) {
+			bool isSelected = (selectedActor == i);
+			if (ImGui::Selectable(activeActors[i].c_str(), isSelected)) {
+				selectedActor = i;
+			}
+
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (isSelected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	if (ImGui::BeginCombo("Select hair", activeHairs[selectedHair].c_str())) {
+		for (uint32_t i = 0; i < activeHairs.size(); i++) {
+			bool isSelected = (selectedHair == i);
+			if (ImGui::Selectable(activeHairs[i].c_str(), isSelected)) {
+				selectedHair = i;
+			}
+
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (isSelected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+	slidersUpdated = false;
+	ImGui::SliderFloat("X", &xSliderValue, -100.0f, 100.0f);
+	if (!(fabs(xSliderValue - lastXSliderValue) < std::numeric_limits<float>::epsilon())) {
+		lastXSliderValue = xSliderValue;
+		slidersUpdated = true;
+	}
+	ImGui::SliderFloat("Y", &ySliderValue, -100.0f, 100.0f);
+	if (!(fabs(ySliderValue - lastYSliderValue) < std::numeric_limits<float>::epsilon())) {
+		lastYSliderValue = ySliderValue;
+		slidersUpdated = true;
+	}
+	ImGui::SliderFloat("Z", &zSliderValue, -100.0f, 100.0f);
+	if (!(fabs(zSliderValue - lastZSliderValue) < std::numeric_limits<float>::epsilon())) {
+		lastZSliderValue = zSliderValue;
+		slidersUpdated = true;
+	}
+	ImGui::SliderFloat("SCALE", &sSliderValue, 0.2f, 2.0f);
+	if (!(fabs(sSliderValue - lastSSliderValue) < std::numeric_limits<float>::epsilon())) {
+		lastSSliderValue = sSliderValue;
+		slidersUpdated = true;
+	}
+}
+void Menu::DrawQueues()
+{
 	int i = 0;
 	for (glm::mat4 mat : matrices) {
 		ImGui::BeginTable("matrix", 4);
@@ -321,7 +389,7 @@ void Menu::DrawSettings()
 
 	ImGui::Spacing();
 	int j = 0;
-	for (float val: floats){
+	for (float val : floats) {
 		ImGui::Text(floatNames[j].c_str());
 		ImGui::Text(std::to_string(val).c_str());
 		ImGui::Spacing();
@@ -330,12 +398,27 @@ void Menu::DrawSettings()
 	floats.clear();
 	floatNames.clear();
 
-	ImGui::End();
-	ImGuiStyle& style = ImGui::GetStyle();
-	style = oldStyle;
+	int l = 0;
+	for (float val : ints) {
+		ImGui::Text(intNames[j].c_str());
+		ImGui::Text(std::to_string(val).c_str());
+		ImGui::Spacing();
+		l += 1;
+	}
+	ints.clear();
+	intNames.clear();
+}
 
-	ImGui::Render();
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+void Menu::SetActiveActors(std::vector<std::string> actors) {
+	activeActors = actors;
+}
+
+void Menu::UpdateActiveHairs(std::vector<std::string> hairs){
+	activeHairs = hairs;
+}
+
+std::string Menu::GetSelectedHair() {
+	return activeHairs[selectedHair];
 }
 
 void Menu::DrawOverlay()
@@ -387,6 +470,10 @@ void Menu::DrawVector3(RE::NiPoint3 vec, std::string name)
 void Menu::DrawFloat(float val, std::string name) {
 	floats.push_back(val);
 	floatNames.push_back(name);
+}
+void Menu::DrawInt(uint16_t integer, std::string name) {
+	ints.push_back(integer);
+	intNames.push_back(name);
 }
 void Menu::DrawMatrix(glm::mat4 mat, std::string name)
 {

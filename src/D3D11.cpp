@@ -83,6 +83,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 	FILE* fp;
 	const auto configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
 	const auto assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
+	std::vector<std::string> usedNames;
 	for (const auto& entry : std::filesystem::directory_iterator(configPath)) {
 		std::string configFile = entry.path().generic_string(); 
 		logger::info("config file: {}", configFile);
@@ -93,10 +94,16 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 		} catch(json::parse_error e) {
 			logger::error("Error parsing hair config at {}: {}", configFile, e.what());
 		}
-		std::string assetName = data["asset"].get<std::string>();
+		std::string baseAssetName = data["asset"].get<std::string>();
+		std::string assetName = baseAssetName;
+		uint32_t i = 1;
+		while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {
+			i += 1;
+			assetName = baseAssetName + "#" + std::to_string(i); 
+		}
 		logger::info("Asset name: {}", assetName);
-		std::string assetFileName = assetName + ".tfx";
-		std::string boneFileName = assetName + ".tfxbone";  
+		std::string assetFileName = baseAssetName + ".tfx";
+		std::string boneFileName = baseAssetName + ".tfxbone";  
 		const auto thisAssetPath = assetPath / assetFileName;
 		const auto thisBonePath = assetPath / boneFileName;
 
@@ -184,6 +191,11 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	LoadTFXUserFiles(ppll, gpuResourceManager, context);
 
 	Menu::GetSingleton()->Init(swapchain, device, context);
+	std::vector<std::string> hairNames;
+	for (const auto& [k, v] : PPLLObject::GetSingleton()->m_hairs) {
+		hairNames.push_back(k);
+	}
+	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
 	return hr;
 }
 

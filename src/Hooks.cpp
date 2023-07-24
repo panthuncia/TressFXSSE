@@ -26,6 +26,13 @@ struct BSFaceGenNiNode_FixSkinInstances
 			auto bnpc = skyrim_cast<RE::TESNPC*>(a_skeleton->GetUserData()->GetBaseObject());
 			if (bnpc && bnpc->faceNPC)
 				formId = bnpc->faceNPC->formID;
+			logger::info("Num headparts: {}", bnpc->numHeadParts);
+			for (int i = 0; i < bnpc->numHeadParts; i++) {
+				logger::info("id: {}", bnpc->headParts[i]->formEditorID);
+				for (int j = 0; j < RE::BGSHeadPart::MorphIndices::kTotal; j++) {
+					logger::info("morph: {}", bnpc->headParts[i]->morphs[j].model);
+				}
+			}
 		}
 		//logger::info("4");
 		logger::info("SkinAllGeometry {} {}, {}, (formid {} base form {} head template form {})",

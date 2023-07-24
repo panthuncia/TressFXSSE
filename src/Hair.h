@@ -15,6 +15,7 @@ class Hair
 public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames);
 	~Hair();
+	void UpdateOffsets(float x, float y, float z, float scale);
 	void UpdateVariables();
 	void Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO);
 	bool Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation);

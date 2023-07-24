@@ -93,6 +93,9 @@ public:
                 EI_SRV             hairColorTextureSRV);
     void Destroy(EI_Device* pDevice);
 
+	//for repositioning strands
+	void UpdateStrandOffsets(AMD::TressFXAsset* asset, EI_Device* pDevice, EI_CommandContextRef commandContext, float x, float y, float z, float scale);
+
     // pBoneMatricesInWS constains array of column major bone matrices in world space.
     void UpdateBoneMatrices(EI_CommandContextRef  commandContext, const float* pBoneMatricesInWS, size_t sizeOfBoneMatrices);
 

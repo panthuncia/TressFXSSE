@@ -50,8 +50,6 @@ void TressFXSimulation::Shutdown(EI_Device* pDevice)
 
 void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHairObject& hairObject)
 {
-	logger::info("num strands: {}", hairObject.m_NumTotalStrands);
-	logger::info("num vertices: {}", hairObject.m_NumTotalVertice);
     // For dispatching one thread per one vertex
     int numOfGroupsForCS_VertexLevel = (int)((float)hairObject.m_NumTotalVertice / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
 

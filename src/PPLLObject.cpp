@@ -73,6 +73,16 @@ void PPLLObject::Simulate() {
 }
 
 void PPLLObject::UpdateVariables(){
+	//if positional sliders changed, update relevant hair
+	auto menu = Menu::GetSingleton();
+	if (menu->slidersUpdated) {
+		float x = menu->xSliderValue;
+		float y = menu->ySliderValue;
+		float z = menu->zSliderValue;
+		float scale = menu->sSliderValue;
+		logger::info("Updating offsets: {}, X: {}, Y: {}, Z: {} Scale: {}", menu->activeHairs[menu->selectedHair], x, y, z, scale);
+		PPLLObject::GetSingleton()->m_hairs[menu->activeHairs[menu->selectedHair]]->UpdateOffsets(x, y, z, scale);
+	}
 	//setup variables
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	m_pManager->m_pSwapChain->GetDesc(&swapDesc);
@@ -123,8 +133,8 @@ void PPLLObject::UpdateVariables(){
 	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	m_viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
 
-	Menu::GetSingleton()->DrawMatrix(m_projXMMatrix, "TFX projection");
-	Menu::GetSingleton()->DrawMatrix(m_viewXMMatrix, "TFX VP");
+	//Menu::GetSingleton()->DrawMatrix(m_projXMMatrix, "TFX projection");
+	//Menu::GetSingleton()->DrawMatrix(m_viewXMMatrix, "TFX VP");
 
 	//tps->thirdPersonCameraObj->world.rotate
 	//view-projection matrix
@@ -133,7 +143,7 @@ void PPLLObject::UpdateVariables(){
 
 	DirectX::XMMATRIX viewProjectionMatrix = m_projXMMatrix * m_viewXMMatrix;
 
-	Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "TFX VP");
+	//Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "TFX VP");
 
 	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
