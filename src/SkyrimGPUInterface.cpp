@@ -757,16 +757,10 @@ extern "C"
 	}
 	void Clear2D(EI_CommandContext* pContext, EI_RWTexture2D* pResource, AMD::uint32 clearValue)
 	{
-		UNREFERENCED_PARAMETER(pResource);
-		//logger::info("Clear 2d");
 		ID3D11DeviceContext* pDeviceContext = (ID3D11DeviceContext*)*((ID3D11DeviceContext**)pContext);
 		uint32_t clearVector[4];
 		clearVector[0] = clearVector[1] = clearVector[2] = clearVector[3] = clearValue;
-		//ID3D11UnorderedAccessView* nullUAV = nullptr;
-		pDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, NULL, NULL, 0, 0, NULL, NULL);
-		//logger::info("cleared 2d");
-		//pResource->uav->ClearUInt(clearVector);
-		//pResource->resource->UAVBarrier();
+		pDeviceContext->ClearUnorderedAccessViewUint(pResource->uav, clearVector);
 	}
 	void ClearCounter(EI_CommandContextRef pContext,
 		EI_StructuredBufferRef               sb,

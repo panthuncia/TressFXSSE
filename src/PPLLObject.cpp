@@ -41,7 +41,7 @@ void PPLLObject::Draw() {
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
 	m_pPPLL->Clear((EI_CommandContextRef)pContext);
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
-	pContext->RSSetState(m_pWireframeRSState);
+	//pContext->RSSetState(m_pWireframeRSState);
 
 	//draw strands
 	for (auto hair : m_hairs) {
@@ -55,13 +55,14 @@ void PPLLObject::Draw() {
 	//necessary?
 	//UnbindUAVS();
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
-	//m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
+	m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
 
 	//draw debug markers
 	for (auto hair : m_hairs) {
 		hair.second->DrawDebugMarkers();
 	}
+
 	//end draw
 }
 
