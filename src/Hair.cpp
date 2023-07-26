@@ -8,15 +8,16 @@
 #include <RE/S/ShadowState.h>
 #include <Menu.h>
 #include "PPLLObject.h"
+#include "DDSTextureLoader.h"
 void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 void        printEffectVariables(ID3DX11Effect* pEffect);
 
-Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames)
+Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)
 {
 	m_pHairObject = new TressFXHairObject;
 	m_hairAsset = asset;
 	m_hairEIResource = new EI_Resource;
-	initialize(resourceManager);
+	initialize(resourceManager, texturePath);
 	m_hairEIResource->srv = m_hairSRV;
 	m_pHairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, m_hairEIResource);
 	logger::info("Created hair object");
@@ -98,7 +99,7 @@ void Hair::UpdateVariables()
 
 	//ratio TODO: What does this do?
 	ppll->m_pStrandEffect->GetVariableByName("g_Ratio")->AsScalar()->SetFloat(0.5);
-	//shading params, cbuffer tressfxShadeParameters
+	//strand shading params, cbuffer tressfxShadeParameters
 	ppll->m_pStrandEffect->GetVariableByName("g_HairShadowAlpha")->AsScalar()->SetFloat(0.004);
 	ppll->m_pStrandEffect->GetVariableByName("g_FiberRadius")->AsScalar()->SetFloat(0.21);
 	ppll->m_pStrandEffect->GetVariableByName("g_FiberSpacing")->AsScalar()->SetFloat(0.1);
@@ -109,6 +110,16 @@ void Hair::UpdateVariables()
 	ppll->m_pStrandEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(0.072);
 	ppll->m_pStrandEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(11.8);
 	ppll->m_pStrandEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(32);
+
+	//quad shading params, cbuffer tressfxShadeParameters
+	ppll->m_pQuadEffect->GetVariableByName("g_HairShadowAlpha")->AsScalar()->SetFloat(0.004);
+	ppll->m_pQuadEffect->GetVariableByName("g_FiberRadius")->AsScalar()->SetFloat(0.21);
+	ppll->m_pQuadEffect->GetVariableByName("g_FiberSpacing")->AsScalar()->SetFloat(0.1);
+	ppll->m_pQuadEffect->GetVariableByName("g_MatBaseColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matBaseColorVector));
+	ppll->m_pQuadEffect->GetVariableByName("g_MatKValue")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matKValueVector));
+	ppll->m_pQuadEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(0.072);
+	ppll->m_pQuadEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(11.8);
+	ppll->m_pQuadEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(32);
 	//sim parameters
 	//float4 g_Wind;
 	//float4 g_Wind1;
@@ -317,10 +328,14 @@ void Hair::ExportOffsets(float x, float y, float z, float scale) {
 	std::ofstream file(m_configPath);
 	file << m_config;
 }
-void Hair::initialize(SkyrimGPUResourceManager* pManager)
+void Hair::initialize(SkyrimGPUResourceManager* pManager, std::filesystem::path texturePath)
 {
 	//create texture and SRV (empty for now)
-	D3D11_TEXTURE2D_DESC desc;
+	ID3D11DeviceContext* pContext;
+	pManager->GetInstance()->m_pDevice->GetImmediateContext(&pContext);
+	DirectX::CreateDDSTextureFromFile(pManager->GetInstance()->m_pDevice, pContext, texturePath.generic_wstring().c_str(), &m_hairTexture, &m_hairSRV);
+	logger::info("loaded hair texture");
+	/*D3D11_TEXTURE2D_DESC desc;
 	desc.Width = 256;
 	desc.Height = 256;
 	desc.MipLevels = desc.ArraySize = 1;
@@ -333,7 +348,7 @@ void Hair::initialize(SkyrimGPUResourceManager* pManager)
 	desc.MiscFlags = 0;
 	pManager = pManager;
 	pManager->m_pDevice->CreateTexture2D(&desc, NULL, &m_hairTexture);
-	pManager->m_pDevice->CreateShaderResourceView(m_hairTexture, nullptr, &m_hairSRV);
+	pManager->m_pDevice->CreateShaderResourceView(m_hairTexture, nullptr, &m_hairSRV);*/
 	//create input layout for rendering
 	//D3D11_INPUT_ELEMENT_DESC inputDesc;
 	//pManager->m_pDevice->CreateInputLayout();

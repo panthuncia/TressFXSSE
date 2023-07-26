@@ -663,16 +663,15 @@ extern "C"
 		(void)commandContext;
 		SU_ASSERT(set.nSRVs == pLayout->srvs.size());
 		for (AMD::int32 i = 0; i < set.nSRVs; i++) {
-			//pLayout->srvs[i]->BindResource(set.srvs[i]);
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			//logger::info("Binding SRV: {}", pLayout->srvNames[i]);
+			logger::info("Binding SRV: {}", pLayout->srvNames[i]);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 		}
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
 		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
-			//logger::info("Binding UAV: {}", pLayout->uavNames[i]);
+			logger::info("Binding UAV: {}", pLayout->uavNames[i]);
 			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
@@ -776,6 +775,11 @@ extern "C"
 		//pDeviceContext->Count
 		//sb.uav->SetInitialCount(clearValue);
 	}
+	void UnbindUAVs(ID3D11DeviceContext* pContext){
+		ID3D11UnorderedAccessView* UAV_NULL[2] = { NULL };
+		UINT counts[2] = { 0xFFFFFFFF };
+		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 1, 2, UAV_NULL, counts);
+	}
 }
 EI_PSO* GetPSO(const char* techniqueName, ID3DX11Effect* pEffect)
 {
@@ -842,18 +846,20 @@ void FullscreenPass::Draw(SkyrimGPUResourceManager* pManager, EI_PSO* pPSO)
 		pManager->m_pDevice->GetImmediateContext(&pContext);
 		logger::info("Setting vertex buffers");
 		pContext->IASetVertexBuffers(0, 1, &m_QuadVertexBuffer , m_DataSize, m_DataOffsets);
+		pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		//pEffect->BindVertexBuffer("QuadStream", m_QuadVertexBuffer);
 		D3DX11_TECHNIQUE_DESC techDesc;
 		pTechnique->GetDesc(&techDesc);
 		uint32_t numPasses = techDesc.Passes;
 		for (uint32_t i = 0; i < numPasses; ++i) {
+			logger::info("Fullscreen pass...");
 			auto pass = pTechnique->GetPassByIndex(i);
 			if (pass->IsValid()) {
 			} else {
 				logger::info("Pass: Effect is invalid!");
 			}
 			pass->Apply(0, pContext);
-			pContext->Draw(4, 0);
+			pContext->DrawInstanced(4, 1, 0, 0);
 		}
 		/*bool   techniqueFound = pEffect->Begin(pTechnique, &numPasses);
 		if (techniqueFound) {

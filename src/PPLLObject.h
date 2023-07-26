@@ -54,6 +54,10 @@ private:
 	TressFXSDFCollisionSystem m_SDFCollisionSystem;
 	int                       m_nPPLLNodes;
 	SkyrimGPUResourceManager* m_pManager;
+	ID3D11BlendState*         m_pPPLLBuildBlendState;
+	ID3D11BlendState*         m_pPPLLReadBlendState;
+	ID3D11DepthStencilState*  m_pPPLLReadDepthStencilState;
+	ID3D11RasterizerState*    m_pPPLLReadRasterizerState;
 
 		//debug
 	ID3D11RasterizerState* m_pWireframeRSState;

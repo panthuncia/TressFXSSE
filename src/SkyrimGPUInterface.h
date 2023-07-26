@@ -76,6 +76,7 @@ EXTERN_C
 	void ClearCounter(EI_CommandContextRef pContext,
 				   EI_StructuredBufferRef               sb,
 				   AMD::uint32                          clearValue);
+	void UnbindUAVs(ID3D11DeviceContext* pContext);
 	}
 class EI_Resource
 {

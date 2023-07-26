@@ -83,6 +83,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 	FILE* fp;
 	const auto configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
 	const auto assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
+	const auto texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX";
 	std::vector<std::string> usedNames;
 	for (const auto& entry : std::filesystem::directory_iterator(configPath)) {
 		std::string configFile = entry.path().generic_string(); 
@@ -95,6 +96,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 			logger::error("Error parsing hair config at {}: {}", configFile, e.what());
 		}
 		std::string baseAssetName = data["asset"].get<std::string>();
+		const auto  assetTexturePath = texturePath / (baseAssetName + ".dds");
 		std::string assetName = baseAssetName;
 		uint32_t i = 1;
 		while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {
@@ -135,7 +137,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 		fclose(fp);
 		logger::info("Processing asset");
 		asset->ProcessAsset();
-		ppll->m_hairs[assetName] = new Hair(asset, gpuResourceManager, pContext, assetName.c_str(), bones);
+		ppll->m_hairs[assetName] = new Hair(asset, gpuResourceManager, pContext, assetName.c_str(), bones, assetTexturePath);
 		if (data.contains("offsets")) {
 			auto  offsets = data["offsets"];
 			float x = 0.0;

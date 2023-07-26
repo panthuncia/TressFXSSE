@@ -122,20 +122,20 @@ namespace ShaderCompiler
 			logger::info("Effect is valid");
 		else
 			logger::info("Error: Effect is invalid!");
-		/*D3DX11_EFFECT_DESC effectDesc;
-	pStrandEffect->GetDesc(&effectDesc);
+	/*D3DX11_EFFECT_DESC effectDesc;
+	pEffect->GetDesc(&effectDesc);
 	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
 	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
 	logger::info("Number of constant buffers: {}", effectDesc.ConstantBuffers);
 	for (uint16_t i = 0; i < effectDesc.ConstantBuffers; ++i) {
-		auto var = pStrandEffect->GetConstantBufferByIndex(i);
+		auto var = pEffect->GetConstantBufferByIndex(i);
 		D3DX11_EFFECT_VARIABLE_DESC vardesc;
 		var->GetDesc(&vardesc);
 		logger::info("{}", vardesc.Name);
 	}
 	logger::info("Number of variables: {}", effectDesc.GlobalVariables);
 	for (uint16_t i = 0; i < effectDesc.GlobalVariables; ++i) {
-		auto var = pStrandEffect->GetVariableByIndex(i);
+		auto var = pEffect->GetVariableByIndex(i);
 		D3DX11_EFFECT_VARIABLE_DESC vardesc;
 		var->GetDesc(&vardesc);
 		logger::info("{}", vardesc.Name);

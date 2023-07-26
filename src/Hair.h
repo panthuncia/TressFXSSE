@@ -15,7 +15,7 @@ class TressFXPPLL;
 class Hair
 {
 public:
-	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames);
+	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath);
 	~Hair();
 	void UpdateOffsets(float x, float y, float z, float scale);
 	void UpdateVariables();
@@ -38,8 +38,9 @@ public:
 	RE::NiTransform m_boneTransforms[AMD_TRESSFX_MAX_NUM_BONES];
 
 private:
-	void                      initialize(SkyrimGPUResourceManager* pManager);
-	ID3D11Texture2D*          m_hairTexture;
+	void                      initialize(SkyrimGPUResourceManager* pManager, std::filesystem::path texturePath);
+	//ID3D11Texture2D*          m_hairTexture;
+	ID3D11Resource*           m_hairTexture;
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource*              m_hairEIResource;
 	TressFXHairObject*        m_pHairObject;

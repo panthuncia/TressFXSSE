@@ -16,6 +16,8 @@ static const size_t PPLL_NODE_SIZE = 16;
 // These are globals, because there should really just be one instance.
 TressFXLayouts* g_TressFXLayouts = 0;
 
+void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
+
 PPLLObject::PPLLObject() : m_Simulation(), m_SDFCollisionSystem()
 {
 	
@@ -42,6 +44,22 @@ void PPLLObject::Draw() {
 	m_pPPLL->Clear((EI_CommandContextRef)pContext);
 	m_pPPLL->BindForBuild((EI_CommandContextRef)pContext);
 	//pContext->RSSetState(m_pWireframeRSState);
+	//store variable states
+	float originalBlendFactor;
+	UINT originalSampleMask;
+	ID3D11BlendState* originalBlendState;
+	pContext->OMGetBlendState(&originalBlendState, &originalBlendFactor, &originalSampleMask);
+	ID3D11DepthStencilState* originalDepthStencilState;
+	UINT                     originalStencilRef;
+	pContext->OMGetDepthStencilState(&originalDepthStencilState, &originalStencilRef);
+	ID3D11RasterizerState* originalRSState;
+	pContext->RSGetState(&originalRSState);
+	ID3D11DepthStencilView* originalDepthStencil;
+	ID3D11RenderTargetView* originalRenderTarget;
+	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
+
+	//set new states
+	pContext->OMSetBlendState(m_pPPLLBuildBlendState, &originalBlendFactor, 0x000000FF);
 
 	//draw strands
 	for (auto hair : m_hairs) {
@@ -53,16 +71,29 @@ void PPLLObject::Draw() {
 	// TODO move this to a clear "after all pos and tan usage by rendering" place.
 	
 	//necessary?
-	//UnbindUAVS();
+	UnbindUAVs(pContext);
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	logger::info("Bind for read");
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
+	pContext->OMSetBlendState(m_pPPLLReadBlendState, &originalBlendFactor, 0x000000FF);
+	pContext->OMSetDepthStencilState(m_pPPLLReadDepthStencilState, originalStencilRef);
+	pContext->RSSetState(m_pPPLLReadRasterizerState);
+	pContext->OMSetRenderTargets(1, &originalRenderTarget, nullptr);
 	m_pFullscreenPass->Draw(m_pManager, m_pReadPSO);
+	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
+	//logger::info("End of read debug");
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
+	
+	//reset states
+	pContext->OMSetBlendState(originalBlendState, &originalBlendFactor, originalSampleMask);
+	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	pContext->RSSetState(originalRSState);
+	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
 
 	//draw debug markers
 	for (auto hair : m_hairs) {
 		hair.second->DrawDebugMarkers();
 	}
-
 	//end draw
 }
 
@@ -147,6 +178,8 @@ void PPLLObject::UpdateVariables(){
 	//Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "TFX VP");
 
 	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
+	
+	//strand effect vars
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
 	m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
 	m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&m_viewXMMatrix));
@@ -158,6 +191,14 @@ void PPLLObject::UpdateVariables(){
 	DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(m_currentViewport.TopLeftX, m_currentViewport.TopLeftY, m_currentViewport.Width, m_currentViewport.Height);
 	m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
 
+	//quad effect vars
+	m_pQuadEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
+	m_pQuadEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
+	m_pQuadEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&cameraPosVectorScaled));
+	
+	//TODO: shadows
+	m_pQuadEffect->GetVariableByName("bEnableShadows")->AsScalar()->SetBool(false);
+	
 }
 
 void PPLLObject::Initialize() {
@@ -264,4 +305,76 @@ void PPLLObject::Initialize() {
 	rsState.MultisampleEnable = true;
 	rsState.AntialiasedLineEnable = false;
 	m_pManager->m_pDevice->CreateRasterizerState(&rsState, &m_pWireframeRSState);
+
+	//create blend state
+	D3D11_BLEND_DESC blendDesc;
+	blendDesc.AlphaToCoverageEnable = false;
+	blendDesc.IndependentBlendEnable = false;
+	D3D11_RENDER_TARGET_BLEND_DESC targetBlendDesc;
+	targetBlendDesc.BlendEnable = false;
+	targetBlendDesc.SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	targetBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
+	targetBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	targetBlendDesc.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	targetBlendDesc.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+	targetBlendDesc.RenderTargetWriteMask = 0;
+	targetBlendDesc.SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0] = targetBlendDesc;
+	blendDesc.RenderTarget[1] = targetBlendDesc;
+	blendDesc.RenderTarget[2] = targetBlendDesc;
+	blendDesc.RenderTarget[3] = targetBlendDesc;
+	blendDesc.RenderTarget[4] = targetBlendDesc;
+	blendDesc.RenderTarget[5] = targetBlendDesc;
+	blendDesc.RenderTarget[6] = targetBlendDesc;
+	blendDesc.RenderTarget[7] = targetBlendDesc;
+	m_pManager->m_pDevice->CreateBlendState(&blendDesc, &m_pPPLLBuildBlendState);
+
+	targetBlendDesc.BlendEnable = true;
+	targetBlendDesc.SrcBlend = D3D11_BLEND_ONE;
+	targetBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
+	targetBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	targetBlendDesc.DestBlend = D3D11_BLEND_SRC_ALPHA;
+	targetBlendDesc.DestBlendAlpha = D3D11_BLEND_ZERO;
+	targetBlendDesc.RenderTargetWriteMask = 0b00001111;
+	targetBlendDesc.SrcBlendAlpha = D3D11_BLEND_ZERO;
+	blendDesc.RenderTarget[0] = targetBlendDesc;
+	blendDesc.RenderTarget[1] = targetBlendDesc;
+	blendDesc.RenderTarget[2] = targetBlendDesc;
+	blendDesc.RenderTarget[3] = targetBlendDesc;
+	blendDesc.RenderTarget[4] = targetBlendDesc;
+	blendDesc.RenderTarget[5] = targetBlendDesc;
+	blendDesc.RenderTarget[6] = targetBlendDesc;
+	blendDesc.RenderTarget[7] = targetBlendDesc;
+	m_pManager->m_pDevice->CreateBlendState(&blendDesc, &m_pPPLLReadBlendState);
+	logger::info("Created blend state");
+
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+	depthStencilDesc.DepthEnable = false;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	depthStencilDesc.StencilEnable = true;
+	depthStencilDesc.StencilReadMask = 0b11111111;
+	depthStencilDesc.StencilWriteMask = 0;
+	D3D11_DEPTH_STENCILOP_DESC depthStencilopDesc;
+	depthStencilopDesc.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilopDesc.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilopDesc.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilopDesc.StencilFunc = D3D11_COMPARISON_LESS;
+	depthStencilDesc.FrontFace = depthStencilopDesc;
+	depthStencilDesc.BackFace = depthStencilopDesc;
+	m_pManager->m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pPPLLReadDepthStencilState);
+	logger::info("Created depth stencil state");
+
+	D3D11_RASTERIZER_DESC rasterizerDesc;
+	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	rasterizerDesc.CullMode = D3D11_CULL_NONE;
+	rasterizerDesc.FrontCounterClockwise = true;
+	rasterizerDesc.DepthBias = 0;
+	rasterizerDesc.DepthBiasClamp = 0.0f;
+	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	rasterizerDesc.DepthClipEnable = true;
+	rasterizerDesc.MultisampleEnable = true;
+	rasterizerDesc.AntialiasedLineEnable = false;
+	rasterizerDesc.ScissorEnable = false;
+	m_pManager->m_pDevice->CreateRasterizerState(&rasterizerDesc, &m_pPPLLReadRasterizerState);
 }
