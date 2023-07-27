@@ -39,6 +39,7 @@ public:
 	void DrawInt(uint16_t integer, std::string name);
 	void UpdateActiveHairs(std::vector<std::string> actors);
 	
+	//hair offsets
 	float xSliderValue = 0.0f;
 	float ySliderValue = 0.0f;
 	float zSliderValue = 0.0f;
@@ -47,7 +48,28 @@ public:
 	float lastYSliderValue = ySliderValue;
 	float lastZSliderValue = zSliderValue;
 	float lastSSliderValue = sSliderValue;
-	bool  slidersUpdated = false;
+	bool                     offsetSlidersUpdated = false;
+
+	//hair render and sim parameters
+	float                    fiberRadiusSliderValue = 0.210;
+	float                    fiberSpacingSliderValue = 0.1;
+	float                    fiberRatioSliderValue = 0.5;
+	float                    kdSliderValue = 0.07;
+	float                    ks1SliderValue = 0.17;
+	float                    ex1SliderValue = 14.4;
+	float                    ks2SliderValue = 0.72;
+	float                    ex2SliderValue = 11.8;
+	int                      localConstraintsIterationsSlider = 3;
+	int                      lengthConstraintsIterationsSlider = 3;
+	float                    localConstraintsStiffnessSlider = 0.9;
+	float                    globalConstraintsStiffnessSlider = 0.4;
+	float                    globalConstraintsRangeSlider = 0.3;
+	float                    dampingSlider = 0.06;
+	float                    vspAmountSlider = 0.75;
+	float                    vspAccelThresholdSlider = 1.2;
+	float                    hairOpacitySlider = 0.63;
+	float                    hairShadowAlphaSlider = 0.35;
+	bool                     thinTipCheckbox = true;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;
 	std::vector<std::string> activeHairs = { "NONE" };
@@ -59,7 +81,9 @@ private:
 	bool     settingToggleKey = false;
 	Menu() {}
 	void DrawQueues();
-	void DrawSliders();
+	void DrawOffsetSliders();
+	void           DrawHairSelector();
+	void           DrawHairParams();
 	const char*    KeyIdToString(uint32_t key);
 	const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey);
 

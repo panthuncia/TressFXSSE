@@ -8,6 +8,8 @@
 #include "MarkerRender.h"
 #include <d3d11.h>
 #include "Hair.h"
+
+#define SU_MAX_LIGHTS 20
 class TressFXPPLL;
 class PPLLObject
 {

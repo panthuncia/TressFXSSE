@@ -104,10 +104,11 @@ void PPLLObject::Simulate() {
 	}
 }
 
-void PPLLObject::UpdateVariables(){
+void PPLLObject::UpdateVariables()
+{
 	//if positional sliders changed, update relevant hair
 	auto menu = Menu::GetSingleton();
-	if (menu->slidersUpdated) {
+	if (menu->offsetSlidersUpdated) {
 		float x = menu->xSliderValue;
 		float y = menu->ySliderValue;
 		float z = menu->zSliderValue;
@@ -115,6 +116,9 @@ void PPLLObject::UpdateVariables(){
 		logger::info("Updating offsets: {}, X: {}, Y: {}, Z: {} Scale: {}", menu->activeHairs[menu->selectedHair], x, y, z, scale);
 		PPLLObject::GetSingleton()->m_hairs[menu->activeHairs[menu->selectedHair]]->UpdateOffsets(x, y, z, scale);
 	}
+	//update hair parameters
+	//TODO: make not stupid
+	PPLLObject::GetSingleton()->m_hairs[menu->activeHairs[menu->selectedHair]]->SetRenderingAndSimParameters(menu->fiberRadiusSliderValue, menu->fiberSpacingSliderValue, menu->fiberRatioSliderValue, menu->kdSliderValue, menu->ks1SliderValue, menu->ex1SliderValue, menu->ks2SliderValue, menu->ex2SliderValue, menu->localConstraintsIterationsSlider, menu->lengthConstraintsIterationsSlider, menu->localConstraintsStiffnessSlider, menu->globalConstraintsStiffnessSlider, menu->globalConstraintsRangeSlider, menu->dampingSlider, menu->vspAmountSlider, menu->vspAccelThresholdSlider, menu->hairOpacitySlider, menu->hairShadowAlphaSlider, menu->thinTipCheckbox);
 	//setup variables
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	m_pManager->m_pSwapChain->GetDesc(&swapDesc);
@@ -178,7 +182,7 @@ void PPLLObject::UpdateVariables(){
 	//Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "TFX VP");
 
 	auto viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
-	
+
 	//strand effect vars
 	m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
 	m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
@@ -195,10 +199,85 @@ void PPLLObject::UpdateVariables(){
 	m_pQuadEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
 	m_pQuadEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
 	m_pQuadEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&cameraPosVectorScaled));
-	
+
 	//TODO: shadows
 	m_pQuadEffect->GetVariableByName("bEnableShadows")->AsScalar()->SetBool(false);
-	
+
+	//lights
+
+	/*uniform int    nNumLights;
+	uniform int    nLightShape[SU_MAX_LIGHTS];
+	uniform int    nLightIndex[SU_MAX_LIGHTS];
+	uniform float  fLightIntensity[SU_MAX_LIGHTS];
+	uniform float3 vLightPosWS[SU_MAX_LIGHTS];
+	uniform float3 vLightDirWS[SU_MAX_LIGHTS];
+	uniform float3 vLightColor[SU_MAX_LIGHTS];
+	uniform float3 vLightConeAngles[SU_MAX_LIGHTS];
+	uniform float3 vLightScaleWS[SU_MAX_LIGHTS];
+	uniform float4 vLightParams[SU_MAX_LIGHTS];
+	uniform float4 vLightOrientationWS[SU_MAX_LIGHTS];*/
+	int       nNumLights = 0;
+	int       nLightShape[SU_MAX_LIGHTS] = {0};
+	int       nLightIndex[SU_MAX_LIGHTS] = { 0 };
+	float     fLightIntensity[SU_MAX_LIGHTS] = { 0 };
+	glm::vec3 vLightPosWS[SU_MAX_LIGHTS] = {glm::vec3(0)};
+	glm::vec3 vLightDirWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 vLightColor[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 vLightConeAngles[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 vLightScaleWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec4 vLightParams[SU_MAX_LIGHTS] = { glm::vec4(0) };
+	glm::vec4 vLightOrientationWS[SU_MAX_LIGHTS] = { glm::vec4(0) };
+
+	auto accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
+
+	//auto shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+	auto  shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
+	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
+	auto& runtimeData = shadowSceneNode->GetRuntimeData();
+	for (auto& e : runtimeData.activePointLights) {
+		if (auto bsLight = e.get()) {
+			if (auto niLight = bsLight->light.get()) {
+				//only ambients for now
+				if (!bsLight->ambientLight) {
+					continue;
+				}
+				logger::info("Found ambient light");
+				nNumLights += 1;
+
+				//pos
+				RE::NiPoint3 pos = bsLight->worldTranslate;
+				logger::info("Light position: {}, {}, {}", pos.x, pos.y, pos.z);
+				vLightPosWS[nNumLights-1] = glm::vec3(pos.x, pos.y, pos.z);
+				
+				//color (rgb?)
+				auto color = niLight->ambient;
+				logger::info("Light color: {}, {}, {}", color.red, color.green, color.blue);
+				vLightColor[nNumLights - 1] = glm::vec3(color.red, color.green, color.blue);
+
+				//???
+				fLightIntensity[nNumLights - 1] = bsLight->lodDimmer;
+
+				//???
+				nLightShape[nNumLights - 1] = 3;
+				Menu::GetSingleton()->DrawVector3(vLightPosWS[nNumLights - 1], "light pos: ");
+				Menu::GetSingleton()->DrawVector3(vLightColor[nNumLights - 1], "light color: ");
+				Menu::GetSingleton()->DrawFloat(bsLight->lodDimmer,"lod dimmer: ");
+			}
+		}
+	}
+
+	m_pQuadEffect->GetVariableByName("nNumLights")->AsScalar()->SetInt(nNumLights);
+	m_pQuadEffect->GetVariableByName("nLightShape")->AsScalar()->SetIntArray(nLightShape, 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("nLightIndex")->AsScalar()->SetIntArray(nLightIndex, 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("fLightIntensity")->AsScalar()->SetFloatArray(fLightIntensity, 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightPosWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightPosWS), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightDirWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightDirWS), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightColor")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightColor), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightConeAngles")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightConeAngles), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightScaleWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightScaleWS), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightParams")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightParams), 0, nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightOrientationWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightOrientationWS), 0, nNumLights);
+
 }
 
 void PPLLObject::Initialize() {

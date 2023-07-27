@@ -277,8 +277,9 @@ void Menu::DrawSettings()
 		
 		PPLLObject::GetSingleton()->m_doReload = true;
 	}
-	
-	DrawSliders();
+	DrawHairSelector();
+	DrawOffsetSliders();
+	DrawHairParams();
 	DrawQueues();
 
 
@@ -289,7 +290,29 @@ void Menu::DrawSettings()
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
-void Menu::DrawSliders() {
+void Menu::DrawHairParams() {
+	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Fiber Spacing", &fiberSpacingSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Fiber Ratio", &fiberRatioSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Kd", &kdSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Ks1", &ks1SliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Kx1", &ex1SliderValue, 0.0f, 20.0f);
+	ImGui::SliderFloat("Ks2", &ks2SliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Ex2", &ex2SliderValue, 0.0f, 20.0f);
+	ImGui::SliderInt("Local constraints iter.", &localConstraintsIterationsSlider, 0, 20);
+	ImGui::SliderInt("Length constraints iter.", &lengthConstraintsIterationsSlider, 1, 20);
+	ImGui::SliderFloat("Local constraints stiffness", &localConstraintsStiffnessSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("Global constraints stiffness", &globalConstraintsStiffnessSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("Global constraints range", &globalConstraintsRangeSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("Damping", &dampingSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("VSP amount", &vspAmountSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("VSP accel. threshold", &vspAccelThresholdSlider, 0.0f, 10.0f);
+	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
+	ImGui::Checkbox("Enable Feature", &thinTipCheckbox);
+}
+void Menu::DrawHairSelector()
+{
 	if (ImGui::BeginCombo("Select actor", activeActors[selectedActor].c_str())) {
 		for (uint32_t i = 0; i < activeActors.size(); i++) {
 			bool isSelected = (selectedActor == i);
@@ -321,26 +344,29 @@ void Menu::DrawSliders() {
 
 		ImGui::EndCombo();
 	}
-	slidersUpdated = false;
+}
+void Menu::DrawOffsetSliders()
+{
+	offsetSlidersUpdated = false;
 	ImGui::SliderFloat("X", &xSliderValue, -20.0f, 20.0f);
 	if (!(fabs(xSliderValue - lastXSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastXSliderValue = xSliderValue;
-		slidersUpdated = true;
+		offsetSlidersUpdated = true;
 	}
 	ImGui::SliderFloat("Y", &ySliderValue, -20.0f, 20.0f);
 	if (!(fabs(ySliderValue - lastYSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastYSliderValue = ySliderValue;
-		slidersUpdated = true;
+		offsetSlidersUpdated = true;
 	}
 	ImGui::SliderFloat("Z", &zSliderValue, -20.0f, 20.0f);
 	if (!(fabs(zSliderValue - lastZSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastZSliderValue = zSliderValue;
-		slidersUpdated = true;
+		offsetSlidersUpdated = true;
 	}
 	ImGui::SliderFloat("SCALE", &sSliderValue, 0.2f, 2.0f);
 	if (!(fabs(sSliderValue - lastSSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastSSliderValue = sSliderValue;
-		slidersUpdated = true;
+		offsetSlidersUpdated = true;
 	}
 	if (ImGui::Button("Export offsets")) {
 		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);

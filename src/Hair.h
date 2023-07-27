@@ -19,6 +19,8 @@ public:
 	~Hair();
 	void UpdateOffsets(float x, float y, float z, float scale);
 	void UpdateVariables();
+	//lol
+	void SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip);
 	void Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO);
 	bool Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation);
 	void TransitionRenderingToSim(ID3D11DeviceContext* pContext);
@@ -44,6 +46,29 @@ private:
 	ID3D11ShaderResourceView* m_hairSRV;
 	EI_Resource*              m_hairEIResource;
 	TressFXHairObject*        m_pHairObject;
+	float                     m_currentOffsets[4];
 
+	//rendering and sim parameters
+	float m_fiberRadius = 0.210;
+	float m_fiberSpacing = 0.1;
+	float m_fiberRatio = 0.5;
+	float m_kd = 0.07;
+	float m_ks1 = 0.17;
+	float m_ex1 = 14.4;
+	float m_ks2 = 0.72;
+	float m_ex2 = 11.8;
+	int m_localConstraintsIterations = 3;
+	int m_lengthConstraintsIterations = 3;
+	float m_localConstraintsStiffness = 0.9;
+	float m_globalConstraintsStiffness = 0.4;
+	float m_globalConstraintsRange = 0.3;
+	float m_damping = 0.06;
+	float m_vspAmount = 0.75;
+	float m_vspAccelThreshold = 1.2;
+	float m_hairOpacity = 0.63;
+	float m_hairShadowAlpha = 0.35;
+	bool  m_thinTip = true;
+
+	//if we have obtained bones
 	bool m_gotSkeleton = false;
 };
