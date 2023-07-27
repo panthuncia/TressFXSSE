@@ -301,7 +301,7 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Ex2", &ex2SliderValue, 0.0f, 20.0f);
 	ImGui::SliderInt("Local constraints iter.", &localConstraintsIterationsSlider, 0, 20);
 	ImGui::SliderInt("Length constraints iter.", &lengthConstraintsIterationsSlider, 1, 20);
-	ImGui::SliderFloat("Local constraints stiffness", &localConstraintsStiffnessSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("Local constraints stiffness", &localConstraintsStiffnessSlider, 0.0f, 5.0f);
 	ImGui::SliderFloat("Global constraints stiffness", &globalConstraintsStiffnessSlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Global constraints range", &globalConstraintsRangeSlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Damping", &dampingSlider, 0.0f, 1.0f);

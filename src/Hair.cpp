@@ -44,7 +44,7 @@ void Hair::Reload() {
 	ID3D11DeviceContext* pContext;
 	pManager->m_pDevice->GetImmediateContext(&pContext);
 	m_pHairObject->Create(m_hairAsset, (EI_Device*)pManager, (EI_CommandContextRef)pContext, m_hairName, m_hairEIResource);
-	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
+	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
 }
 
 void Hair::DrawDebugMarkers()
@@ -339,7 +339,7 @@ void Hair::UpdateOffsets(float x, float y, float z, float scale) {
 	m_currentOffsets[1] = y;
 	m_currentOffsets[2] = z;
 	m_currentOffsets[3] = scale;
-	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale * Util::RenderScale);
+	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
 }
 void Hair::ExportOffsets(float x, float y, float z, float scale) {
 	json offsets;
