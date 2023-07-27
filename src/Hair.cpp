@@ -84,7 +84,7 @@ void Hair::DrawDebugMarkers()
 	MarkerRender::GetSingleton()->DrawMarkers(positions, cameraWorld, ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
 }
 
-void Hair::UpdateVariables()
+void Hair::UpdateVariables(float gravityMagnitude)
 {
 	logger::info("In hair UpdateVariables");
 	if (!m_gotSkeleton)
@@ -138,7 +138,7 @@ void Hair::UpdateVariables()
 	settings.m_localConstraintStiffness = m_localConstraintsStiffness;                                             //0.8;
 	settings.m_globalConstraintStiffness = m_globalConstraintsStiffness;  //0.0;
 	settings.m_globalConstraintsRange = m_globalConstraintsRange;
-	settings.m_gravityMagnitude = 0.09;
+	settings.m_gravityMagnitude = gravityMagnitude;
 	settings.m_vspAccelThreshold = m_vspAccelThreshold;
 	settings.m_vspCoeff = m_vspAmount;
 	settings.m_tipSeparation = 0;
@@ -348,6 +348,31 @@ void Hair::ExportOffsets(float x, float y, float z, float scale) {
 	offsets["z"] = z;
 	offsets["scale"] = scale;
 	m_config["offsets"] = offsets;
+	std::ofstream file(m_configPath);
+	file << m_config;
+}
+void Hair::ExportParameters() {
+	json parameters;
+	parameters["fiberRadius"] = m_fiberRadius;
+	parameters["fiberSpacing"] = m_fiberSpacing;
+	parameters["fiberRatio"] = m_fiberRatio;
+	parameters["kd"] = m_kd;
+	parameters["ks1"] = m_ks1;
+	parameters["ex1"] = m_ex1;
+	parameters["ks2"] = m_ks2;
+	parameters["ex2"] = m_ex2;
+	parameters["hairOpacity"] = m_hairOpacity;
+	parameters["hairShadowAlpha"] = m_hairShadowAlpha;
+	parameters["thinTip"] = m_thinTip;
+	parameters["localConstraintsIterations"] = m_localConstraintsIterations;
+	parameters["lengthConstraintsIterations"] = m_lengthConstraintsIterations;
+	parameters["localConstraintsStiffness"] = m_localConstraintsStiffness;
+	parameters["globalConstraintsStiffness"] = m_globalConstraintsStiffness;
+	parameters["globalConstraintsRange"] = m_globalConstraintsRange;
+	parameters["damping"] = m_damping;
+	parameters["vspAmount"] = m_vspAmount;
+	parameters["vspAccelThreshold"] = m_vspAccelThreshold;
+	m_config["parameters"] = parameters;
 	std::ofstream file(m_configPath);
 	file << m_config;
 }

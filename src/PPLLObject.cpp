@@ -99,7 +99,7 @@ void PPLLObject::Draw() {
 
 void PPLLObject::Simulate() {
 	for (auto hair : m_hairs) {
-		hair.second->UpdateVariables();
+		hair.second->UpdateVariables(m_gravityMagnitude);
 		hair.second->Simulate(m_pManager, &m_Simulation);
 	}
 }
@@ -119,6 +119,7 @@ void PPLLObject::UpdateVariables()
 	//update hair parameters
 	//TODO: make not stupid
 	PPLLObject::GetSingleton()->m_hairs[menu->activeHairs[menu->selectedHair]]->SetRenderingAndSimParameters(menu->fiberRadiusSliderValue, menu->fiberSpacingSliderValue, menu->fiberRatioSliderValue, menu->kdSliderValue, menu->ks1SliderValue, menu->ex1SliderValue, menu->ks2SliderValue, menu->ex2SliderValue, menu->localConstraintsIterationsSlider, menu->lengthConstraintsIterationsSlider, menu->localConstraintsStiffnessSlider, menu->globalConstraintsStiffnessSlider, menu->globalConstraintsRangeSlider, menu->dampingSlider, menu->vspAmountSlider, menu->vspAccelThresholdSlider, menu->hairOpacitySlider, menu->hairShadowAlphaSlider, menu->thinTipCheckbox);
+	m_gravityMagnitude = Menu::GetSingleton()->gravityMagnitudeSlider;
 	//setup variables
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	m_pManager->m_pSwapChain->GetDesc(&swapDesc);

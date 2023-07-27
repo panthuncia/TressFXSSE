@@ -53,7 +53,7 @@ public:
 	//hair render and sim parameters
 	float                    fiberRadiusSliderValue = 0.210;
 	float                    fiberSpacingSliderValue = 0.1;
-	float                    fiberRatioSliderValue = 0.5;
+	float                    fiberRatioSliderValue = 0.1;
 	float                    kdSliderValue = 0.07;
 	float                    ks1SliderValue = 0.17;
 	float                    ex1SliderValue = 14.4;
@@ -70,6 +70,7 @@ public:
 	float                    hairOpacitySlider = 0.63;
 	float                    hairShadowAlphaSlider = 0.35;
 	bool                     thinTipCheckbox = true;
+	float                    gravityMagnitudeSlider = 0.09;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;
 	std::vector<std::string> activeHairs = { "NONE" };

@@ -61,6 +61,9 @@ private:
 	ID3D11DepthStencilState*  m_pPPLLReadDepthStencilState;
 	ID3D11RasterizerState*    m_pPPLLReadRasterizerState;
 
+	//global parameter
+	float m_gravityMagnitude = 0.09;
+
 		//debug
 	ID3D11RasterizerState* m_pWireframeRSState;
 	MarkerRender*          m_pMarkerRenderer;

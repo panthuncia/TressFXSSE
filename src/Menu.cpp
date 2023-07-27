@@ -309,7 +309,11 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("VSP accel. threshold", &vspAccelThresholdSlider, 0.0f, 10.0f);
 	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
-	ImGui::Checkbox("Enable Feature", &thinTipCheckbox);
+	ImGui::Checkbox("thin tip", &thinTipCheckbox);
+	ImGui::SliderFloat("Gravity magnitude", &gravityMagnitudeSlider, 0.0f, 1.0f);
+	if (ImGui::Button("Export parameters")) {
+		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
+	}
 }
 void Menu::DrawHairSelector()
 {

@@ -18,7 +18,7 @@ public:
 	Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* pManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath);
 	~Hair();
 	void UpdateOffsets(float x, float y, float z, float scale);
-	void UpdateVariables();
+	void UpdateVariables(float gravityMagnitude);
 	//lol
 	void SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip);
 	void Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO);
@@ -27,6 +27,7 @@ public:
 	void DrawDebugMarkers();
 	void UpdateBones();
 	void ExportOffsets(float x, float y, float z, float scale);
+	void ExportParameters();
 	void Reload();
 
 	std::string        m_configPath;
@@ -51,7 +52,7 @@ private:
 	//rendering and sim parameters
 	float m_fiberRadius = 0.210;
 	float m_fiberSpacing = 0.1;
-	float m_fiberRatio = 0.5;
+	float m_fiberRatio = 0.1;
 	float m_kd = 0.07;
 	float m_ks1 = 0.17;
 	float m_ex1 = 14.4;
