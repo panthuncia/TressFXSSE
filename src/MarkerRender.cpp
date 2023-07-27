@@ -71,13 +71,14 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	pDeviceContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargets, currentDSV);
 
 	//draw markers
+	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(0.002, 0.002, 0.002);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
 		//logger::info("cube world:");
 		//PrintXMMatrix(worldTransform);
 		//cbMatrix.worldViewProjectionMatrix = projectionMatrix * viewMatrix * worldTransform;
-		cbMatrix.world = worldTransform;
+		cbMatrix.world = worldTransform*cubeScale;
 		cbMatrix.view = viewMatrix;
 		cbMatrix.projection = projectionMatrix;
 		cbMatrix.color = DirectX::XMVectorSet(1.0, 1.0, 1.0, 1.0);
@@ -199,7 +200,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 	}
 	//draw cube arrows
-	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(2, 2, 2);
+	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.004, 0.004, 0.004);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;

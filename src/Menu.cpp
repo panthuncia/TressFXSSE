@@ -363,7 +363,7 @@ void Menu::DrawOffsetSliders()
 		lastZSliderValue = zSliderValue;
 		offsetSlidersUpdated = true;
 	}
-	ImGui::SliderFloat("SCALE", &sSliderValue, 0.2f, 2.0f);
+	ImGui::SliderFloat("SCALE", &sSliderValue, 0.2f, 10.0f);
 	if (!(fabs(sSliderValue - lastSSliderValue) < std::numeric_limits<float>::epsilon())) {
 		lastSSliderValue = sSliderValue;
 		offsetSlidersUpdated = true;

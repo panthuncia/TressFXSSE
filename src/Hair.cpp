@@ -54,7 +54,7 @@ void Hair::DrawDebugMarkers()
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		
 		auto              boneTransform = m_boneTransforms[i];
-		auto              bonePos = boneTransform.translate;
+		auto              bonePos = Util::ToRenderScale(glm::vec3(boneTransform.translate.x, boneTransform.translate.y, boneTransform.translate.z));
 		auto              boneRot = boneTransform.rotate;
 
 		//auto bonePos = m_bones[i]->world.translate;
@@ -70,7 +70,7 @@ void Hair::DrawDebugMarkers()
 	//auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
 
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
-	RE::NiPoint3  translation = playerCam->world.translate;
+	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
 	RE::NiMatrix3 rotation = playerCam->world.rotate;
 	
 	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
@@ -288,7 +288,8 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 	//ListChildren(children);
 	logger::info("num bones: {}", m_numBones);
 	for (uint16_t i = 0; i < m_numBones; i++) {
-		auto bonePos = m_boneTransforms[i].translate;
+		auto bonePos = Util::ToRenderScale(glm::vec3(m_boneTransforms[i].translate.x, m_boneTransforms[i].translate.y, m_boneTransforms[i].translate.z));
+
 		auto boneRot = m_boneTransforms[i].rotate.Transpose();
 		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
 		logger::info("Bone transform:");
@@ -338,7 +339,7 @@ void Hair::UpdateOffsets(float x, float y, float z, float scale) {
 	m_currentOffsets[1] = y;
 	m_currentOffsets[2] = z;
 	m_currentOffsets[3] = scale;
-	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x, y, z, scale);
+	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale * Util::RenderScale);
 }
 void Hair::ExportOffsets(float x, float y, float z, float scale) {
 	json offsets;
