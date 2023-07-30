@@ -2,7 +2,6 @@
 #include "ShaderCompiler.h"
 #include "TressFXLayouts.h"
 #include "TressFXPPLL.h"
-#include "glm/ext/matrix_common.hpp"
 #include "Util.h"
 #include "Menu.h"
 
@@ -60,6 +59,8 @@ void PPLLObject::Draw() {
 
 	//set new states
 	pContext->OMSetBlendState(m_pPPLLBuildBlendState, &originalBlendFactor, 0x000000FF);
+	pContext->OMSetDepthStencilState(m_pPPLLBuildDepthStencilState, originalStencilRef);
+	pContext->RSSetState(m_pPPLLBuildRasterizerState);
 
 	//draw strands
 	for (auto hair : m_hairs) {
@@ -87,6 +88,7 @@ void PPLLObject::Draw() {
 	//reset states
 	pContext->OMSetBlendState(originalBlendState, &originalBlendFactor, originalSampleMask);
 	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
 	pContext->RSSetState(originalRSState);
 	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
 
@@ -94,6 +96,19 @@ void PPLLObject::Draw() {
 	for (auto hair : m_hairs) {
 		hair.second->DrawDebugMarkers();
 	}
+	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
+	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
+	RE::NiMatrix3 rotation = playerCam->world.rotate;
+
+	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
+	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
+	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0,
+		rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0,
+		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
+		0, 0, 0, 1);
+	auto cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
+	logger::info("Drawing {} lights", m_lightPositions.size());
+	MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, cameraWorld, m_viewXMMatrix, m_projXMMatrix);
 	//end draw
 }
 
@@ -217,71 +232,90 @@ void PPLLObject::UpdateVariables()
 	uniform float3 vLightScaleWS[SU_MAX_LIGHTS];
 	uniform float4 vLightParams[SU_MAX_LIGHTS];
 	uniform float4 vLightOrientationWS[SU_MAX_LIGHTS];*/
-	int       nNumLights = 0;
-	int       nLightShape[SU_MAX_LIGHTS] = {0};
-	int       nLightIndex[SU_MAX_LIGHTS] = { 0 };
-	float     fLightIntensity[SU_MAX_LIGHTS] = { 0 };
-	glm::vec3 vLightPosWS[SU_MAX_LIGHTS] = {glm::vec3(0)};
-	glm::vec3 vLightDirWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
-	glm::vec3 vLightColor[SU_MAX_LIGHTS] = { glm::vec3(0) };
-	glm::vec3 vLightConeAngles[SU_MAX_LIGHTS] = { glm::vec3(0) };
-	glm::vec3 vLightScaleWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
-	glm::vec4 vLightParams[SU_MAX_LIGHTS] = { glm::vec4(0) };
-	glm::vec4 vLightOrientationWS[SU_MAX_LIGHTS] = { glm::vec4(0) };
 
+	m_pQuadEffect->GetVariableByName("nNumLights")->AsScalar()->SetInt(m_nNumLights);
+	m_pQuadEffect->GetVariableByName("nLightShape")->AsScalar()->SetIntArray(m_nLightShape, 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("nLightIndex")->AsScalar()->SetIntArray(m_nLightIndex, 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("fLightIntensity")->AsScalar()->SetFloatArray(m_fLightIntensity, 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightPosWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightPosWS), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightDirWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightDirWS), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightColor")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightColor), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightConeAngles")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightConeAngles), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightScaleWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightScaleWS), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightParams")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightParams), 0, m_nNumLights);
+	m_pQuadEffect->GetVariableByName("vLightOrientationWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(m_vLightOrientationWS), 0, m_nNumLights);
+
+	//???
+	m_pQuadEffect->GetVariableByName("fLightScale")->AsScalar()->SetFloat(1.0f);
+
+}
+void PPLLObject::UpdateLights() {
+	m_nNumLights = 0;
+	m_lightPositions.clear();
 	auto accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
 
 	//auto shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-	auto  shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
+	auto shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
 	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
+	logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
 	for (auto& e : runtimeData.activePointLights) {
 		if (auto bsLight = e.get()) {
 			if (auto niLight = bsLight->light.get()) {
-				//only ambients for now
-				if (!bsLight->ambientLight) {
-					continue;
-				}
-				logger::info("Found ambient light");
-				nNumLights += 1;
+				////only ambients for now
+				//if (!bsLight->ambientLight) {
+				//	continue;
+				//}
+				logger::info("Found point light");
+				m_nNumLights += 1;
 
 				//pos
-				RE::NiPoint3 pos = bsLight->worldTranslate;
+				RE::NiPoint3 pos = niLight->world.translate;
 				logger::info("Light position: {}, {}, {}", pos.x, pos.y, pos.z);
-				vLightPosWS[nNumLights-1] = glm::vec3(pos.x, pos.y, pos.z);
-				
+				m_vLightPosWS[m_nNumLights - 1] = Util::ToRenderScale(glm::vec3(pos.x, pos.y, pos.z));
+
 				//color (rgb?)
-				auto color = niLight->ambient;
+				auto color = niLight->diffuse;
 				logger::info("Light color: {}, {}, {}", color.red, color.green, color.blue);
-				vLightColor[nNumLights - 1] = glm::vec3(color.red, color.green, color.blue);
+				m_vLightColor[m_nNumLights - 1] = glm::vec3(color.red, color.green, color.blue);
 
 				//???
-				fLightIntensity[nNumLights - 1] = bsLight->lodDimmer;
+				m_fLightIntensity[m_nNumLights - 1] = bsLight->lodDimmer;
 
 				//???
-				nLightShape[nNumLights - 1] = 3;
-				Menu::GetSingleton()->DrawVector3(vLightPosWS[nNumLights - 1], "light pos: ");
-				Menu::GetSingleton()->DrawVector3(vLightColor[nNumLights - 1], "light color: ");
-				Menu::GetSingleton()->DrawFloat(bsLight->lodDimmer,"lod dimmer: ");
+				m_nLightShape[m_nNumLights - 1] = 1;
+
+				//point light
+				m_vLightParams[m_nNumLights - 1].x = 0;
+				//z is diffuse, w is specular
+				//why is this in the light and not material?
+				m_vLightParams[m_nNumLights - 1].z = 1;
+				m_vLightParams[m_nNumLights - 1].w = 1;
+				
+				//scale, always 1 for now
+				m_vLightScaleWS[m_nNumLights - 1] = glm::vec3(1.0);
+
+				Menu::GetSingleton()->DrawVector3(m_vLightPosWS[m_nNumLights - 1], "light pos: ");
+				Menu::GetSingleton()->DrawVector3(m_vLightColor[m_nNumLights - 1], "light color: ");
+				Menu::GetSingleton()->DrawFloat(bsLight->lodDimmer, "lod dimmer: ");
+
+				auto lightPos = Util::ToRenderScale(glm::vec3(niLight->world.translate.x, niLight->world.translate.y, niLight->world.translate.z));
+				auto lightRot = niLight->world.rotate;
+
+				//auto bonePos = m_bones[i]->world.translate;
+				//auto boneRot = m_bones[i]->world.rotate;
+
+				auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(lightPos.x, lightPos.y, lightPos.z));
+				auto rotation = DirectX::XMMATRIX(lightRot.entry[0][0], lightRot.entry[0][1], lightRot.entry[0][2], 0, lightRot.entry[1][0], lightRot.entry[1][1], lightRot.entry[1][2], 0, lightRot.entry[2][0], lightRot.entry[2][1], lightRot.entry[2][2], 0, 0, 0, 0, 1);
+				auto transform = translation * rotation;
+				//Menu::GetSingleton()->DrawMatrix(transform, "bone");
+				m_lightPositions.push_back(transform);
 			}
 		}
 	}
-
-	m_pQuadEffect->GetVariableByName("nNumLights")->AsScalar()->SetInt(nNumLights);
-	m_pQuadEffect->GetVariableByName("nLightShape")->AsScalar()->SetIntArray(nLightShape, 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("nLightIndex")->AsScalar()->SetIntArray(nLightIndex, 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("fLightIntensity")->AsScalar()->SetFloatArray(fLightIntensity, 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightPosWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightPosWS), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightDirWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightDirWS), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightColor")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightColor), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightConeAngles")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightConeAngles), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightScaleWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightScaleWS), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightParams")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightParams), 0, nNumLights);
-	m_pQuadEffect->GetVariableByName("vLightOrientationWS")->AsVector()->SetFloatVectorArray(reinterpret_cast<float*>(vLightOrientationWS), 0, nNumLights);
-
 }
-
-void PPLLObject::Initialize() {
+void PPLLObject::Initialize()
+{
 	logger::info("Create strand effect");
 	std::vector<D3D_SHADER_MACRO> strand_defines = { { "SU_sRGB_TO_LINEAR", "2.2" }, { "SU_LINEAR_SPACE_LIGHTING", "" }, { "SM_CONST_BIAS", "0.000025" }, { "SU_CRAZY_IF", "[flatten] if" }, { "SU_MAX_LIGHTS", "20" }, { "KBUFFER_SIZE", "4" }, { "SU_LOOP_UNROLL", "[unroll]" }, { "SU_LINEAR_TO_sRGB", "0.4545454545" }, { "SU_3D_API_D3D11", "1" }, { NULL, NULL } };
 	m_pStrandEffect = ShaderCompiler::CreateEffect("data\\Shaders\\TressFX\\oHair.fx"sv, m_pManager->m_pDevice, strand_defines);
@@ -426,16 +460,30 @@ void PPLLObject::Initialize() {
 	blendDesc.RenderTarget[6] = targetBlendDesc;
 	blendDesc.RenderTarget[7] = targetBlendDesc;
 	m_pManager->m_pDevice->CreateBlendState(&blendDesc, &m_pPPLLReadBlendState);
-	logger::info("Created blend state");
+	logger::info("Created blend states");
 
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+	depthStencilDesc.DepthEnable = true;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	depthStencilDesc.StencilEnable = true;
+	depthStencilDesc.StencilReadMask = 0b11111111;
+	depthStencilDesc.StencilWriteMask = 0b11111111;
+	D3D11_DEPTH_STENCILOP_DESC depthStencilopDesc;
+	depthStencilopDesc.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilopDesc.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilopDesc.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
+	depthStencilopDesc.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	depthStencilDesc.FrontFace = depthStencilopDesc;
+	depthStencilDesc.BackFace = depthStencilopDesc;
+	m_pManager->m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pPPLLBuildDepthStencilState);
+
 	depthStencilDesc.DepthEnable = false;
 	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 	depthStencilDesc.StencilEnable = true;
 	depthStencilDesc.StencilReadMask = 0b11111111;
 	depthStencilDesc.StencilWriteMask = 0;
-	D3D11_DEPTH_STENCILOP_DESC depthStencilopDesc;
 	depthStencilopDesc.StencilFailOp = D3D11_STENCIL_OP_KEEP;
 	depthStencilopDesc.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
 	depthStencilopDesc.StencilPassOp = D3D11_STENCIL_OP_KEEP;
@@ -443,9 +491,21 @@ void PPLLObject::Initialize() {
 	depthStencilDesc.FrontFace = depthStencilopDesc;
 	depthStencilDesc.BackFace = depthStencilopDesc;
 	m_pManager->m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pPPLLReadDepthStencilState);
-	logger::info("Created depth stencil state");
+	logger::info("Created depth stencil states");
 
 	D3D11_RASTERIZER_DESC rasterizerDesc;
+	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	rasterizerDesc.CullMode = D3D11_CULL_BACK;
+	rasterizerDesc.FrontCounterClockwise = true;
+	rasterizerDesc.DepthBias = 0;
+	rasterizerDesc.DepthBiasClamp = 0.0f;
+	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	rasterizerDesc.DepthClipEnable = true;
+	rasterizerDesc.MultisampleEnable = true;
+	rasterizerDesc.AntialiasedLineEnable = false;
+	rasterizerDesc.ScissorEnable = false;
+	m_pManager->m_pDevice->CreateRasterizerState(&rasterizerDesc, &m_pPPLLBuildRasterizerState);
+
 	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
 	rasterizerDesc.CullMode = D3D11_CULL_NONE;
 	rasterizerDesc.FrontCounterClockwise = true;

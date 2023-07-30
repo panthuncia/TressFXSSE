@@ -291,7 +291,7 @@ void Menu::DrawSettings()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 void Menu::DrawHairParams() {
-	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 0.006f);
 	ImGui::SliderFloat("Fiber Spacing", &fiberSpacingSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Fiber Ratio", &fiberRatioSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Kd", &kdSliderValue, 0.0f, 1.0f);

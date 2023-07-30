@@ -8,6 +8,7 @@
 #include "MarkerRender.h"
 #include <d3d11.h>
 #include "Hair.h"
+#include "glm/ext/matrix_common.hpp"
 
 #define SU_MAX_LIGHTS 20
 class TressFXPPLL;
@@ -23,6 +24,7 @@ public:
 	}
 	void Initialize();
 	void UpdateVariables();
+	void UpdateLights();
 	void Simulate();
 	void Draw();
 
@@ -57,9 +59,26 @@ private:
 	int                       m_nPPLLNodes;
 	SkyrimGPUResourceManager* m_pManager;
 	ID3D11BlendState*         m_pPPLLBuildBlendState;
+	ID3D11DepthStencilState*  m_pPPLLBuildDepthStencilState;
+	ID3D11RasterizerState*    m_pPPLLBuildRasterizerState;
 	ID3D11BlendState*         m_pPPLLReadBlendState;
 	ID3D11DepthStencilState*  m_pPPLLReadDepthStencilState;
 	ID3D11RasterizerState*    m_pPPLLReadRasterizerState;
+
+	std::vector<DirectX::XMMATRIX> m_lightPositions;
+
+	//lignts
+	int       m_nNumLights = 0;
+	int       m_nLightShape[SU_MAX_LIGHTS] = { 0 };
+	int       m_nLightIndex[SU_MAX_LIGHTS] = { 0 };
+	float     m_fLightIntensity[SU_MAX_LIGHTS] = { 0 };
+	glm::vec3 m_vLightPosWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 m_vLightDirWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 m_vLightColor[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 m_vLightConeAngles[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec3 m_vLightScaleWS[SU_MAX_LIGHTS] = { glm::vec3(0) };
+	glm::vec4 m_vLightParams[SU_MAX_LIGHTS] = { glm::vec4(0) };
+	glm::vec4 m_vLightOrientationWS[SU_MAX_LIGHTS] = { glm::vec4(0) };
 
 	//global parameter
 	float m_gravityMagnitude = 0.09;

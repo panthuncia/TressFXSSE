@@ -124,9 +124,10 @@ namespace BoneHooks{
 	}
 	void UpdateHooks::Nullsub()
 	{
-		_Nullsub();
+		PPLLObject::GetSingleton()->UpdateLights();
 		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs){
 			hairPair.second->UpdateBones();
 		}
+		_Nullsub();
 	}
 }

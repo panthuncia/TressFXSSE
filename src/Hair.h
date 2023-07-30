@@ -50,9 +50,9 @@ private:
 	float                     m_currentOffsets[4];
 
 	//rendering and sim parameters
-	float m_fiberRadius = 0.210;
+	float m_fiberRadius = 0.002;
 	float m_fiberSpacing = 0.1;
-	float m_fiberRatio = 0.1;
+	float m_fiberRatio = 0.5;
 	float m_kd = 0.07;
 	float m_ks1 = 0.17;
 	float m_ex1 = 14.4;

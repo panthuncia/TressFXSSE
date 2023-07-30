@@ -164,7 +164,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 		if (data.contains("parameters")) {
 			logger::info("params");
 			auto params = data["parameters"];
-			float fiberRadius = 0.21;
+			float fiberRadius = 0.002;
 			if (params.contains("fiberRadius")) {
 				fiberRadius = params["fiberRadius"].get<float>();
 			}
@@ -172,7 +172,7 @@ void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceMan
 			if (params.contains("fiberSpacing")) {
 				fiberSpacing = params["fiberSpacing"].get<float>();
 			}
-			float fiberRatio = 0.1;
+			float fiberRatio = 0.5;
 			if (params.contains("fiberRatio")) {
 				fiberRatio = params["fiberRatio"].get<float>();
 			}

@@ -51,9 +51,9 @@ public:
 	bool                     offsetSlidersUpdated = false;
 
 	//hair render and sim parameters
-	float                    fiberRadiusSliderValue = 0.210;
+	float                    fiberRadiusSliderValue = 0.002;
 	float                    fiberSpacingSliderValue = 0.1;
-	float                    fiberRatioSliderValue = 0.1;
+	float                    fiberRatioSliderValue = 0.5;
 	float                    kdSliderValue = 0.07;
 	float                    ks1SliderValue = 0.17;
 	float                    ex1SliderValue = 14.4;

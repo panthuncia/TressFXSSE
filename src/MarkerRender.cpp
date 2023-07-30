@@ -71,7 +71,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	pDeviceContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargets, currentDSV);
 
 	//draw markers
-	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(0.002, 0.002, 0.002);
+	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(0.02, 0.02, 0.02);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
@@ -200,7 +200,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 
 	}
 	//draw cube arrows
-	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.004, 0.004, 0.004);
+	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.04, 0.04, 0.04);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
