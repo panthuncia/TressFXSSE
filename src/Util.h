@@ -35,4 +35,6 @@ namespace Util
 	[[nodiscard]] RE::NiTransform     HkTransformToNiTransform(const RE::hkTransform& a_hkTransform);
 	void                              HkMatrixToNiMatrix(const RE::hkMatrix3& a_hkMat, RE::NiMatrix3& a_niMat);
 	std::string                       ptr_to_string(void* ptr);
+	void                              StoreTransform3x4NoScale(DirectX::XMFLOAT3X4& Dest, const RE::NiTransform& Source);
+	std::string                       GetFormEditorID(const RE::TESForm* a_form);
 }

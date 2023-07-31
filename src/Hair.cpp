@@ -1,16 +1,16 @@
 #include "Hair.h"
 #include "ActorManager.h"
+#include "DDSTextureLoader.h"
+#include "PPLLObject.h"
 #include "SkyrimGPUInterface.h"
 #include "Util.h"
+#include <Menu.h>
+#include <RE/S/ShadowState.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
-#include <RE/S/ShadowState.h>
-#include <Menu.h>
-#include "PPLLObject.h"
-#include "DDSTextureLoader.h"
-void        PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
-void        printEffectVariables(ID3DX11Effect* pEffect);
+void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
+void printEffectVariables(ID3DX11Effect* pEffect);
 
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)
 {
@@ -29,7 +29,8 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	}
 }
 
-Hair::~Hair() {
+Hair::~Hair()
+{
 	auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	logger::info("Destroying hair");
 	m_pHairObject->Destroy((EI_Device*)pDevice);
@@ -38,7 +39,8 @@ Hair::~Hair() {
 	delete m_hairEIResource;
 }
 
-void Hair::Reload() {
+void Hair::Reload()
+{
 	auto pManager = SkyrimGPUResourceManager::GetInstance();
 	m_pHairObject->Destroy((EI_Device*)pManager->m_pDevice);
 	ID3D11DeviceContext* pContext;
@@ -52,17 +54,16 @@ void Hair::DrawDebugMarkers()
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
 	for (uint16_t i = 0; i < m_numBones; i++) {
-		
-		auto              boneTransform = m_boneTransforms[i];
-		auto              bonePos = Util::ToRenderScale(glm::vec3(boneTransform.translate.x, boneTransform.translate.y, boneTransform.translate.z));
-		auto              boneRot = boneTransform.rotate;
+		auto boneTransform = m_boneTransforms[i];
+		auto bonePos = Util::ToRenderScale(glm::vec3(boneTransform.translate.x, boneTransform.translate.y, boneTransform.translate.z));
+		auto boneRot = boneTransform.rotate;
 
 		//auto bonePos = m_bones[i]->world.translate;
 		//auto boneRot = m_bones[i]->world.rotate;
-		
+
 		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(bonePos.x, bonePos.y, bonePos.z));
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
-		auto transform = translation*rotation;
+		auto transform = translation * rotation;
 		//Menu::GetSingleton()->DrawMatrix(transform, "bone");
 		positions.push_back(transform);
 	}
@@ -72,16 +73,9 @@ void Hair::DrawDebugMarkers()
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
 	RE::NiMatrix3 rotation = playerCam->world.rotate;
-	
-	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
-	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
-	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0, 
-											rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0, 
-											rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0, 
-											0, 0, 0, 1);
-	auto cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
+
 	PPLLObject* ppll = PPLLObject::GetSingleton();
-	MarkerRender::GetSingleton()->DrawMarkers(positions, cameraWorld, ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
+	MarkerRender::GetSingleton()->DrawMarkers(positions, ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
 }
 
 void Hair::UpdateVariables(float gravityMagnitude)
@@ -135,7 +129,7 @@ void Hair::UpdateVariables(float gravityMagnitude)
 
 	TressFXSimulationSettings settings;
 	settings.m_damping = m_damping;
-	settings.m_localConstraintStiffness = m_localConstraintsStiffness;                                             //0.8;
+	settings.m_localConstraintStiffness = m_localConstraintsStiffness;    //0.8;
 	settings.m_globalConstraintStiffness = m_globalConstraintsStiffness;  //0.0;
 	settings.m_globalConstraintsRange = m_globalConstraintsRange;
 	settings.m_gravityMagnitude = gravityMagnitude;
@@ -153,7 +147,8 @@ void Hair::UpdateVariables(float gravityMagnitude)
 	logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
 }
-void Hair::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip) {
+void Hair::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
+{
 	m_fiberRadius = fiberRadius;
 	m_fiberSpacing = fiberSpacing;
 	m_fiberRatio = fiberRatio;
@@ -179,8 +174,8 @@ void Hair::Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO)
 	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *pPSO);
 }
 
-
-void Hair::TransitionRenderingToSim(ID3D11DeviceContext* pContext) {
+void Hair::TransitionRenderingToSim(ID3D11DeviceContext* pContext)
+{
 	m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
 }
 
@@ -223,6 +218,16 @@ void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int 
 			output.append(node->name);
 			logger::info("{}", output);
 			continue;
+		} else if (node->name.contains("Body")) {
+			output.append("Skipping body: ");
+			output.append(node->name);
+			logger::info("{}", output);
+			continue;
+		} else if (node->name.contains("Face")) {
+			output.append("Skipping face: ");
+			output.append(node->name);
+			logger::info("{}", output);
+			continue;
 		}
 		output.append(node->name);
 		logger::info("{}", output);
@@ -242,30 +247,40 @@ void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int 
 		}
 	}
 }
-void Hair::UpdateBones()
+void Hair::RegisterBones()
 {
 	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-	if (playerSkeleton == NULL) {
-		logger::warn("Player skeleton is null!");
+	if (playerSkeleton == nullptr) {
+		logger::info("not player skeleton");
 		return;
 	}
 	//ListChildren(playerSkeleton->skeleton->GetChildren());
-	if (!m_gotSkeleton) {
-		//logger::info("Skeleton address: {}", Util::ptr_to_string(playerSkeleton));
-		//ListChildren(playerSkeleton->skeleton->GetChildren());
-		logger::info("Got player skeleton");
-		m_gotSkeleton = true;
-		logger::info("Num bones to get: {}", m_numBones);
-		for (uint16_t i = 0; i < m_numBones; i++) {
-			logger::info("Getting bone, name: {}", m_boneNames[i]);
-			if (m_boneNames[i] == "SKIP_NODE") {
-				m_pBones[i] = nullptr;
-			}
-			m_pBones[i] = playerSkeleton->skeleton->GetObjectByName(m_boneNames[i]);
+	//logger::info("Skeleton address: {}", Util::ptr_to_string(playerSkeleton));
+	//ListChildren(playerSkeleton->skeleton->GetChildren());
+	logger::info("Got player skeleton");
+	logger::info("Num bones to get: {}", m_numBones);
+	for (uint16_t i = 0; i < m_numBones; i++) {
+		logger::info("Getting bone, name: {}", m_boneNames[i]);
+		if (m_boneNames[i] == "SKIP_NODE") {
+			m_pBones[i] = nullptr;
 		}
-		logger::info("Got all bones");
+		auto bone = playerSkeleton->skeleton->GetObjectByName(m_boneNames[i]);
+		if (!bone) {
+			logger::warn("Failed to get bone: {}", m_boneNames[i]);
+			return;
+		}
+
+		m_pBones[i] = bone;
 	}
-	//get current transforms now, because they're borked later
+	logger::info("Got all bones");
+	m_gotSkeleton = true;
+}
+void Hair::UpdateBones()
+{
+	if (!m_gotSkeleton) {
+		logger::warn("UpdateBones called, but we have no skeleton!");
+		return;
+	}
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		//skip unneeded nodes
 		if (m_pBones[i] == nullptr) {
@@ -278,7 +293,7 @@ void Hair::UpdateBones()
 bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation)
 {
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	if (!m_gotSkeleton){
+	if (!m_gotSkeleton) {
 		return false;
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
@@ -332,8 +347,9 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 	logger::info("simulation complete");
 	return true;
 }
-void Hair::UpdateOffsets(float x, float y, float z, float scale) {
-	ID3D11Device* pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
+void Hair::UpdateOffsets(float x, float y, float z, float scale)
+{
+	ID3D11Device*        pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
 	m_currentOffsets[0] = x;
 	m_currentOffsets[1] = y;
@@ -341,7 +357,8 @@ void Hair::UpdateOffsets(float x, float y, float z, float scale) {
 	m_currentOffsets[3] = scale;
 	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
 }
-void Hair::ExportOffsets(float x, float y, float z, float scale) {
+void Hair::ExportOffsets(float x, float y, float z, float scale)
+{
 	json offsets;
 	offsets["x"] = x;
 	offsets["y"] = y;
@@ -351,7 +368,8 @@ void Hair::ExportOffsets(float x, float y, float z, float scale) {
 	std::ofstream file(m_configPath);
 	file << m_config;
 }
-void Hair::ExportParameters() {
+void Hair::ExportParameters()
+{
 	json parameters;
 	parameters["fiberRadius"] = m_fiberRadius;
 	parameters["fiberSpacing"] = m_fiberSpacing;

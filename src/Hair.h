@@ -25,15 +25,17 @@ public:
 	bool Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation);
 	void TransitionRenderingToSim(ID3D11DeviceContext* pContext);
 	void DrawDebugMarkers();
+	void RegisterBones();
 	void UpdateBones();
 	void ExportOffsets(float x, float y, float z, float scale);
 	void ExportParameters();
 	void Reload();
 
 	std::string        m_configPath;
-	nlohmann::json               m_config;
+	nlohmann::json     m_config;
 	EI_StringHash      m_hairName;
 	AMD::TressFXAsset* m_hairAsset;
+	std::string       m_userEditorID;
 
 	size_t          m_numBones = 0;
 	std::string     m_boneNames[AMD_TRESSFX_MAX_NUM_BONES];

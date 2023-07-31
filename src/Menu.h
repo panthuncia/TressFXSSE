@@ -37,8 +37,11 @@ public:
 	void DrawVector3(RE::NiPoint3 mat, std::string name);
 	void DrawFloat(float mat, std::string name);
 	void DrawInt(uint16_t integer, std::string name);
+	void DrawNiTransform(RE::NiTransform transform, std::string name);
 	void UpdateActiveHairs(std::vector<std::string> actors);
 	
+	float ambientLightingAmount = 1.0f;
+
 	//hair offsets
 	float xSliderValue = 0.0f;
 	float ySliderValue = 0.0f;
@@ -101,4 +104,7 @@ private:
 
 	std::vector<uint16_t>       ints;
 	std::vector<std::string> intNames;
+
+	std::vector<RE::NiTransform>    transforms;
+	std::vector<std::string> transformNames;
 };

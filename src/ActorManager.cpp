@@ -13,6 +13,8 @@
 #include "RE/N/NiCloningProcess.h"
 #include "RE/P/PlayerCharacter.h"
 #include "RE/A/Actor.h"
+#include "PPLLObject.h"
+#include "Util.h"
 #pragma warning(push)
 #pragma warning(disable: 4100)
 #pragma warning(disable: 4189)
@@ -213,6 +215,14 @@ namespace hdt
 		if (e.skeleton->GetUserData()->formID == 20) {
 			logger::info("Found player skeleton");
 			m_playerSkeleton = &skeleton;
+		}
+		logger::info("Updating bones"); 
+		std::string editorID = Util::GetFormEditorID(skyrim_cast<RE::TESForm*>(e.skeleton->GetUserData()->GetBaseObject()));
+		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs)
+		{
+			if (hairPair.second->m_userEditorID == editorID) {
+				hairPair.second->RegisterBones();
+			}
 		}
 		//if (e.hasSkinned)
 		//{

@@ -314,6 +314,7 @@ void Menu::DrawHairParams() {
 	if (ImGui::Button("Export parameters")) {
 		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
 	}
+	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
 }
 void Menu::DrawHairSelector()
 {
@@ -440,6 +441,43 @@ void Menu::DrawQueues()
 	}
 	ints.clear();
 	intNames.clear();
+
+	int m = 0;
+	for (RE::NiTransform transform: transforms){
+		ImGui::BeginTable(vector3Names[k].c_str(), 4);
+		// Display the table headers
+		for (int n = 0; n < 3; ++n) {
+			ImGui::TableSetupColumn(transformNames[m].c_str());
+		}
+		ImGui::TableHeadersRow();
+		ImGui::TableNextRow();
+		for (int col = 0; col < 3; ++col) {
+			ImGui::TableSetColumnIndex(col);
+			ImGui::Text(std::to_string(transform.translate[col]).c_str());
+		}
+		ImGui::EndTable();
+
+		ImGui::BeginTable("rotation", 4);
+		// Display the table headers
+		for (int n = 0; n < 4; ++n) {
+			ImGui::TableSetupColumn((transformNames[m]).c_str());
+		}
+		ImGui::TableHeadersRow();
+
+		//Display the table data
+		for (int row = 0; row < 4; ++row) {
+			ImGui::TableNextRow();
+			for (int col = 0; col < 4; ++col) {
+				ImGui::TableSetColumnIndex(col);
+				ImGui::Text(std::to_string(transform.rotate.entry[row][col]).c_str());
+			}
+		}
+		ImGui::EndTable();
+
+		m += 1;
+	}
+	transforms.clear();
+	transformNames.clear();
 }
 
 void Menu::SetActiveActors(std::vector<std::string> actors) {
@@ -512,6 +550,10 @@ void Menu::DrawMatrix(glm::mat4 mat, std::string name)
 {
 	matrices.push_back(mat);
 	matrixNames.push_back(name);
+}
+void Menu::DrawNiTransform(RE::NiTransform transform, std::string name) {
+	transforms.push_back(transform);
+	transformNames.push_back(name);
 }
 void Menu::DrawMatrix(RE::NiMatrix3 mat, std::string name)
 {

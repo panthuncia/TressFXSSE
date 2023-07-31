@@ -107,8 +107,12 @@ void PPLLObject::Draw() {
 		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
 		0, 0, 0, 1);
 	auto cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
+	MarkerRender::GetSingleton()->DrawWorldAxes(cameraWorld, m_viewXMMatrix, m_projXMMatrix);
 	logger::info("Drawing {} lights", m_lightPositions.size());
-	MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, cameraWorld, m_viewXMMatrix, m_projXMMatrix);
+	MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, m_viewXMMatrix, m_projXMMatrix);
+	//auto&            shaderState = RE::BSShaderManager::State::GetSingleton();
+	//RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
+	//Menu::GetSingleton()->DrawNiTransform(dalcTransform, "ambient transform");
 	//end draw
 }
 
@@ -247,6 +251,15 @@ void PPLLObject::UpdateVariables()
 
 	//???
 	m_pQuadEffect->GetVariableByName("fLightScale")->AsScalar()->SetFloat(1.0f);
+	auto& shaderState = RE::BSShaderManager::State::GetSingleton();
+	RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
+	DirectX::XMFLOAT3X4 ambientTransform;
+	Util::StoreTransform3x4NoScale(ambientTransform, dalcTransform);
+	DirectX::XMMATRIX ambientTransformMatrix = DirectX::XMLoadFloat3x4(&ambientTransform);
+	float             ambientScale = Menu::GetSingleton()->ambientLightingAmount;
+	DirectX::XMVECTOR ambientColor = DirectX::XMVectorSet(dalcTransform.translate.x*ambientScale, dalcTransform.translate.y*ambientScale, dalcTransform.translate.z*ambientScale, 1);
+	m_pQuadEffect->GetVariableByName("mDirectionalAmbient")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&ambientTransformMatrix));
+	m_pQuadEffect->GetVariableByName("vAmbientColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&ambientColor));
 
 }
 void PPLLObject::UpdateLights() {
