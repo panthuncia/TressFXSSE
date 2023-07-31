@@ -3,7 +3,7 @@
 void hookFacegen();
 void hookGameLoop();
 void hookMainDraw();
-namespace BoneHooks
+namespace LightHooks
 {
 	void Install();
 

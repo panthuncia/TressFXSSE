@@ -41,6 +41,10 @@ public:
 	void UpdateActiveHairs(std::vector<std::string> actors);
 	
 	float ambientLightingAmount = 1.0f;
+	float pointLightDiffuseAmount = 1.0f;
+	float sunLightDiffuseAmount = 1.0f;
+	float pointLightSpecularAmount = 1.0f;
+	float sunLightSpecularAmount = 1.0f;
 
 	//hair offsets
 	float xSliderValue = 0.0f;

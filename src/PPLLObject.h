@@ -80,6 +80,10 @@ private:
 	glm::vec4 m_vLightParams[SU_MAX_LIGHTS] = { glm::vec4(0) };
 	glm::vec4 m_vLightOrientationWS[SU_MAX_LIGHTS] = { glm::vec4(0) };
 
+	glm::vec4 m_vSunlightParams = glm::vec4(0);
+	glm::vec3 m_vSunlightColor = glm::vec3(0);
+	glm::vec3 m_vSunlightDir = glm::vec3(0);
+
 	//global parameter
 	float m_gravityMagnitude = 0.09;
 

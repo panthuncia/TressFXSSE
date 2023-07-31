@@ -38,6 +38,67 @@ namespace Util
 		Dest.m[1][3] = Source.translate.y;
 		Dest.m[2][3] = Source.translate.z;
 	}
+	ID3D11RasterizerState*   CreateRasterizerState(ID3D11Device* pDevice, D3D11_FILL_MODE FillMode, D3D11_CULL_MODE CullMode, BOOL FrontCounterClockwise, INT DepthBias, FLOAT DepthBiasClamp, FLOAT SlopeScaledDepthBias, BOOL DepthClipEnable, BOOL MultisampleEnable, BOOL AntialiasedLineEnable, BOOL ScissorEnable) {
+		D3D11_RASTERIZER_DESC rasterizerDesc;
+		rasterizerDesc.FillMode = FillMode;
+		rasterizerDesc.CullMode = CullMode;
+		rasterizerDesc.FrontCounterClockwise = FrontCounterClockwise;
+		rasterizerDesc.DepthBias = DepthBias;
+		rasterizerDesc.DepthBiasClamp = DepthBiasClamp;
+		rasterizerDesc.SlopeScaledDepthBias = SlopeScaledDepthBias;
+		rasterizerDesc.DepthClipEnable = DepthClipEnable;
+		rasterizerDesc.MultisampleEnable = MultisampleEnable;
+		rasterizerDesc.AntialiasedLineEnable = AntialiasedLineEnable;
+		rasterizerDesc.ScissorEnable = ScissorEnable;
+		ID3D11RasterizerState* pRasterizerState;
+		pDevice->CreateRasterizerState(&rasterizerDesc, &pRasterizerState);
+		return pRasterizerState;
+	}
+	ID3D11DepthStencilState* CreateDepthStencilState(ID3D11Device* pDevice, BOOL DepthEnable, D3D11_DEPTH_WRITE_MASK DepthWriteMask, D3D11_COMPARISON_FUNC DepthFunc, BOOL StencilEnable, UINT8 StencilReadMask, UINT8 StencilWriteMask, D3D11_STENCIL_OP StencilFailOp, D3D11_STENCIL_OP StencilDepthFailOp, D3D11_STENCIL_OP StencilPassOp, D3D11_COMPARISON_FUNC StencilFunc) {
+		D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+		depthStencilDesc.DepthEnable = DepthEnable;
+		depthStencilDesc.DepthWriteMask = DepthWriteMask;
+		depthStencilDesc.DepthFunc = DepthFunc;
+		depthStencilDesc.StencilEnable = StencilEnable;
+		depthStencilDesc.StencilReadMask = StencilReadMask;
+		depthStencilDesc.StencilWriteMask = StencilWriteMask;
+		D3D11_DEPTH_STENCILOP_DESC depthStencilopDesc;
+		depthStencilopDesc.StencilFailOp = StencilFailOp;
+		depthStencilopDesc.StencilDepthFailOp = StencilDepthFailOp;
+		depthStencilopDesc.StencilPassOp = StencilPassOp;
+		depthStencilopDesc.StencilFunc = StencilFunc;
+		depthStencilDesc.FrontFace = depthStencilopDesc;
+		depthStencilDesc.BackFace = depthStencilopDesc;
+		ID3D11DepthStencilState* pDepthStencilState;
+		pDevice->CreateDepthStencilState(&depthStencilDesc, &pDepthStencilState);
+		return pDepthStencilState;
+	}
+	ID3D11BlendState* CreateBlendState(ID3D11Device* pDevice, BOOL AlphaToCoverageEnable, BOOL IndependentBlendEnable, BOOL BlendEnable, D3D11_BLEND SrcBlend, D3D11_BLEND_OP BlendOp, D3D11_BLEND_OP BlendOpAlpha, D3D11_BLEND DestBlend, D3D11_BLEND DestBlendAlpha, UINT8 RenderTargetWriteMask, D3D11_BLEND SrcBlendAlpha) {
+		
+		D3D11_BLEND_DESC blendDesc;
+		blendDesc.AlphaToCoverageEnable = AlphaToCoverageEnable;
+		blendDesc.IndependentBlendEnable = IndependentBlendEnable;
+		D3D11_RENDER_TARGET_BLEND_DESC targetBlendDesc;
+		targetBlendDesc.BlendEnable = BlendEnable;
+		targetBlendDesc.SrcBlend = SrcBlend;
+		targetBlendDesc.BlendOp = BlendOp;
+		targetBlendDesc.BlendOpAlpha = BlendOpAlpha;
+		targetBlendDesc.DestBlend = DestBlend;
+		targetBlendDesc.DestBlendAlpha = DestBlendAlpha;
+		targetBlendDesc.RenderTargetWriteMask = RenderTargetWriteMask;
+		targetBlendDesc.SrcBlendAlpha = SrcBlendAlpha;
+		blendDesc.RenderTarget[0] = targetBlendDesc;
+		blendDesc.RenderTarget[1] = targetBlendDesc;
+		blendDesc.RenderTarget[2] = targetBlendDesc;
+		blendDesc.RenderTarget[3] = targetBlendDesc;
+		blendDesc.RenderTarget[4] = targetBlendDesc;
+		blendDesc.RenderTarget[5] = targetBlendDesc;
+		blendDesc.RenderTarget[6] = targetBlendDesc;
+		blendDesc.RenderTarget[7] = targetBlendDesc;
+		ID3D11BlendState* blendState;
+		pDevice->CreateBlendState(&blendDesc, &blendState);
+		return blendState;
+	}
 	ID3D11ShaderResourceView* GetSRVFromRTV(ID3D11RenderTargetView* a_rtv)
 	{
 		if (a_rtv) {

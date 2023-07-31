@@ -261,6 +261,9 @@ void PPLLObject::UpdateVariables()
 	m_pQuadEffect->GetVariableByName("mDirectionalAmbient")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&ambientTransformMatrix));
 	m_pQuadEffect->GetVariableByName("vAmbientColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&ambientColor));
 
+	m_pQuadEffect->GetVariableByName("vSunlightColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightColor));
+	m_pQuadEffect->GetVariableByName("vSunlightDir")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightDir));
+	m_pQuadEffect->GetVariableByName("vSunlightParams")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightParams));
 }
 void PPLLObject::UpdateLights() {
 	m_nNumLights = 0;
@@ -271,6 +274,7 @@ void PPLLObject::UpdateLights() {
 	auto shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
 	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
+	auto  menu = Menu::GetSingleton();
 	logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
 	for (auto& e : runtimeData.activePointLights) {
 		if (auto bsLight = e.get()) {
@@ -302,8 +306,8 @@ void PPLLObject::UpdateLights() {
 				m_vLightParams[m_nNumLights - 1].x = 0;
 				//z is diffuse, w is specular
 				//why is this in the light and not material?
-				m_vLightParams[m_nNumLights - 1].z = 1;
-				m_vLightParams[m_nNumLights - 1].w = 1;
+				m_vLightParams[m_nNumLights - 1].z = menu->pointLightDiffuseAmount;
+				m_vLightParams[m_nNumLights - 1].w = menu->pointLightSpecularAmount;
 				
 				//scale, always 1 for now
 				m_vLightScaleWS[m_nNumLights - 1] = glm::vec3(1.0);
@@ -325,6 +329,24 @@ void PPLLObject::UpdateLights() {
 				m_lightPositions.push_back(transform);
 			}
 		}
+	}
+	//sunlight
+	auto sunLight = skyrim_cast<RE::NiDirectionalLight*>(accumulator->GetRuntimeData().activeShadowSceneNode->GetRuntimeData().sunLight->light.get());
+	if (sunLight) {
+		auto imageSpaceManager = RE::ImageSpaceManager::GetSingleton();
+
+		float sunlightScale =  imageSpaceManager->data.baseData.hdr.sunlightScale * sunLight->GetLightRuntimeData().fade;
+
+		m_vSunlightColor = glm::vec3(sunLight->GetLightRuntimeData().diffuse.red*sunlightScale, sunLight->GetLightRuntimeData().diffuse.green*sunlightScale, sunLight->GetLightRuntimeData().diffuse.blue*sunlightScale);
+
+		auto& direction = sunLight->GetWorldDirection();
+		m_vSunlightDir = glm::vec3(direction.x, direction.y, direction.z);
+		m_vSunlightParams = glm::vec4(0, 0, menu->sunLightDiffuseAmount, menu->sunLightSpecularAmount);
+	}
+	//sky light?
+	bool skyLight = true;
+	if (auto sky = RE::Sky::GetSingleton()) {
+		skyLight = sky->mode.get() == RE::Sky::Mode::kFull;
 	}
 }
 void PPLLObject::Initialize()
@@ -420,114 +442,19 @@ void PPLLObject::Initialize()
 	m_SDFCollisionSystem.Initialize((EI_Device*)m_pManager->m_pDevice, sdfCollisionManager);
 
 	//create wireframe rasterizer state for testing
-	D3D11_RASTERIZER_DESC rsState;
-	rsState.FillMode = D3D11_FILL_WIREFRAME;
-	rsState.CullMode = D3D11_CULL_NONE;
-	rsState.FrontCounterClockwise = false;
-	rsState.DepthBias = 0;
-	rsState.DepthBiasClamp = 0;
-	rsState.SlopeScaledDepthBias = 0;
-	rsState.DepthClipEnable = false;
-	rsState.ScissorEnable = false;
-	rsState.MultisampleEnable = true;
-	rsState.AntialiasedLineEnable = false;
-	m_pManager->m_pDevice->CreateRasterizerState(&rsState, &m_pWireframeRSState);
+	m_pWireframeRSState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, false, 0, 0, 0, false, false, true, false);
 
-	//create blend state
-	D3D11_BLEND_DESC blendDesc;
-	blendDesc.AlphaToCoverageEnable = false;
-	blendDesc.IndependentBlendEnable = false;
-	D3D11_RENDER_TARGET_BLEND_DESC targetBlendDesc;
-	targetBlendDesc.BlendEnable = false;
-	targetBlendDesc.SrcBlend = D3D11_BLEND_SRC_ALPHA;
-	targetBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
-	targetBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	targetBlendDesc.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-	targetBlendDesc.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-	targetBlendDesc.RenderTargetWriteMask = 0;
-	targetBlendDesc.SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
-	blendDesc.RenderTarget[0] = targetBlendDesc;
-	blendDesc.RenderTarget[1] = targetBlendDesc;
-	blendDesc.RenderTarget[2] = targetBlendDesc;
-	blendDesc.RenderTarget[3] = targetBlendDesc;
-	blendDesc.RenderTarget[4] = targetBlendDesc;
-	blendDesc.RenderTarget[5] = targetBlendDesc;
-	blendDesc.RenderTarget[6] = targetBlendDesc;
-	blendDesc.RenderTarget[7] = targetBlendDesc;
-	m_pManager->m_pDevice->CreateBlendState(&blendDesc, &m_pPPLLBuildBlendState);
-
-	targetBlendDesc.BlendEnable = true;
-	targetBlendDesc.SrcBlend = D3D11_BLEND_ONE;
-	targetBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
-	targetBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	targetBlendDesc.DestBlend = D3D11_BLEND_SRC_ALPHA;
-	targetBlendDesc.DestBlendAlpha = D3D11_BLEND_ZERO;
-	targetBlendDesc.RenderTargetWriteMask = 0b00001111;
-	targetBlendDesc.SrcBlendAlpha = D3D11_BLEND_ZERO;
-	blendDesc.RenderTarget[0] = targetBlendDesc;
-	blendDesc.RenderTarget[1] = targetBlendDesc;
-	blendDesc.RenderTarget[2] = targetBlendDesc;
-	blendDesc.RenderTarget[3] = targetBlendDesc;
-	blendDesc.RenderTarget[4] = targetBlendDesc;
-	blendDesc.RenderTarget[5] = targetBlendDesc;
-	blendDesc.RenderTarget[6] = targetBlendDesc;
-	blendDesc.RenderTarget[7] = targetBlendDesc;
-	m_pManager->m_pDevice->CreateBlendState(&blendDesc, &m_pPPLLReadBlendState);
+	//create blend states
+	m_pPPLLBuildBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, false, false, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, 0, D3D11_BLEND_SRC_ALPHA);
+	m_pPPLLReadBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, false, true, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_ZERO, 0b00001111, D3D11_BLEND_ZERO);
 	logger::info("Created blend states");
 
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-	depthStencilDesc.DepthEnable = true;
-	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-	depthStencilDesc.StencilEnable = true;
-	depthStencilDesc.StencilReadMask = 0b11111111;
-	depthStencilDesc.StencilWriteMask = 0b11111111;
-	D3D11_DEPTH_STENCILOP_DESC depthStencilopDesc;
-	depthStencilopDesc.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilopDesc.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilopDesc.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
-	depthStencilopDesc.StencilFunc = D3D11_COMPARISON_ALWAYS;
-	depthStencilDesc.FrontFace = depthStencilopDesc;
-	depthStencilDesc.BackFace = depthStencilopDesc;
-	m_pManager->m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pPPLLBuildDepthStencilState);
-
-	depthStencilDesc.DepthEnable = false;
-	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-	depthStencilDesc.StencilEnable = true;
-	depthStencilDesc.StencilReadMask = 0b11111111;
-	depthStencilDesc.StencilWriteMask = 0;
-	depthStencilopDesc.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilopDesc.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilopDesc.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilopDesc.StencilFunc = D3D11_COMPARISON_LESS;
-	depthStencilDesc.FrontFace = depthStencilopDesc;
-	depthStencilDesc.BackFace = depthStencilopDesc;
-	m_pManager->m_pDevice->CreateDepthStencilState(&depthStencilDesc, &m_pPPLLReadDepthStencilState);
+	//depth stencil states
+	m_pPPLLBuildDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, true, D3D11_DEPTH_WRITE_MASK_ZERO, D3D11_COMPARISON_LESS_EQUAL, true, 0b11111111, 0b11111111, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_INCR_SAT, D3D11_COMPARISON_ALWAYS);
+	m_pPPLLReadDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, false, D3D11_DEPTH_WRITE_MASK_ZERO, D3D11_COMPARISON_LESS_EQUAL, true, 0b11111111, 0, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_LESS);
 	logger::info("Created depth stencil states");
-
-	D3D11_RASTERIZER_DESC rasterizerDesc;
-	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	rasterizerDesc.CullMode = D3D11_CULL_BACK;
-	rasterizerDesc.FrontCounterClockwise = true;
-	rasterizerDesc.DepthBias = 0;
-	rasterizerDesc.DepthBiasClamp = 0.0f;
-	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-	rasterizerDesc.DepthClipEnable = true;
-	rasterizerDesc.MultisampleEnable = true;
-	rasterizerDesc.AntialiasedLineEnable = false;
-	rasterizerDesc.ScissorEnable = false;
-	m_pManager->m_pDevice->CreateRasterizerState(&rasterizerDesc, &m_pPPLLBuildRasterizerState);
-
-	rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	rasterizerDesc.CullMode = D3D11_CULL_NONE;
-	rasterizerDesc.FrontCounterClockwise = true;
-	rasterizerDesc.DepthBias = 0;
-	rasterizerDesc.DepthBiasClamp = 0.0f;
-	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-	rasterizerDesc.DepthClipEnable = true;
-	rasterizerDesc.MultisampleEnable = true;
-	rasterizerDesc.AntialiasedLineEnable = false;
-	rasterizerDesc.ScissorEnable = false;
-	m_pManager->m_pDevice->CreateRasterizerState(&rasterizerDesc, &m_pPPLLReadRasterizerState);
+	
+	//rasterizer states
+	m_pPPLLBuildRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, 0, 0.0f, 0.0f, true, true, false, false);
+	m_pPPLLReadRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_NONE, true, 0, 0.0f, 0.0f, true, true, false, false);
 }

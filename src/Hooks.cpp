@@ -117,9 +117,8 @@ void hookFacegen()
 {
 	stl::write_vfunc<0x3E, BSFaceGenNiNode_FixSkinInstances>(RE::VTABLE_BSFaceGenNiNode[0]);
 }
-namespace BoneHooks{
+namespace LightHooks{
 	void Install(){
-		logger::info("Installing bone hooks");
 		UpdateHooks::Hook();
 	}
 	void UpdateHooks::Nullsub()

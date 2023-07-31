@@ -315,6 +315,11 @@ void Menu::DrawHairParams() {
 		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
 	}
 	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
+	ImGui::SliderFloat("Point lighting diffuse amount", &pointLightDiffuseAmount, 0.0f, 1.0f);
+	ImGui::SliderFloat("Point lighting specular amount", &pointLightSpecularAmount, 0.0f, 1.0f);
+	ImGui::SliderFloat("Sun lighting diffuse amount", &sunLightDiffuseAmount, 0.0f, 2.0f);
+	ImGui::SliderFloat("Sun lighting specular amount", &sunLightSpecularAmount, 0.0f, 2.0f);
+
 }
 void Menu::DrawHairSelector()
 {

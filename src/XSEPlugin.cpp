@@ -69,7 +69,7 @@ void Load()
 	hookGameLoop();
 
 	SKSE::AllocTrampoline(1 << 10);
-	BoneHooks::Install();
+	LightHooks::Install();
 	logger::info("Installed skeleton hook");
 }
 
