@@ -61,6 +61,16 @@ void MarkerRender::DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX
 		auto partInputLayout = part->inputLayout.Get();
 		pDeviceContext->IASetInputLayout(partInputLayout);
 
+		pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
+		pDeviceContext->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+		// Set the pixel shader
+		pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
+		pDeviceContext->PSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+		pDeviceContext->OMSetDepthStencilState(m_pDepthStencilState, 0);
+		pDeviceContext->RSSetState(m_pWireframeRSState);
+
 		//set position
 		CBMatrix          cbMatrix;
 		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(4, 4, 4);
@@ -145,6 +155,7 @@ void MarkerRender::DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX
 		pDeviceContext->UpdateSubresource(m_pConstantBuffer, 0, nullptr, &cbMatrix, 0, 0);
 		pDeviceContext->DrawIndexed(part->indexCount, 0, 0);
 	}
+	logger::info("done drawing axes");
 }
 void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
@@ -170,16 +181,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	pDeviceContext->RSSetState(m_pWireframeRSState);
 
 	//disable depth testing
-	// Create a depth-stencil view variable
-	ID3D11DepthStencilView* currentDSV = nullptr;
-
-	// Get the currently bound render targets and depth-stencil view
-	ID3D11RenderTargetView* renderTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { nullptr };
-	pDeviceContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargets, &currentDSV);
-	pDeviceContext->ClearDepthStencilView(currentDSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 1);
-
-	// Bind the cleared depth-stencil view as the active render target
-	pDeviceContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, renderTargets, currentDSV);
+	pDeviceContext->OMSetDepthStencilState(m_pDepthStencilState, 0);
 
 	//draw markers
 	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(0.02, 0.02, 0.02);
@@ -325,6 +327,9 @@ void MarkerRender::CreateLayoutsAndStates(ID3D11Device* pDevice) {
 	rsState.MultisampleEnable = true;
 	rsState.AntialiasedLineEnable = false;
 	pDevice->CreateRasterizerState(&rsState, &m_pWireframeRSState);
+
+	//depth stencil state
+	m_pDepthStencilState = Util::CreateDepthStencilState(pDevice, false, D3D11_DEPTH_WRITE_MASK_ZERO, D3D11_COMPARISON_NEVER, false, 0b00000000, 0b00000000, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_NEVER);
 }
 
 void MarkerRender::CreateBuffers(ID3D11Device* pDevice)

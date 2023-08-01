@@ -33,8 +33,14 @@ void PPLLObject::ReloadAllHairs()
 	m_doReload = false;
 	logger::info("Done reloading");
 }
-
-void PPLLObject::Draw() {
+void PPLLObject::DrawShadows() {
+	
+}
+void PPLLObject::Draw()
+{
+	m_gameLoaded = true;
+	//draw shadows
+	DrawShadows();
 	//start draw
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Draw");
@@ -93,23 +99,22 @@ void PPLLObject::Draw() {
 	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
 
 	//draw debug markers
-	for (auto hair : m_hairs) {
-		hair.second->DrawDebugMarkers();
-	}
+	//for (auto hair : m_hairs) {
+	//	hair.second->DrawDebugMarkers();
+	//}
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
 	RE::NiMatrix3 rotation = playerCam->world.rotate;
 
-	//viewMatrix = DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z), viewMatrix;*/
 	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
 	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0,
 		rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0,
 		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
 		0, 0, 0, 1);
-	auto cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
-	MarkerRender::GetSingleton()->DrawWorldAxes(cameraWorld, m_viewXMMatrix, m_projXMMatrix);
+	m_cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
+	//MarkerRender::GetSingleton()->DrawWorldAxes(m_cameraWorld, m_viewXMMatrix, m_projXMMatrix);
 	logger::info("Drawing {} lights", m_lightPositions.size());
-	MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, m_viewXMMatrix, m_projXMMatrix);
+	//MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, m_viewXMMatrix, m_projXMMatrix);
 	//auto&            shaderState = RE::BSShaderManager::State::GetSingleton();
 	//RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
 	//Menu::GetSingleton()->DrawNiTransform(dalcTransform, "ambient transform");
@@ -457,4 +462,10 @@ void PPLLObject::Initialize()
 	//rasterizer states
 	m_pPPLLBuildRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, 0, 0.0f, 0.0f, true, true, false, false);
 	m_pPPLLReadRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_NONE, true, 0, 0.0f, 0.0f, true, true, false, false);
+
+	//create states for shadow mapping
+	m_pShadowBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, false, false, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, 0, D3D11_BLEND_SRC_ALPHA);
+	m_pShadowDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0b11111111, 0b11111111, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_EQUAL);
+	m_pShadowRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, 0, 0.0f, 0.0f, true, true, false, false);
+
 }

@@ -76,30 +76,30 @@ struct Hooks
 			auto ppll = PPLLObject::GetSingleton();
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
-				if (skipFrame) {
-					skipFrame--;
-					logger::info("skipping frame");
-					return;
-				}
 				ppll->UpdateVariables();
 				ppll->Simulate();
 				ppll->Draw();
+				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 			}
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
 	struct Main_DrawWorld_MainDraw_2 {
-		static void thunk(){
-			func();
-			logger::info("in unknown function");
+		static INT64 thunk(INT64 a1)
+		{
+			auto camera = RE::PlayerCamera::GetSingleton();
 			auto ppll = PPLLObject::GetSingleton();
-			ppll->m_gameViewMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewMat;
-			logger::info("Got view mat: ");
-			Util::PrintXMMatrix(ppll->m_gameViewMatrix);
-			ppll->m_gameProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMat;
-			ppll->m_gameProjMatrixUnjittered = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().projMatrixUnjittered;
-			ppll->m_gameViewProjMatrix = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye().viewProjMat;
+			if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+				if (skipFrame) {
+					skipFrame--;
+					logger::info("skipping frame");
+					return func(a1);
+				}
+				logger::info("drawing axes");
+				MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
+			}
+			return func(a1);
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
@@ -111,7 +111,8 @@ void hookGameLoop() {
 void hookMainDraw() {
 	//credit Doodlez
 	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x16F, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A)
-	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A));
+	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A)); //TODO AE
+	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x8A, 0x17A));  //TODO AE
 }
 void hookFacegen()
 {

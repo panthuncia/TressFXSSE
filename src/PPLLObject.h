@@ -27,6 +27,7 @@ public:
 	void UpdateLights();
 	void Simulate();
 	void Draw();
+	void DrawShadows();
 
 	void ReloadAllHairs();
 	bool m_doReload = false;
@@ -44,6 +45,8 @@ public:
 	DirectX::XMMATRIX m_projXMMatrix;
 	ID3DX11Effect*    m_pStrandEffect;
 	ID3DX11Effect*    m_pQuadEffect;
+	bool              m_gameLoaded = false;
+	DirectX::XMMATRIX m_cameraWorld;
 
 
 private:
@@ -64,6 +67,9 @@ private:
 	ID3D11BlendState*         m_pPPLLReadBlendState;
 	ID3D11DepthStencilState*  m_pPPLLReadDepthStencilState;
 	ID3D11RasterizerState*    m_pPPLLReadRasterizerState;
+	ID3D11BlendState*         m_pShadowBlendState;
+	ID3D11DepthStencilState*  m_pShadowDepthStencilState;
+	ID3D11RasterizerState*    m_pShadowRasterizerState;
 
 	std::vector<DirectX::XMMATRIX> m_lightPositions;
 

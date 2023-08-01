@@ -161,15 +161,18 @@ namespace Util
 	RE::NiPointer<RE::NiCamera> GetPlayerNiCamera()
 	{
 		RE::PlayerCamera* camera = RE::PlayerCamera::GetSingleton();
+		if (camera == nullptr) {
+			return RE::NiPointer<RE::NiCamera>(nullptr);
+		}
 		// Do other things parent stuff to the camera node? Better safe than sorry I guess
-		if (camera->cameraRoot->GetChildren().size() == 0)
-			return nullptr;
+		if (camera->cameraRoot == nullptr || camera->cameraRoot->GetChildren().size() == 0)
+			return RE::NiPointer<RE::NiCamera>(nullptr);
 		for (auto& entry : camera->cameraRoot->GetChildren()) {
 			auto asCamera = skyrim_cast<RE::NiCamera*>(entry.get());
 			if (asCamera)
 				return RE::NiPointer<RE::NiCamera>(asCamera);
 		}
-		return nullptr;
+		return RE::NiPointer<RE::NiCamera>(nullptr);
 	}
 	float GetFOV() noexcept
 	{

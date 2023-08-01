@@ -61,15 +61,16 @@ private:
 		3, 7, 2,  // Side 5
 		2, 7, 6
 	};
-	ID3D11Buffer*          m_pVertexBuffer = nullptr;
-	ID3D11Buffer*          m_pIndexBuffer = nullptr;
-	ID3D11Buffer*          m_pConstantBuffer = nullptr;
-	ID3D10Blob*            m_pVertexShaderBlob = nullptr;
-	ID3D10Blob*            m_pPixelShaderBlob = nullptr;
-	ID3D11VertexShader*    m_pVertexShader = nullptr;
-	ID3D11PixelShader*     m_pPixelShader = nullptr;
-	ID3D11InputLayout*     m_pInputLayout = nullptr;
-	ID3D11RasterizerState* m_pWireframeRSState = nullptr;
+	ID3D11Buffer*            m_pVertexBuffer = nullptr;
+	ID3D11Buffer*            m_pIndexBuffer = nullptr;
+	ID3D11Buffer*            m_pConstantBuffer = nullptr;
+	ID3D10Blob*              m_pVertexShaderBlob = nullptr;
+	ID3D10Blob*              m_pPixelShaderBlob = nullptr;
+	ID3D11VertexShader*      m_pVertexShader = nullptr;
+	ID3D11PixelShader*       m_pPixelShader = nullptr;
+	ID3D11InputLayout*       m_pInputLayout = nullptr;
+	ID3D11RasterizerState*   m_pWireframeRSState = nullptr;
+	ID3D11DepthStencilState* m_pDepthStencilState = nullptr;
 
 	std::unique_ptr<DirectX::Model>     m_pArrowModel;
 	std::shared_ptr<DirectX::ModelMesh> m_pArrowMesh;
@@ -140,7 +141,8 @@ private:
 
 		d3dInfoQueue->ClearStoredMessages();
 	}
-	DirectX::XMVECTOR XMMatrixGetColumn(DirectX::XMMATRIX mat, uint8_t column){
+	DirectX::XMVECTOR XMMatrixGetColumn(DirectX::XMMATRIX mat, uint8_t column)
+	{
 		DirectX::XMFLOAT4X4 floats;
 		DirectX::XMStoreFloat4x4(&floats, mat);
 		if (column == 0)
@@ -152,7 +154,8 @@ private:
 		if (column == 3)
 			return DirectX::XMVectorSet(floats._14, floats._24, floats._34, floats._44);
 	}
-	void PrintXMMatrix(DirectX::XMMATRIX mat) {
+	void PrintXMMatrix(DirectX::XMMATRIX mat)
+	{
 		DirectX::XMFLOAT4X4 floats;
 		DirectX::XMStoreFloat4x4(&floats, mat);
 		logger::info("{}, {}, {}, {}", floats._11, floats._12, floats._13, floats._14);
