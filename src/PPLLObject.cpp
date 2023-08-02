@@ -280,6 +280,7 @@ void PPLLObject::UpdateLights() {
 	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
 	auto  menu = Menu::GetSingleton();
+	logger::info("Active shadow lights: {}", runtimeData.activeShadowLights.size());
 	logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
 	for (auto& e : runtimeData.activePointLights) {
 		if (auto bsLight = e.get()) {

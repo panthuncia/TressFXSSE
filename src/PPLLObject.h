@@ -45,7 +45,7 @@ public:
 	DirectX::XMMATRIX m_projXMMatrix;
 	ID3DX11Effect*    m_pStrandEffect;
 	ID3DX11Effect*    m_pQuadEffect;
-	bool              m_gameLoaded = false;
+	bool              m_gameLoaded = false; //TODO: remove this hack
 	DirectX::XMMATRIX m_cameraWorld;
 
 
