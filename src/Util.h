@@ -10,8 +10,8 @@ namespace Util
 	// I'm a bit surprised a game of this scale wouldn't use some kind of origin re-basing.
 	//also this is important for hair physics
 	//constexpr auto RenderScale = 0.142875f;
-	constexpr auto              RenderScale = 0.0142875f;
-	//constexpr auto              RenderScale = 1.0f;
+	//constexpr auto              RenderScale = 0.0142875f;
+	constexpr auto              RenderScale = 1.0f;
 	// Convert a world position to our render scale
 	__forceinline glm::vec3 ToRenderScale(const glm::vec3& position) noexcept
 	{

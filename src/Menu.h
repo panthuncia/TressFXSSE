@@ -78,6 +78,7 @@ public:
 	float                    hairShadowAlphaSlider = 0.35;
 	bool                     thinTipCheckbox = true;
 	bool                     drawShadowsCheckbox = true;
+	bool                     drawHairCheckbox = true;
 	float                    gravityMagnitudeSlider = 0.09;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;

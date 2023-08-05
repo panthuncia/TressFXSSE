@@ -28,6 +28,9 @@ public:
 	void Simulate();
 	void Draw();
 	void DrawShadows();
+	void PreDraw();
+	void PostDraw();
+	std::vector<DirectX::XMMATRIX> m_markerPositions;
 
 	void ReloadAllHairs();
 	bool m_doReload = false;
@@ -70,8 +73,6 @@ private:
 	ID3D11BlendState*         m_pShadowBlendState;
 	ID3D11DepthStencilState*  m_pShadowDepthStencilState;
 	ID3D11RasterizerState*    m_pShadowRasterizerState;
-
-	std::vector<DirectX::XMMATRIX> m_lightPositions;
 
 	//lignts
 	int       m_nNumLights = 0;

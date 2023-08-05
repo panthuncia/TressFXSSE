@@ -4,7 +4,7 @@
 #include "TressFXPPLL.h"
 #include "Util.h"
 #include "Menu.h"
-
+#include <glm/gtc/type_ptr.hpp>
 // This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
 static const size_t AVE_FRAGS_PER_PIXEL = 4;
@@ -34,13 +34,67 @@ void PPLLObject::ReloadAllHairs()
 	logger::info("Done reloading");
 }
 void PPLLObject::DrawShadows() {
+	ID3D11DeviceContext* pContext;
+	m_pManager->m_pDevice->GetImmediateContext(&pContext);
+	//store variable states
+	float             originalBlendFactor[4];
+	UINT              originalSampleMask;
+	ID3D11BlendState* originalBlendState;
+	pContext->OMGetBlendState(&originalBlendState, originalBlendFactor, &originalSampleMask);
+	ID3D11DepthStencilState* originalDepthStencilState;
+	UINT                     originalStencilRef;
+	pContext->OMGetDepthStencilState(&originalDepthStencilState, &originalStencilRef);
+	ID3D11RasterizerState* originalRSState;
+	pContext->RSGetState(&originalRSState);
+	ID3D11DepthStencilView* originalDepthStencil;
+	ID3D11RenderTargetView* originalRenderTarget;
+	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
+
+	//set new states
+	pContext->OMSetBlendState(m_pShadowBlendState, originalBlendFactor, 0xFFFFFFFF);
+	pContext->OMSetDepthStencilState(m_pShadowDepthStencilState, originalStencilRef);
+	pContext->RSSetState(m_pShadowRasterizerState);
 	
+	ID3D11Buffer* pConstantBuffer;
+	pContext->VSGetConstantBuffers(12, 1, &pConstantBuffer);
+	//D3D11_MAPPED_SUBRESOURCE resource;
+	//logger::info("about to map");
+	//pContext->Map(pConstantBuffer, 0, D3D11_MAP_READ, 0, &resource);
+	//logger::info("Address of mapped buffer: {}", Util::ptr_to_string(resource.pData));
+	//this gets the third float4x4 from cbuffer
+	//logger::info("Getting matrix");
+	//glm::mat4 shadowMapMatrix = glm::make_mat4(reinterpret_cast<float*>(resource.pData)+32);
+	//pContext->Unmap(pConstantBuffer, 0);
+	//m_pStrandEffect->GetVariableByName("g_ShadowMapMatrix")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&shadowMapMatrix));
+	logger::info("setting shadow buffer");
+	m_pStrandEffect->GetConstantBufferByName("constants12")->SetConstantBuffer(pConstantBuffer);
+	auto cameraPos = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator()->activeShadowSceneNode->cameraPos;
+	Menu::GetSingleton()->DrawVector3(cameraPos, "shadow camera pos");
+	auto              cam = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye();
+	auto      projMat = cam.projMat;
+	auto              viewMat = cam.viewMat;
+	auto              viewProjMat = cam.viewProjMat;
+	Menu::GetSingleton()->DrawMatrix(viewMat, "view");
+	Menu::GetSingleton()->DrawMatrix(projMat, "proj");
+	Menu::GetSingleton()->DrawMatrix(viewProjMat, "viewProj");
+	glm::vec3 vEye = Util::ToRenderScale(glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
+	m_pStrandEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&vEye));
+	//Menu::GetSingleton()->DrawMatrix(shadowMapMatrix, "Shadow map matrix");
+	EI_PSO* pPSO = GetPSO("DepthOnly", m_pStrandEffect);
+	for (auto hair : m_hairs) {
+		hair.second->Draw(pContext, pPSO);
+	}
+	pConstantBuffer->Release();
+	//reset states
+	pContext->OMSetBlendState(originalBlendState, originalBlendFactor, originalSampleMask);
+	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	pContext->RSSetState(originalRSState);
+	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
 }
 void PPLLObject::Draw()
 {
 	m_gameLoaded = true;
-	//draw shadows
-	DrawShadows();
 	//start draw
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	logger::info("Starting TFX Draw");
@@ -113,7 +167,6 @@ void PPLLObject::Draw()
 		0, 0, 0, 1);
 	m_cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
 	//MarkerRender::GetSingleton()->DrawWorldAxes(m_cameraWorld, m_viewXMMatrix, m_projXMMatrix);
-	logger::info("Drawing {} lights", m_lightPositions.size());
 	//MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, m_viewXMMatrix, m_projXMMatrix);
 	//auto&            shaderState = RE::BSShaderManager::State::GetSingleton();
 	//RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
@@ -193,7 +246,7 @@ void PPLLObject::UpdateVariables()
 	m_projXMMatrix = DirectX::XMMatrixSet(projXMFloat._11, projXMFloat._12, projXMFloat._13, projXMFloat._14, projXMFloat._21, projXMFloat._22, projXMFloat._23, projXMFloat._24, projXMFloat._31, projXMFloat._32, projXMFloat._33, projXMFloat._34, projXMFloat._41, projXMFloat._42, projXMFloat._43, projXMFloat._44);
 	auto viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
 	m_viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
-
+	//Menu::GetSingleton()->DrawMatrix(m_viewXMMatrix, "TFX view matrix");
 	//Menu::GetSingleton()->DrawMatrix(m_projXMMatrix, "TFX projection");
 	//Menu::GetSingleton()->DrawMatrix(m_viewXMMatrix, "TFX VP");
 
@@ -270,9 +323,16 @@ void PPLLObject::UpdateVariables()
 	m_pQuadEffect->GetVariableByName("vSunlightDir")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightDir));
 	m_pQuadEffect->GetVariableByName("vSunlightParams")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightParams));
 }
-void PPLLObject::UpdateLights() {
+void PPLLObject::PreDraw() {
+}
+void PPLLObject::PostDraw() {
+	logger::info("Drawing {} markers", m_markerPositions.size());
+	MarkerRender::GetSingleton()->DrawMarkers(m_markerPositions, m_viewXMMatrix, m_projXMMatrix);
+	m_markerPositions.clear();
+}
+void PPLLObject::UpdateLights()
+{
 	m_nNumLights = 0;
-	m_lightPositions.clear();
 	auto accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
 
 	//auto shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -280,7 +340,7 @@ void PPLLObject::UpdateLights() {
 	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
 	auto  menu = Menu::GetSingleton();
-	logger::info("Active shadow lights: {}", runtimeData.activeShadowLights.size());
+	logger::info("Active shadow lights: {}", runtimeData.shadowCasterLights.size());
 	logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
 	for (auto& e : runtimeData.activePointLights) {
 		if (auto bsLight = e.get()) {
@@ -318,9 +378,9 @@ void PPLLObject::UpdateLights() {
 				//scale, always 1 for now
 				m_vLightScaleWS[m_nNumLights - 1] = glm::vec3(1.0);
 
-				Menu::GetSingleton()->DrawVector3(m_vLightPosWS[m_nNumLights - 1], "light pos: ");
-				Menu::GetSingleton()->DrawVector3(m_vLightColor[m_nNumLights - 1], "light color: ");
-				Menu::GetSingleton()->DrawFloat(bsLight->lodDimmer, "lod dimmer: ");
+				//Menu::GetSingleton()->DrawVector3(m_vLightPosWS[m_nNumLights - 1], "light pos: ");
+				//Menu::GetSingleton()->DrawVector3(m_vLightColor[m_nNumLights - 1], "light color: ");
+				//Menu::GetSingleton()->DrawFloat(bsLight->lodDimmer, "lod dimmer: ");
 
 				auto lightPos = Util::ToRenderScale(glm::vec3(niLight->world.translate.x, niLight->world.translate.y, niLight->world.translate.z));
 				auto lightRot = niLight->world.rotate;
@@ -332,7 +392,7 @@ void PPLLObject::UpdateLights() {
 				auto rotation = DirectX::XMMATRIX(lightRot.entry[0][0], lightRot.entry[0][1], lightRot.entry[0][2], 0, lightRot.entry[1][0], lightRot.entry[1][1], lightRot.entry[1][2], 0, lightRot.entry[2][0], lightRot.entry[2][1], lightRot.entry[2][2], 0, 0, 0, 0, 1);
 				auto transform = translation * rotation;
 				//Menu::GetSingleton()->DrawMatrix(transform, "bone");
-				m_lightPositions.push_back(transform);
+				m_markerPositions.push_back(transform);
 			}
 		}
 	}
@@ -465,8 +525,8 @@ void PPLLObject::Initialize()
 	m_pPPLLReadRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_NONE, true, 0, 0.0f, 0.0f, true, true, false, false);
 
 	//create states for shadow mapping
-	m_pShadowBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, false, false, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, 0, D3D11_BLEND_SRC_ALPHA);
-	m_pShadowDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0b11111111, 0b11111111, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_EQUAL);
-	m_pShadowRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, 0, 0.0f, 0.0f, true, true, false, false);
+	m_pShadowBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, true, false, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, 0, D3D11_BLEND_SRC_ALPHA);
+	m_pShadowDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0b11111111, 0b11111111, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS);
+	m_pShadowRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, -1, -100.0f, -0.65f, true, false, false, false);
 
 }

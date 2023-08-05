@@ -291,7 +291,7 @@ void Menu::DrawSettings()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 void Menu::DrawHairParams() {
-	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 0.006f);
+	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Fiber Spacing", &fiberSpacingSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Fiber Ratio", &fiberRatioSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Kd", &kdSliderValue, 0.0f, 1.0f);
@@ -310,7 +310,8 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
 	ImGui::Checkbox("thin tip", &thinTipCheckbox);
-	ImGui::Checkbox("draw shadows", &drawShadowsCheckbox);
+	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
+	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
 	ImGui::SliderFloat("Gravity magnitude", &gravityMagnitudeSlider, 0.0f, 1.0f);
 	if (ImGui::Button("Export parameters")) {
 		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
