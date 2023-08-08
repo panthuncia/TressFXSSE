@@ -95,8 +95,26 @@ void PPLLObject::Draw()
 	pContext->RSGetState(&originalRSState);
 	ID3D11DepthStencilView* originalDepthStencil;
 	ID3D11RenderTargetView* originalRenderTarget;
-	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
+	ID3D11Buffer*           indexBuffer = nullptr;
+	DXGI_FORMAT             indexBufferFormat;
+	UINT                    indexBufferOffset = 0;
+	UINT                    numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+	ID3D11Buffer*            vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                    vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	ID3D11InputLayout*       inputLayout = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY primitiveTopology;
 
+	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
+	logger::info("1");
+	pContext->IAGetIndexBuffer(&indexBuffer, &indexBufferFormat, &indexBufferOffset);
+	logger::info("2");
+	pContext->IAGetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
+	logger::info("3");
+	pContext->IAGetPrimitiveTopology(&primitiveTopology);
+	logger::info("4");
+	pContext->IAGetInputLayout(&inputLayout);
+	logger::info("5");
 	//set new states
 	pContext->OMSetBlendState(m_pPPLLBuildBlendState, &originalBlendFactor, 0x000000FF);
 	pContext->OMSetDepthStencilState(m_pPPLLBuildDepthStencilState, originalStencilRef);
@@ -124,33 +142,24 @@ void PPLLObject::Draw()
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	//logger::info("End of read debug");
 	m_pPPLL->DoneReading((EI_CommandContextRef)pContext);
-	
+
 	//reset states
 	pContext->OMSetBlendState(originalBlendState, &originalBlendFactor, originalSampleMask);
+	logger::info("6");
 	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
-	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	logger::info("7");
 	pContext->RSSetState(originalRSState);
+	logger::info("8");
 	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
+	logger::info("9");
+	pContext->IASetIndexBuffer(indexBuffer, indexBufferFormat, indexBufferOffset);
+	logger::info("10");
+	pContext->IASetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
+	logger::info("11");
+	pContext->IASetPrimitiveTopology(primitiveTopology);
+	logger::info("12");
+	pContext->IASetInputLayout(inputLayout);
 
-	//draw debug markers
-	//for (auto hair : m_hairs) {
-	//	hair.second->DrawDebugMarkers();
-	//}
-	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
-	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
-	RE::NiMatrix3 rotation = playerCam->world.rotate;
-
-	auto cameraTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z));
-	auto cameraRot = DirectX::XMMatrixSet(rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0,
-		rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0,
-		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
-		0, 0, 0, 1);
-	m_cameraWorld = XMMatrixMultiply(cameraTrans, cameraRot);
-	//MarkerRender::GetSingleton()->DrawWorldAxes(m_cameraWorld, m_viewXMMatrix, m_projXMMatrix);
-	//MarkerRender::GetSingleton()->DrawMarkers(m_lightPositions, m_viewXMMatrix, m_projXMMatrix);
-	//auto&            shaderState = RE::BSShaderManager::State::GetSingleton();
-	//RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
-	//Menu::GetSingleton()->DrawNiTransform(dalcTransform, "ambient transform");
 	//end draw
 }
 
@@ -160,7 +169,43 @@ void PPLLObject::Simulate() {
 		hair.second->Simulate(m_pManager, &m_Simulation);
 	}
 }
+PPLLObject::PipelineState PPLLObject::GetCurrentPipelineState() {
+	ID3D11DeviceContext* pContext = RE::BSGraphics::Renderer::GetSingleton()->context;
+	
+	PipelineState state;
+	pContext->VSGetShader(&state.VS, state.VSClassInstances, &state.numVSClassInstances);
+	pContext->PSGetShader(&state.PS, state.PSClassInstances, &state.numPSClassInstances);
+	pContext->CSGetShader(&state.CS, state.CSClassInstances, &state.numCSClassInstances);
+	pContext->RSGetState(&state.rasterizerState);
+	pContext->OMGetBlendState(&state.blendState, state.blendFactor, &state.sampleMask);
+	pContext->OMGetDepthStencilState(&state.depthStencilState, &state.stencilRef);
+	pContext->IAGetIndexBuffer(&state.indexBuffer, &state.indexBufferFormat, &state.indexBufferOffset);
+	pContext->IAGetVertexBuffers(0, state.numVertexBuffers, state.vertexBuffers, state.vertexBufferStrides, state.vertexBufferOffsets);
+	pContext->IAGetPrimitiveTopology(&state.primitiveTopology);
+	pContext->IAGetInputLayout(&state.inputLayout);
+	pContext->PSGetShaderResources(0, state.numPSSRVs, state.PSSRVs);
+	pContext->PSGetSamplers(0, state.numPSSamplers, state.PSSamplers);
+	pContext->OMGetRenderTargets(state.numRTVs, state.RTVs, &state.DSV);
+	return state;
+}
+void PPLLObject::SetCurrentPipelineState(PipelineState state) {
+	ID3D11DeviceContext* pContext = RE::BSGraphics::Renderer::GetSingleton()->context;
 
+	pContext->VSSetShader(state.VS, state.VSClassInstances, state.numVSClassInstances);
+	pContext->PSSetShader(state.PS, state.PSClassInstances, state.numPSClassInstances);
+	pContext->CSSetShader(state.CS, state.CSClassInstances, state.numCSClassInstances);
+	pContext->RSSetState(state.rasterizerState);
+	pContext->OMSetBlendState(state.blendState, state.blendFactor, state.sampleMask);
+	pContext->OMSetDepthStencilState(state.depthStencilState, state.stencilRef);
+	pContext->IASetIndexBuffer(state.indexBuffer, state.indexBufferFormat, state.indexBufferOffset);
+	pContext->IASetVertexBuffers(0, state.numVertexBuffers, state.vertexBuffers, state.vertexBufferStrides, state.vertexBufferOffsets);
+	pContext->IASetPrimitiveTopology(state.primitiveTopology);
+	pContext->IASetInputLayout(state.inputLayout);
+	pContext->PSSetShaderResources(0, state.numPSSRVs, state.PSSRVs);
+	pContext->PSSetSamplers(0, state.numPSSamplers, state.PSSamplers);
+	pContext->OMSetRenderTargets(state.numRTVs, state.RTVs, state.DSV);
+
+}
 void PPLLObject::UpdateVariables()
 {
 	//if positional sliders changed, update relevant hair

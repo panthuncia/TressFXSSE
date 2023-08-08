@@ -69,21 +69,22 @@ struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
 	{
-		static void thunk(INT64 a1, char a2)
+		static INT64 thunk(INT64 a1, int a2, int a3, int a4, int a5)
 		{
-			func(a1, a2);
+			auto val = func(a1, a2, a3, a4, a5);
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
-			//auto ppll = PPLLObject::GetSingleton();
+			auto ppll = PPLLObject::GetSingleton();
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				//if (Menu::GetSingleton()->drawHairCheckbox) {
-				//	ppll->UpdateVariables();
-				//	//ppll->Simulate();
-				//	ppll->Draw();
-				//}
+				if (Menu::GetSingleton()->drawHairCheckbox) {
+					ppll->UpdateVariables();
+					//ppll->Simulate();
+					ppll->Draw();
+				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 			}
+			return val;
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
@@ -97,11 +98,6 @@ struct Hooks
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto ppll = PPLLObject::GetSingleton();
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				if (Menu::GetSingleton()->drawHairCheckbox) {
-					ppll->UpdateVariables();
-					//ppll->Simulate();
-					ppll->Draw();
-				}
 				MarkerRender::GetSingleton()->DrawAllMarkers(ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
@@ -235,7 +231,7 @@ void hookGameLoop() {
 }
 void hookMainDraw() {
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(100424, 82084).address() + REL::Relocate(0x2B4, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
-	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(99939, 82084).address() + REL::Relocate(0x547, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
+	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(99939, 82084).address() + REL::Relocate(0x616, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
 	
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A)); //TODO AE
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow light draws

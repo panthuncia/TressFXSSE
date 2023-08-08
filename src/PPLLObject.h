@@ -1,14 +1,14 @@
 #pragma once
 #include "AMD_TressFX.h"
+#include "Hair.h"
+#include "MarkerRender.h"
 #include "ShaderCompiler.h"
 #include "SkyrimGPUInterface.h"
 #include "TressFXHairObject.h"
 #include "TressFXSDFCollision.h"
 #include "TressFXSimulation.h"
-#include "MarkerRender.h"
-#include <d3d11.h>
-#include "Hair.h"
 #include "glm/ext/matrix_common.hpp"
+#include <d3d11.h>
 
 #define SU_MAX_LIGHTS 20
 class TressFXPPLL;
@@ -33,8 +33,8 @@ public:
 	bool m_doReload = false;
 
 	std::unordered_map<std::string, Hair*> m_hairs;
-	D3D11_VIEWPORT    m_currentViewport;
-	
+	D3D11_VIEWPORT                         m_currentViewport;
+
 	//for testing
 	DirectX::XMMATRIX m_gameViewMatrix;
 	DirectX::XMMATRIX m_gameProjMatrix;
@@ -45,12 +45,51 @@ public:
 	DirectX::XMMATRIX m_projXMMatrix;
 	ID3DX11Effect*    m_pStrandEffect;
 	ID3DX11Effect*    m_pQuadEffect;
-	bool              m_gameLoaded = false; //TODO: remove this hack
+	bool              m_gameLoaded = false;  //TODO: remove this hack
 	DirectX::XMMATRIX m_cameraWorld;
-
 
 private:
 	PPLLObject();
+
+	struct PipelineState
+	{
+		ID3D11VertexShader*         VS = nullptr;
+		ID3D11ClassInstance**       VSClassInstances;
+		UINT                        numVSClassInstances = 0;
+		ID3D11PixelShader*          PS = nullptr;
+		ID3D11ClassInstance**       PSClassInstances;
+		UINT                        numPSClassInstances = 0;
+		ID3D11ComputeShader*        CS = nullptr;
+		ID3D11ClassInstance**       CSClassInstances;
+		UINT                        numCSClassInstances = 0;
+		ID3D11BlendState*           blendState = nullptr;
+		FLOAT                       blendFactor[4] = {0};
+		UINT                        sampleMask = 0;
+		ID3D11RasterizerState*      rasterizerState = nullptr;
+		ID3D11DepthStencilState*    depthStencilState = nullptr;
+		UINT                        stencilRef = 0;
+		ID3D11InputLayout*          inputLayout = nullptr;
+		D3D11_PRIMITIVE_TOPOLOGY    primitiveTopology;
+		ID3D11Buffer*               indexBuffer = nullptr;
+		DXGI_FORMAT                 indexBufferFormat;
+		UINT                        indexBufferOffset = 0;
+		UINT                        numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+		ID3D11Buffer**              vertexBuffers = nullptr;
+		UINT*                       vertexBufferStrides;
+		UINT*                       vertexBufferOffsets;
+		UINT                        numRTVs = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
+		ID3D11RenderTargetView**    RTVs = nullptr;
+		ID3D11DepthStencilView*     DSV;
+		UINT                        numPSSRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+		ID3D11ShaderResourceView**  PSSRVs = nullptr;
+		//UINT                        numUAVs = 0;
+		//ID3D11UnorderedAccessView** UAVs = nullptr;
+		UINT                        numPSSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
+		ID3D11SamplerState**        PSSamplers = nullptr;
+	};
+	PipelineState GetCurrentPipelineState();
+	void SetCurrentPipelineState(PipelineState);
+
 	ID3DX11Effect*            m_pTressFXSimEffect;
 	ID3DX11Effect*            m_pTressFXSDFCollisionEffect;
 	EI_PSO*                   m_pBuildPSO;
@@ -91,8 +130,6 @@ private:
 	//global parameter
 	float m_gravityMagnitude = 0.09;
 
-		//debug
+	//debug
 	ID3D11RasterizerState* m_pWireframeRSState;
-	MarkerRender*          m_pMarkerRenderer;
-
 };
