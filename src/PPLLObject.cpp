@@ -303,13 +303,6 @@ void PPLLObject::UpdateVariables()
 	m_pQuadEffect->GetVariableByName("vSunlightDir")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightDir));
 	m_pQuadEffect->GetVariableByName("vSunlightParams")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&m_vSunlightParams));
 }
-void PPLLObject::PreDraw() {
-}
-void PPLLObject::PostDraw() {
-	logger::info("Drawing {} markers", m_markerPositions.size());
-	MarkerRender::GetSingleton()->DrawMarkers(m_markerPositions, m_viewXMMatrix, m_projXMMatrix);
-	m_markerPositions.clear();
-}
 void PPLLObject::UpdateLights()
 {
 	m_nNumLights = 0;
@@ -372,7 +365,7 @@ void PPLLObject::UpdateLights()
 				auto rotation = DirectX::XMMATRIX(lightRot.entry[0][0], lightRot.entry[0][1], lightRot.entry[0][2], 0, lightRot.entry[1][0], lightRot.entry[1][1], lightRot.entry[1][2], 0, lightRot.entry[2][0], lightRot.entry[2][1], lightRot.entry[2][2], 0, 0, 0, 0, 1);
 				auto transform = translation * rotation;
 				//Menu::GetSingleton()->DrawMatrix(transform, "bone");
-				m_markerPositions.push_back(transform);
+				MarkerRender::GetSingleton()->m_markerPositions.push_back(transform);
 			}
 		}
 	}

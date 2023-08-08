@@ -13,8 +13,10 @@ public:
 		return &markerRender;
 	}
 	void InitRenderResources();
-	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 	void DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
+	void                           DrawAllMarkers(DirectX::XMMATRIX viewXMMatrix, DirectX::XMMATRIX projXMMatrix);
+	void                           ClearMarkers();
+	std::vector<DirectX::XMMATRIX> m_markerPositions;
 
 private:
 	MarkerRender() {}
@@ -22,6 +24,7 @@ private:
 	void CreateBuffers(ID3D11Device* pDevice);
 	void CreateLayoutsAndStates(ID3D11Device* pDevice);
 	void LoadMeshes(ID3D11Device* pDevice);
+	void DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;

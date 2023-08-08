@@ -34,6 +34,15 @@ void MarkerRender::InitRenderResources()
 	logger::info("Created marker layouts");
 	LoadMeshes(pDevice);
 }
+void MarkerRender::ClearMarkers() {
+	m_markerPositions.clear();
+}
+void MarkerRender::DrawAllMarkers(DirectX::XMMATRIX viewXMMatrix, DirectX::XMMATRIX projXMMatrix)
+{
+	logger::info("Drawing {} markers", m_markerPositions.size());
+	MarkerRender::GetSingleton()->DrawMarkers(m_markerPositions, viewXMMatrix, projXMMatrix);
+	m_markerPositions.clear();
+}
 void MarkerRender::DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;

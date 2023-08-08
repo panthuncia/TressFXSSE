@@ -18,6 +18,7 @@
 #include "PPLLObject.h"
 #include <iostream>
 #include <filesystem>
+#include "GFSDK_SSAO.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;

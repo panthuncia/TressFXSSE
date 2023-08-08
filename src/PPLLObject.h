@@ -28,9 +28,6 @@ public:
 	void Simulate();
 	void Draw();
 	void DrawShadows();
-	void PreDraw();
-	void PostDraw();
-	std::vector<DirectX::XMMATRIX> m_markerPositions;
 
 	void ReloadAllHairs();
 	bool m_doReload = false;

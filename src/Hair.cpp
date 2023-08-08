@@ -65,17 +65,8 @@ void Hair::DrawDebugMarkers()
 		auto rotation = DirectX::XMMATRIX(boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0, boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0, boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0, 0, 0, 0, 1);
 		auto transform = translation * rotation;
 		//Menu::GetSingleton()->DrawMatrix(transform, "bone");
-		positions.push_back(transform);
+		MarkerRender::GetSingleton()->m_markerPositions.push_back(transform);
 	}
-	//auto state = RE::BSGraphics::RendererShadowState::GetSingleton();
-	//auto viewMatrix = state->GetRuntimeData().cameraData.getEye().viewMat;
-
-	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
-	auto          translation = Util::ToRenderScale(glm::vec3(playerCam->world.translate.x, playerCam->world.translate.y, playerCam->world.translate.z));
-	RE::NiMatrix3 rotation = playerCam->world.rotate;
-
-	PPLLObject* ppll = PPLLObject::GetSingleton();
-	MarkerRender::GetSingleton()->DrawMarkers(positions, ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
 }
 
 void Hair::UpdateVariables(float gravityMagnitude)

@@ -1,5 +1,6 @@
 #include "ShaderCompiler.h"
 #include "d3dcompiler.h"
+#include "Util.h"
 namespace ShaderCompiler
 {
 	std::string what(const std::exception_ptr& eptr = std::current_exception())
@@ -95,6 +96,7 @@ namespace ShaderCompiler
 			return nullptr;
 		}
 		logger::info("Creating effect from memory");
+		logger::info("device address: {}", Util::ptr_to_string(device));
 		D3DX11CreateEffectFromMemory(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 0, device, &effect);
 		/*HRESULT hr = D3DX11CompileEffectFromFile(a_filePath.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, shaderFlags,
 			0, device, &effect, &errorBlob);*/
