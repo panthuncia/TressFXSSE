@@ -23,6 +23,7 @@ decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwap
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
 decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
 decltype(&ID3D11DeviceContext::RSSetViewports) ptrRSSetViewports;
+decltype(&ID3D11DeviceContext::CopyResource)         ptrCopyResource;
 
 extern "C"
 {
@@ -306,6 +307,7 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		hairNames.push_back(k);
 	}
 	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
+
 	return hr;
 }
 
@@ -344,6 +346,18 @@ void hk_ID3D11DeviceContext_RSSetViewports(ID3D11DeviceContext* This, UINT NumVi
 		ppll->m_currentViewport.MaxDepth = pViewports->MaxDepth;
 	}
 	(This->*ptrRSSetViewports)(NumViewports, pViewports);
+}
+
+bool catchNextResourceCopy = false;
+ID3D11Resource* overrideResource = nullptr;
+void hk_ID3D11Device_CopyResource(ID3D11DeviceContext* This, ID3D11Resource* pDstResource, ID3D11Resource* pSrcResource) {
+	if (catchNextResourceCopy) {
+        logger::info("overriding resource copy");
+        (This->*ptrCopyResource)(pDstResource, overrideResource);
+        catchNextResourceCopy = false;
+    } else {
+        (This->*ptrCopyResource)(pDstResource, pSrcResource);
+    }
 }
 
 GUID WKPDID_D3DDebugObjectNameT = { 0x429b8c22, 0x9188, 0x4b0c, 0x87, 0x42, 0xac, 0xb0, 0xbf, 0x85, 0xc2, 0x00 };
@@ -419,6 +433,7 @@ struct Hooks
 			*(uintptr_t*)&ptrDrawIndexed = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexed, 12);
 			*(uintptr_t*)&ptrDrawIndexedInstanced = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexedInstanced, 20);
 			*(uintptr_t*)&ptrRSSetViewports = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_RSSetViewports, 44);
+			*(uintptr_t*)&ptrCopyResource = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11Device_CopyResource, 47);
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};

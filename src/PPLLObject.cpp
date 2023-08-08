@@ -57,29 +57,9 @@ void PPLLObject::DrawShadows() {
 	
 	ID3D11Buffer* pConstantBuffer;
 	pContext->VSGetConstantBuffers(12, 1, &pConstantBuffer);
-	//D3D11_MAPPED_SUBRESOURCE resource;
-	//logger::info("about to map");
-	//pContext->Map(pConstantBuffer, 0, D3D11_MAP_READ, 0, &resource);
-	//logger::info("Address of mapped buffer: {}", Util::ptr_to_string(resource.pData));
-	//this gets the third float4x4 from cbuffer
-	//logger::info("Getting matrix");
-	//glm::mat4 shadowMapMatrix = glm::make_mat4(reinterpret_cast<float*>(resource.pData)+32);
-	//pContext->Unmap(pConstantBuffer, 0);
-	//m_pStrandEffect->GetVariableByName("g_ShadowMapMatrix")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&shadowMapMatrix));
 	logger::info("setting shadow buffer");
 	m_pStrandEffect->GetConstantBufferByName("constants12")->SetConstantBuffer(pConstantBuffer);
-	auto cameraPos = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator()->activeShadowSceneNode->cameraPos;
-	Menu::GetSingleton()->DrawVector3(cameraPos, "shadow camera pos");
-	auto              cam = RE::BSGraphics::RendererShadowState::GetSingleton()->GetRuntimeData().cameraData.getEye();
-	auto      projMat = cam.projMat;
-	auto              viewMat = cam.viewMat;
-	auto              viewProjMat = cam.viewProjMat;
-	Menu::GetSingleton()->DrawMatrix(viewMat, "view");
-	Menu::GetSingleton()->DrawMatrix(projMat, "proj");
-	Menu::GetSingleton()->DrawMatrix(viewProjMat, "viewProj");
-	glm::vec3 vEye = Util::ToRenderScale(glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
-	m_pStrandEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&vEye));
-	//Menu::GetSingleton()->DrawMatrix(shadowMapMatrix, "Shadow map matrix");
+
 	EI_PSO* pPSO = GetPSO("DepthOnly", m_pStrandEffect);
 	for (auto hair : m_hairs) {
 		hair.second->Draw(pContext, pPSO);
@@ -527,6 +507,6 @@ void PPLLObject::Initialize()
 	//create states for shadow mapping
 	m_pShadowBlendState = Util::CreateBlendState(m_pManager->m_pDevice, false, true, false, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, 0, D3D11_BLEND_SRC_ALPHA);
 	m_pShadowDepthStencilState = Util::CreateDepthStencilState(m_pManager->m_pDevice, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0b11111111, 0b11111111, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS);
-	m_pShadowRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_BACK, true, -1, -100.0f, -0.65f, true, false, false, false);
+	m_pShadowRasterizerState = Util::CreateRasterizerState(m_pManager->m_pDevice, D3D11_FILL_SOLID, D3D11_CULL_NONE, true, -1, -100.0f, -0.65f, true, false, false, false);
 
 }

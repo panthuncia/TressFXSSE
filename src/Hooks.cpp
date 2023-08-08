@@ -64,7 +64,7 @@ struct Main_Update
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
-uint8_t skipFrame = 10;
+//uint8_t skipFrame = 10;
 struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
@@ -78,9 +78,9 @@ struct Hooks
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				ppll->PreDraw();
-				ppll->UpdateVariables();
-				ppll->Simulate();
 				if (Menu::GetSingleton()->drawHairCheckbox) {
+					ppll->UpdateVariables();
+					//ppll->Simulate();
 					ppll->Draw();
 				}
 				ppll->PostDraw();
@@ -97,105 +97,140 @@ struct Hooks
 			auto ppll = PPLLObject::GetSingleton();
 			if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
-				if (skipFrame) {
+				/*if (skipFrame) {
 					skipFrame--;
 					logger::info("skipping frame");
-				} else {
+				} else {*/
 					logger::info("drawing axes");
 					PPLLObject::GetSingleton()->DrawShadows();
 					//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
-				}
+				/*}*/
 			}
 			return func(a1);
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
 };
+void DrawShadows() {
+	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:");
+	auto camera = RE::PlayerCamera::GetSingleton();
+	auto ppll = PPLLObject::GetSingleton();
+	if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+		//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
+		/*if (skipFrame) {
+				skipFrame--;
+				logger::info("skipping frame");
+				} else*/
+		if (Menu::GetSingleton()->drawShadowsCheckbox) {
+			//get current view projection matrix
+			auto shadowState = RE::BSGraphics::RendererShadowState::GetSingleton();
+			auto gameViewMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewMat;
+			auto gameProjMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMat;
+			auto projMatrix = DirectX::XMMatrixTranspose(gameProjMatrix);
+			//Menu::GetSingleton()->DrawMatrix(shadowState->GetRuntimeData().cameraData.getEye().viewMat, "game shadow viewMat");
+			//Menu::GetSingleton()->DrawMatrix(shadowState->GetRuntimeData().cameraData.getEye().projMat, "game shadow projMat");
+			DirectX::XMFLOAT4X4 gameVFloats;
+			DirectX::XMStoreFloat4x4(&gameVFloats, gameViewMatrix);
+			//DirectX::XMFLOAT4X4 gameVFloats;
+			//DirectX::XMStoreFloat4x4(&gameVFloats, gameViewMatrix);
+			//transform into our render scale
+			//auto worldShadowLightPos = a1->light.get()->world.translate;
+			//auto worldShadowLightPosScaled = -Util::ToRenderScale(glm::vec3(worldShadowLightPos.x, worldShadowLightPos.y, worldShadowLightPos.z));
+			//Menu::GetSingleton()->DrawVector3(worldShadowLightPos, "shadow light pos");
+
+			////draw marker at light
+			//auto shadowLightRot = a1->light.get()->world.rotate;
+			//auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(worldShadowLightPosScaled.x, worldShadowLightPosScaled.y, worldShadowLightPosScaled.z));
+			//auto rotation = DirectX::XMMATRIX(shadowLightRot.entry[0][0], shadowLightRot.entry[0][1], shadowLightRot.entry[0][2], 0, shadowLightRot.entry[1][0], shadowLightRot.entry[1][1], shadowLightRot.entry[1][2], 0, shadowLightRot.entry[2][0], shadowLightRot.entry[2][1], shadowLightRot.entry[2][2], 0, 0, 0, 0, 1);
+			//auto transform = translation * rotation;
+			//ppll->m_markerPositions.push_back(transform);
+
+			//get viewport
+			auto              currentViewport = ppll->m_currentViewport;
+			DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(currentViewport.TopLeftX, currentViewport.TopLeftY, currentViewport.Width, currentViewport.Height);
+			ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
+			logger::info("drawing hair shadows");
+			PPLLObject::GetSingleton()->DrawShadows();
+			//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
+		}
+	}
+}
 struct BSShadowLight_DrawShadows
 {
 	static void thunk(RE::BSShadowLight* a1, INT64* a2, DWORD* a3, int a4)
 	{
 		func(a1, a2, a3, a4);
-		//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:");
-		auto camera = RE::PlayerCamera::GetSingleton();
-		auto ppll = PPLLObject::GetSingleton();
-		if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-			//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
-			if (skipFrame) {
-				skipFrame--;
-				logger::info("skipping frame");
-			} else if (Menu::GetSingleton()->drawShadowsCheckbox){
-				//get current view projection matrix
-				auto shadowState = RE::BSGraphics::RendererShadowState::GetSingleton();
-				auto gameViewMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewMat;
-				auto gameProjMatrix = shadowState->GetRuntimeData().cameraData.getEye().projMat;
-				auto projMatrix = DirectX::XMMatrixTranspose(gameProjMatrix);
-				//Menu::GetSingleton()->DrawMatrix(shadowState->GetRuntimeData().cameraData.getEye().viewMat, "game shadow viewMat");
-				//Menu::GetSingleton()->DrawMatrix(shadowState->GetRuntimeData().cameraData.getEye().projMat, "game shadow projMat");
-				DirectX::XMFLOAT4X4 gameVFloats;
-				DirectX::XMStoreFloat4x4(&gameVFloats, gameViewMatrix);
-				//DirectX::XMFLOAT4X4 gameVFloats;
-				//DirectX::XMStoreFloat4x4(&gameVFloats, gameViewMatrix);
-				//transform into our render scale
-				auto worldShadowLightPos = a1->light.get()->world.translate;
-				auto worldShadowLightPosScaled = Util::ToRenderScale(glm::vec3(worldShadowLightPos.x, worldShadowLightPos.y, worldShadowLightPos.z));
-
-				//draw marker at light
-				auto shadowLightRot = a1->light.get()->world.rotate;
-				auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(worldShadowLightPosScaled.x, worldShadowLightPosScaled.y, worldShadowLightPosScaled.z));
-				auto rotation = DirectX::XMMATRIX(shadowLightRot.entry[0][0], shadowLightRot.entry[0][1], shadowLightRot.entry[0][2], 0, shadowLightRot.entry[1][0], shadowLightRot.entry[1][1], shadowLightRot.entry[1][2], 0, shadowLightRot.entry[2][0], shadowLightRot.entry[2][1], shadowLightRot.entry[2][2], 0, 0, 0, 0, 1);
-				auto transform = translation * rotation;
-				ppll->m_markerPositions.push_back(transform);
-
-				auto forwardVector = shadowState->GetRuntimeData().cameraData.getEye().viewForward;
-				DirectX::XMFLOAT3 forward;
-				DirectX::XMStoreFloat3(&forward, forwardVector);
-				auto rightVector = shadowState->GetRuntimeData().cameraData.getEye().viewRight;
-				DirectX::XMFLOAT3 right;
-				DirectX::XMStoreFloat3(&right, rightVector);
-				auto upVector = shadowState->GetRuntimeData().cameraData.getEye().viewUp;
-				DirectX::XMFLOAT3 up;
-				DirectX::XMStoreFloat3(&up, upVector);
-				//Menu::GetSingleton()->DrawVector3(glm::vec3(forward.x, forward.y, forward.z), "forward");
-				//Menu::GetSingleton()->DrawVector3(glm::vec3(right.x, right.y, right.z), "right");
-				//Menu::GetSingleton()->DrawVector3(glm::vec3(up.x, up.y, up.z), "up");
-				/*glm::mat3 viewRot = glm::mat3({ { gameVFloats._11, gameVFloats._21, gameVFloats._31 },
-					{ gameVFloats._12, gameVFloats._22, gameVFloats._32 },
-					{ gameVFloats._13, gameVFloats._23, gameVFloats._33 } });*/
-				glm::mat3 viewRot = glm::mat3({ { gameVFloats._11, gameVFloats._12, gameVFloats._13 },
-							{ gameVFloats._21, gameVFloats._22, gameVFloats._23 },
-							{ gameVFloats._31, gameVFloats._32, gameVFloats._33 } });
-				glm::mat4 viewMatrix = glm::mat4({ viewRot[0][0], viewRot[0][1], viewRot[0][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[0][0], viewRot[0][1], viewRot[0][2])) },
-					{ viewRot[1][0], viewRot[1][1], viewRot[1][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[1][0], viewRot[1][1], viewRot[1][2])) },
-					{ viewRot[2][0], viewRot[2][1], viewRot[2][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[2][0], viewRot[2][1], viewRot[2][2])) },
-					{ 0, 0, 0, 1 });
-				/*glm::mat4  viewMatrix = glm::mat4({ viewRot[0][0], viewRot[0][1], viewRot[0][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[0][0], viewRot[0][1], viewRot[0][2])) },
-							{ viewRot[1][0], viewRot[1][1], viewRot[1][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[1][0], viewRot[1][1], viewRot[1][2])) },
-							{ viewRot[2][0], viewRot[2][1], viewRot[2][2], glm::dot(worldShadowLightPosScaled, glm::vec3(viewRot[2][0], viewRot[2][1], viewRot[2][2])) },
-							{ 0, 0, 0, 1 });*/
-				auto      viewXMFloat = DirectX::XMFLOAT4X4(&viewMatrix[0][0]);
-				auto viewXMMatrix = DirectX::XMMatrixSet(viewXMFloat._11, viewXMFloat._12, viewXMFloat._13, viewXMFloat._14, viewXMFloat._21, viewXMFloat._22, viewXMFloat._23, viewXMFloat._24, viewXMFloat._31, viewXMFloat._32, viewXMFloat._33, viewXMFloat._34, viewXMFloat._41, viewXMFloat._42, viewXMFloat._43, viewXMFloat._44);
-				DirectX::XMMATRIX viewProjectionMatrix = projMatrix * viewXMMatrix;
-				DirectX::XMMATRIX viewProjectionMatrixInverse = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
-				//Menu::GetSingleton()->DrawMatrix(viewXMMatrix, "viewMat");
-				//Menu::GetSingleton()->DrawMatrix(viewProjectionMatrix, "viewProjMat");
-				ppll->m_pStrandEffect->GetVariableByName("g_mVP")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrix));
-				ppll->m_pStrandEffect->GetVariableByName("g_mInvViewProj")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewProjectionMatrixInverse));
-				ppll->m_pStrandEffect->GetVariableByName("g_mView")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&viewXMMatrix));
-				ppll->m_pStrandEffect->GetVariableByName("g_mProjection")->AsMatrix()->SetMatrix(reinterpret_cast<float*>(&projMatrix));
-				ppll->m_pStrandEffect->GetVariableByName("g_vEye")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&worldShadowLightPosScaled));
-				//get viewport
-				auto currentViewport = ppll->m_currentViewport;
-				DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(currentViewport.TopLeftX, currentViewport.TopLeftY, currentViewport.Width, currentViewport.Height);
-				ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
-				logger::info("drawing hair shadows");
-				PPLLObject::GetSingleton()->DrawShadows();
-				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
-			}
-		}
+		DrawShadows();
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
+ID3D11Texture2D* pCurrentDepthStencilResourceNoHair = nullptr;
+ID3D11Resource*  pOriginalDepthTexture = nullptr;
+extern bool             catchNextResourceCopy;
+extern ID3D11Resource*  overrideResource;
+struct Sub_DrawShadows
+{
+	static INT64 thunk(INT64 a1, UINT64* a2)
+	{
+		auto                    pManager = RE::BSGraphics::Renderer::GetSingleton();
+		auto                    pContext = pManager->GetRuntimeData().context;
+		ID3D11DepthStencilView* pOriginalDSV;
+		pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV,0, 0, nullptr);
+		pOriginalDSV->GetResource(&pOriginalDepthTexture);
+		//create texture for copy
+		if (pCurrentDepthStencilResourceNoHair == nullptr) {
+			auto pDevice = pManager->GetRuntimeData().forwarder;
+			auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+			DXGI_SWAP_CHAIN_DESC swapDesc;
+			pSwapChain->GetDesc(&swapDesc);
+			D3D11_TEXTURE2D_DESC desc;
+			desc.Width = swapDesc.BufferDesc.Width;
+			desc.Height = swapDesc.BufferDesc.Height;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+			desc.SampleDesc.Count = 1;
+			desc.SampleDesc.Quality = 0;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D10_BIND_DEPTH_STENCIL;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
+		}
+		logger::info("Copying depth stencil");
+		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
+		DrawShadows();
+		catchNextResourceCopy = true;
+		overrideResource = pCurrentDepthStencilResourceNoHair;
+		return func(a1, a2);
+	}
+	static inline REL::Relocation<decltype(thunk)> func;
+};
+
+struct Sub_ShadowMap
+{
+	static INT64 thunk(INT64 a1)
+	{
+		auto                    val = func(a1);
+		auto                    pContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
+		//ID3D11DepthStencilView* pOriginalDSV;
+		//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV, 0, 0, nullptr);
+		//ID3D11Resource* pOriginalDepthTexture;
+		//pOriginalDSV->GetResource(&pOriginalDepthTexture);
+		if (pCurrentDepthStencilResourceNoHair == nullptr) {
+			logger::warn("Copied depth texture is null!");
+		} else if(pOriginalDepthTexture == nullptr){
+			logger::warn("Original depth texture is null!");
+		}
+		else {
+			logger::info("Writing depth stencil");
+			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		}
+		return val;
+	}
+	static inline REL::Relocation<decltype(thunk)> func;
+};
+
 void hookGameLoop() {
 	REL::Relocation<uintptr_t> update{ RELOCATION_ID(35551, NULL) };
 	stl::write_thunk_call<Main_Update>(update.address()+ RELOCATION_OFFSET(0x11F, NULL));
@@ -205,7 +240,18 @@ void hookMainDraw() {
 	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x16F, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A)
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A)); //TODO AE
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow light draws
+	
+	//2nd depth pass
 	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0xC6, 0x17A));  //TODO AE //shadow light draws
+	
+	//3rd depth pass
+	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0x12B, 0x17A));  //TODO AE //shadow light draws
+
+	//4th depth pass
+	stl::write_thunk_call<Sub_DrawShadows>(REL::RelocationID(100421, 82084).address() + REL::Relocate(0x4F9, 0x17A));            //TODO AE //shadow light draws
+
+	//shadow map
+	stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
 	//stl::write_vfunc<0x0A, BSShadowLight_DrawShadows>(RE::VTABLE_BSShadowDirectionalLight[0]);
 }
 void hookFacegen()
@@ -222,6 +268,13 @@ namespace LightHooks{
 		//get current transforms now, because they're borked later
 		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs){
 			hairPair.second->UpdateBones();
+		}
+		//simulate before render pass
+		auto ppll = PPLLObject::GetSingleton();
+		auto camera = RE::PlayerCamera::GetSingleton();
+		if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+			ppll->UpdateVariables();
+			ppll->Simulate();
 		}
 		_Nullsub();
 	}
