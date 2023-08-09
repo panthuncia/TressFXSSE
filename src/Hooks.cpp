@@ -75,12 +75,13 @@ struct Hooks
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto ppll = PPLLObject::GetSingleton();
-			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+			if (ppll->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				if (Menu::GetSingleton()->drawHairCheckbox) {
 					ppll->UpdateVariables();
 					//ppll->Simulate();
 					ppll->Draw();
+					ppll->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 			}
@@ -106,9 +107,10 @@ struct Hooks
 	};
 };
 void DrawShadows() {
-	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:");
+	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:")
 	auto camera = RE::PlayerCamera::GetSingleton();
 	auto ppll = PPLLObject::GetSingleton();
+	ppll->m_currentState = state::draw_shadows;
 	if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 		//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
 		/*if (skipFrame) {
@@ -194,6 +196,8 @@ struct Sub_DrawShadows
 		logger::info("Copying depth stencil");
 		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
 		DrawShadows();
+
+		//catch next copy to stop hair depth from being used elsewhere
 		catchNextResourceCopy = true;
 		overrideResource = pCurrentDepthStencilResourceNoHair;
 		return func(a1, a2);

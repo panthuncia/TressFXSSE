@@ -106,15 +106,10 @@ void PPLLObject::Draw()
 	D3D11_PRIMITIVE_TOPOLOGY primitiveTopology;
 
 	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
-	logger::info("1");
 	pContext->IAGetIndexBuffer(&indexBuffer, &indexBufferFormat, &indexBufferOffset);
-	logger::info("2");
 	pContext->IAGetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
-	logger::info("3");
 	pContext->IAGetPrimitiveTopology(&primitiveTopology);
-	logger::info("4");
 	pContext->IAGetInputLayout(&inputLayout);
-	logger::info("5");
 	//set new states
 	pContext->OMSetBlendState(m_pPPLLBuildBlendState, &originalBlendFactor, 0x000000FF);
 	pContext->OMSetDepthStencilState(m_pPPLLBuildDepthStencilState, originalStencilRef);
@@ -145,19 +140,12 @@ void PPLLObject::Draw()
 
 	//reset states
 	pContext->OMSetBlendState(originalBlendState, &originalBlendFactor, originalSampleMask);
-	logger::info("6");
 	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
-	logger::info("7");
 	pContext->RSSetState(originalRSState);
-	logger::info("8");
 	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
-	logger::info("9");
 	pContext->IASetIndexBuffer(indexBuffer, indexBufferFormat, indexBufferOffset);
-	logger::info("10");
 	pContext->IASetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
-	logger::info("11");
 	pContext->IASetPrimitiveTopology(primitiveTopology);
-	logger::info("12");
 	pContext->IASetInputLayout(inputLayout);
 
 	//end draw
@@ -173,9 +161,9 @@ PPLLObject::PipelineState PPLLObject::GetCurrentPipelineState() {
 	ID3D11DeviceContext* pContext = RE::BSGraphics::Renderer::GetSingleton()->context;
 	
 	PipelineState state;
-	pContext->VSGetShader(&state.VS, state.VSClassInstances, &state.numVSClassInstances);
-	pContext->PSGetShader(&state.PS, state.PSClassInstances, &state.numPSClassInstances);
-	pContext->CSGetShader(&state.CS, state.CSClassInstances, &state.numCSClassInstances);
+	pContext->VSGetShader(&state.VS, nullptr, nullptr);
+	pContext->PSGetShader(&state.PS, nullptr, nullptr);
+	pContext->CSGetShader(&state.CS, nullptr, nullptr);
 	pContext->RSGetState(&state.rasterizerState);
 	pContext->OMGetBlendState(&state.blendState, state.blendFactor, &state.sampleMask);
 	pContext->OMGetDepthStencilState(&state.depthStencilState, &state.stencilRef);

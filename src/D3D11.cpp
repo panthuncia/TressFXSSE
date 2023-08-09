@@ -18,7 +18,7 @@
 #include "PPLLObject.h"
 #include <iostream>
 #include <filesystem>
-#include "GFSDK_SSAO.h"
+#include "HBAOPlus.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
@@ -309,6 +309,8 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	}
 	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
 
+	//HBAOPlus::GetSingleton()->Initialize(device);
+
 	return hr;
 }
 
@@ -349,6 +351,8 @@ void hk_ID3D11DeviceContext_RSSetViewports(ID3D11DeviceContext* This, UINT NumVi
 	(This->*ptrRSSetViewports)(NumViewports, pViewports);
 }
 
+//hack necessary to compute hair depth for shadows
+//but prevent it from being used in other parts of render loop
 bool catchNextResourceCopy = false;
 ID3D11Resource* overrideResource = nullptr;
 void hk_ID3D11Device_CopyResource(ID3D11DeviceContext* This, ID3D11Resource* pDstResource, ID3D11Resource* pSrcResource) {

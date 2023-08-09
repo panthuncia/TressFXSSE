@@ -12,6 +12,14 @@
 
 #define SU_MAX_LIGHTS 20
 class TressFXPPLL;
+
+enum state
+{
+	draw_shadows = 0,
+	draw_strands = 1,
+	done_drawing = 2
+};
+
 class PPLLObject
 {
 public:
@@ -48,6 +56,8 @@ public:
 	bool              m_gameLoaded = false;  //TODO: remove this hack
 	DirectX::XMMATRIX m_cameraWorld;
 
+	state m_currentState = state::draw_strands;
+
 private:
 	PPLLObject();
 
@@ -74,18 +84,18 @@ private:
 		DXGI_FORMAT                 indexBufferFormat;
 		UINT                        indexBufferOffset = 0;
 		UINT                        numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-		ID3D11Buffer**              vertexBuffers = nullptr;
-		UINT*                       vertexBufferStrides;
-		UINT*                       vertexBufferOffsets;
+		ID3D11Buffer*               vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT                        vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT                        vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 		UINT                        numRTVs = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
-		ID3D11RenderTargetView**    RTVs = nullptr;
+		ID3D11RenderTargetView*    RTVs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 		ID3D11DepthStencilView*     DSV;
 		UINT                        numPSSRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
-		ID3D11ShaderResourceView**  PSSRVs = nullptr;
+		ID3D11ShaderResourceView*   PSSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 		//UINT                        numUAVs = 0;
 		//ID3D11UnorderedAccessView** UAVs = nullptr;
 		UINT                        numPSSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
-		ID3D11SamplerState**        PSSamplers = nullptr;
+		ID3D11SamplerState* PSSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
 	};
 	PipelineState GetCurrentPipelineState();
 	void SetCurrentPipelineState(PipelineState);
