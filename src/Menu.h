@@ -79,7 +79,20 @@ public:
 	bool                     thinTipCheckbox = true;
 	bool                     drawShadowsCheckbox = true;
 	bool                     drawHairCheckbox = true;
+	bool                     HBAOCheckbox = true;
+	bool                     clearBeforeHBAOCheckbox = false;
 	float                    gravityMagnitudeSlider = 0.09;
+	//ao
+	float aoLargeScaleAOSlider = 0.0;
+	float aoSmallScaleAOSlider = 1.0;
+	float aoBiasSlider = 0.266;
+	bool aoBlurEnableCheckbox = true;
+	float aoBlurSharpnessSlider = 100.0;
+	float aoPowerExponentSlider = 2.0;
+	float aoRadiusSlider = 0.038;
+	bool aoDepthThresholdEnableCheckbox = false;
+	float aoDepthThresholdMaxViewDepthSlider = 0;
+	float aoDepthThresholdSharpnessSlider = 100;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;
 	std::vector<std::string> activeHairs = { "NONE" };

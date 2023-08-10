@@ -307,12 +307,34 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Damping", &dampingSlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("VSP amount", &vspAmountSlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("VSP accel. threshold", &vspAccelThresholdSlider, 0.0f, 10.0f);
+	ImGui::SliderFloat("Gravity magnitude", &gravityMagnitudeSlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
-	ImGui::Checkbox("thin tip", &thinTipCheckbox);
+	ImGui::Checkbox("Thin tip", &thinTipCheckbox);
 	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
 	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
-	ImGui::SliderFloat("Gravity magnitude", &gravityMagnitudeSlider, 0.0f, 1.0f);
+	ImGui::Checkbox("Ambient occlusion", &HBAOCheckbox);
+	ImGui::Checkbox("AO Debug", &clearBeforeHBAOCheckbox);
+	/*float aoLargeScaleAOSlider = 1.0;
+	float aoSmallScaleAOSlider = 1.0;
+	float aoBiasSlider = 0.1;
+	bool  aoBlurEnableCheckbox = true;
+	float aoBlurSharpnessSlider = 16.0;
+	float aoPowerExponentSlider = 2.0;
+	float aoRadiusSlider = 0.1;
+	bool  aoDepthThresholdEnableCheckbox = false;
+	float aoDepthThresholdMaxViewDepthSlider = 0;
+	float aoDepthThresholdSharpnessSlider = 100;*/
+	ImGui::SliderFloat("AO power exponent", &aoPowerExponentSlider, 0.0f, 10.0f);
+	ImGui::SliderFloat("AO large scale", &aoLargeScaleAOSlider, 0.0f, 10.0f);
+	ImGui::SliderFloat("AO small scale", &aoSmallScaleAOSlider, 0.0f, 10.0f);
+	ImGui::SliderFloat("AO bias", &aoBiasSlider, 0.0f, 1.0f);
+	ImGui::SliderFloat("AO radius", &aoRadiusSlider, 0.0f, 10.0f);
+	ImGui::Checkbox("AO blur", &aoBlurEnableCheckbox);
+	ImGui::SliderFloat("Blur sharpness", &aoBlurSharpnessSlider, 0.0f, 100.0f);
+	ImGui::Checkbox("AO depth threshold", &aoDepthThresholdEnableCheckbox);
+	ImGui::SliderFloat("Max depth", &aoDepthThresholdMaxViewDepthSlider, 0.0f, 10000.0f);
+	ImGui::SliderFloat("Depth threshold sharpness", &aoDepthThresholdSharpnessSlider, 0.0f, 100.0f);
 	if (ImGui::Button("Export parameters")) {
 		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
 	}

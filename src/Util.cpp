@@ -385,4 +385,28 @@ namespace Util
 
 		d3dInfoQueue->ClearStoredMessages();
 	}
+	void printHResult(HRESULT hr)
+	{
+		if (hr == S_OK) {
+			logger::info("S_OK");
+		}
+		if (hr == E_INVALIDARG) {
+			logger::error("E_INVALIDARG");
+		}
+		if (hr == S_FALSE) {
+			logger::error("S_FALSE");
+		}
+		if (hr == E_NOTIMPL) {
+			logger::error("E_NOTIMPL");
+		}
+		if (hr == E_OUTOFMEMORY) {
+			logger::error("E_OUTOFMEMORY");
+		}
+		if (hr == E_FAIL) {
+			logger::error("E_FAIL");
+		}
+		if (hr == DXGI_ERROR_INVALID_CALL) {
+			logger::error("DXGI_ERROR_INVALID_CALL");
+		}
+	}
 }

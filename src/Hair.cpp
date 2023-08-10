@@ -9,7 +9,6 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
-void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 void printEffectVariables(ID3DX11Effect* pEffect);
 
 Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)

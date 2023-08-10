@@ -309,32 +309,32 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	}
 	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
 
-	//HBAOPlus::GetSingleton()->Initialize(device);
+	HBAOPlus::GetSingleton()->Initialize(device);
 
 	return hr;
 }
 
-HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
-{
-	Menu::GetSingleton()->DrawOverlay();
-	return (This->*ptrPresent)(SyncInterval, Flags);
-}
-
-void hk_ID3D11DeviceContext_DrawIndexed(ID3D11DeviceContext* This, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation)
-{
-	//Lighting::GetSingleton()->OnDraw();
-	(This->*ptrDrawIndexed)(IndexCount, StartIndexLocation, BaseVertexLocation);
-}
-
-void hk_ID3D11DeviceContext_DrawIndexedInstanced(ID3D11DeviceContext* This, UINT IndexCountPerInstance,
-	UINT InstanceCount,
-	UINT StartIndexLocation,
-	INT  BaseVertexLocation,
-	UINT StartInstanceLocation)
-{
-	//Grass::GetSingleton()->OnDraw();
-	(This->*ptrDrawIndexedInstanced)(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-}
+//HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
+//{
+//	Menu::GetSingleton()->DrawOverlay();
+//	return (This->*ptrPresent)(SyncInterval, Flags);
+//}
+//
+//void hk_ID3D11DeviceContext_DrawIndexed(ID3D11DeviceContext* This, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation)
+//{
+//	//Lighting::GetSingleton()->OnDraw();
+//	(This->*ptrDrawIndexed)(IndexCount, StartIndexLocation, BaseVertexLocation);
+//}
+//
+//void hk_ID3D11DeviceContext_DrawIndexedInstanced(ID3D11DeviceContext* This, UINT IndexCountPerInstance,
+//	UINT InstanceCount,
+//	UINT StartIndexLocation,
+//	INT  BaseVertexLocation,
+//	UINT StartInstanceLocation)
+//{
+//	//Grass::GetSingleton()->OnDraw();
+//	(This->*ptrDrawIndexedInstanced)(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+//}
 
 void hk_ID3D11DeviceContext_RSSetViewports(ID3D11DeviceContext* This, UINT NumViewports, const D3D11_VIEWPORT *pViewports){
 	//logger::info("Num viewports: {}", NumViewports);
@@ -372,48 +372,6 @@ typedef void (*LoadShaders_t)(BSGraphics::BSShader* shader, std::uintptr_t strea
 LoadShaders_t oLoadShaders;
 bool          loadinit = false;
 
-void hk_LoadShaders(BSGraphics::BSShader* bsShader, std::uintptr_t stream)
-{
-	oLoadShaders(bsShader, stream);
-};
-
-uintptr_t LoadShaders;
-
-void InstallLoadShaders()
-{
-	logger::info("Installing BSShader::LoadShaders hook");
-	{
-		LoadShaders = RELOCATION_ID(101339, 108326).address();
-		struct Patch : Xbyak::CodeGenerator
-		{
-			Patch()
-			{
-				Xbyak::Label origFuncJzLabel;
-
-				test(rdx, rdx);
-				jz(origFuncJzLabel);
-				jmp(ptr[rip]);
-				dq(LoadShaders + 0x9);
-
-				L(origFuncJzLabel);
-				jmp(ptr[rip]);
-				dq(LoadShaders + 0xF0);
-			}
-		};
-
-		Patch p;
-		p.ready();
-
-		SKSE::AllocTrampoline(1 << 6);
-
-		auto& trampoline = SKSE::GetTrampoline();
-		oLoadShaders = static_cast<LoadShaders_t>(trampoline.allocate(p));
-		trampoline.write_branch<6>(
-			LoadShaders,
-			hk_LoadShaders);
-	}
-	logger::info("Installed");
-}
 void hookSkinAllGeometry() {
 	REL::Relocation<uintptr_t> skinAllGeometryHook{ RELOCATION_ID(26405, 26986) };  // 0x3d87b0, 0x1403F0830, SkinAllGeometry
 }
@@ -430,13 +388,13 @@ struct Hooks
 			auto manager = RE::BSGraphics::Renderer::GetSingleton();
 			//auto device = manager->GetRuntimeData().forwarder;
 			auto context = manager->GetRuntimeData().context;
-			auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
+			//auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
 
 			logger::info("Detouring virtual function tables");
 
-			*(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
+			/**(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
 			*(uintptr_t*)&ptrDrawIndexed = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexed, 12);
-			*(uintptr_t*)&ptrDrawIndexedInstanced = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexedInstanced, 20);
+			*(uintptr_t*)&ptrDrawIndexedInstanced = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexedInstanced, 20);*/
 			*(uintptr_t*)&ptrRSSetViewports = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_RSSetViewports, 44);
 			*(uintptr_t*)&ptrCopyResource = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11Device_CopyResource, 47);
 		}
@@ -454,8 +412,6 @@ struct Hooks
 		Detours::IATHook(moduleBase, "d3d11.dll", "D3D11CreateDeviceAndSwapChain", (uintptr_t)hk_D3D11CreateDeviceAndSwapChain);
 
 		stl::write_thunk_call<BSGraphics_Renderer_Init_InitD3D>(REL::RelocationID(75595, 77226).address() + REL::Relocate(0x50, 0x2BC));
-		//Detours::X64::DetourFunction(*(uintptr_t*)RELOCATION_ID(101339, 108326).address(), (uintptr_t)&hk_LoadShaders);
-		InstallLoadShaders();
 		logger::info("Installed render startup hooks");
 	}
 };

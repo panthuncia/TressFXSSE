@@ -4,7 +4,7 @@
 #include <sstream>  //for std::stringstream
 #include <string>   //for std::string
 #include <DirectXMath.h>
-void printHResult(HRESULT hr);
+#include "Util.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///   Helper functions.
@@ -157,7 +157,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	r.desc = nextDesc;
 	logger::info("creating buffer");
 	HRESULT hr = pManager->m_pDevice->CreateBuffer(&nextDesc, NULL, &pSB->buffer);
-	printHResult(hr);
+	Util::printHResult(hr);
 	r.structCount = structCount;
 	r.structSize = structSize;
 
@@ -173,7 +173,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	//srvDesc.Buffer.ElementWidth = structSize;
 	logger::info("creating srv");
 	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pSB->buffer, &srvDesc, &r.srv);
-	printHResult(hr1);
+	Util::printHResult(hr1);
 	//SU_ASSERT(r.srv);
 
 	if (bUAV)
@@ -191,7 +191,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 		}
 		logger::info("Creating UAV");
 		HRESULT hr2 = pManager->m_pDevice->CreateUnorderedAccessView(pSB->buffer, &uavDesc, &r.uav);
-		printHResult(hr2);
+		Util::printHResult(hr2);
 		const void*       uav_address = static_cast<const void*>(pSB->uav);
 		std::stringstream uav_ss;
 		uav_ss << uav_address;
@@ -533,7 +533,7 @@ extern "C"
 		hr = pDeviceContext->Map(sb.buffer, 0u, D3D11_MAP_WRITE, 0u, &mapped_buffer);
 		logger::info("mapped resource");
 		if (hr != S_OK) {
-			printHResult(hr);
+			Util::printHResult(hr);
 		}
 		//auto manager = RE::BSGraphics::Renderer::GetSingleton();
 		//auto device = manager->GetRuntimeData().forwarder;

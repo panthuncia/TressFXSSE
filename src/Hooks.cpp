@@ -8,6 +8,7 @@
 #include "Util.h"
 #include "PPLLObject.h"
 #include "Menu.h"
+#include "HBAOPlus.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
 struct BSFaceGenNiNode_FixSkinInstances
@@ -84,6 +85,24 @@ struct Hooks
 					ppll->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
+				auto hbao = HBAOPlus::GetSingleton();
+				if (!hbao->gotRTV) {
+					ID3D11RenderTargetView* pRTV;
+					RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context->OMGetRenderTargets(1, &pRTV, nullptr);
+					logger::info("HBAO RTV address: {}", Util::ptr_to_string(pRTV));
+					hbao->SetRenderTarget(pRTV, GFSDK_SSAO_MULTIPLY_RGB);
+				}
+				if (Menu::GetSingleton()->HBAOCheckbox) {
+					hbao->SetInput(ppll->m_projXMMatrix, 69.99104);
+					if (Menu::GetSingleton()->clearBeforeHBAOCheckbox) {
+						logger::info("Clearing RTV");
+						float clearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
+						RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context->ClearRenderTargetView(hbao->pRTV, clearColor);
+					}
+					logger::info("Rendering AO");
+					hbao->SetAOParameters();
+					hbao->RenderAO();
+				}
 			}
 			return val;
 		}
@@ -98,7 +117,7 @@ struct Hooks
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto ppll = PPLLObject::GetSingleton();
-			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+			if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				MarkerRender::GetSingleton()->DrawAllMarkers(ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
@@ -117,7 +136,6 @@ void DrawShadows() {
 				skipFrame--;
 				logger::info("skipping frame");
 				} else*/
-		if (Menu::GetSingleton()->drawShadowsCheckbox) {
 			//get current view projection matrix
 			auto shadowState = RE::BSGraphics::RendererShadowState::GetSingleton();
 			auto gameViewMatrix = shadowState->GetRuntimeData().cameraData.getEye().viewMat;
@@ -148,7 +166,6 @@ void DrawShadows() {
 			logger::info("drawing hair shadows");
 			PPLLObject::GetSingleton()->DrawShadows();
 			//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
-		}
 	}
 }
 struct BSShadowLight_DrawShadows
@@ -156,12 +173,15 @@ struct BSShadowLight_DrawShadows
 	static void thunk(RE::BSShadowLight* a1, INT64* a2, DWORD* a3, int a4)
 	{
 		func(a1, a2, a3, a4);
-		DrawShadows();
+		if (Menu::GetSingleton()->drawShadowsCheckbox) {
+			DrawShadows();
+		}
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
 ID3D11Texture2D* pCurrentDepthStencilResourceNoHair = nullptr;
 ID3D11Resource*  pOriginalDepthTexture = nullptr;
+ID3D11Texture2D*        pCurrentDepthStencilResourceWithHair = nullptr;
 extern bool             catchNextResourceCopy;
 extern ID3D11Resource*  overrideResource;
 struct Sub_DrawShadows
@@ -188,15 +208,41 @@ struct Sub_DrawShadows
 			desc.SampleDesc.Count = 1;
 			desc.SampleDesc.Quality = 0;
 			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D10_BIND_DEPTH_STENCIL;
+			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 			desc.CPUAccessFlags = 0;
 			desc.MiscFlags = 0;
 			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
 		}
+		if (pCurrentDepthStencilResourceWithHair == nullptr) {
+			auto                 pDevice = pManager->GetRuntimeData().forwarder;
+			auto                 pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+			DXGI_SWAP_CHAIN_DESC swapDesc;
+			pSwapChain->GetDesc(&swapDesc);
+			D3D11_TEXTURE2D_DESC desc;
+			desc.Width = swapDesc.BufferDesc.Width;
+			desc.Height = swapDesc.BufferDesc.Height;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+			desc.SampleDesc.Count = 1;
+			desc.SampleDesc.Quality = 0;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
+		}
 		logger::info("Copying depth stencil");
 		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
 		DrawShadows();
+		//copy new depth with hair
+		pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
 
+		//hack to enable AO even if we don't want shadows
+		if (!Menu::GetSingleton()->drawShadowsCheckbox) {
+			logger::info("Restoring original depth to disable shadows");
+			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		}
 		//catch next copy to stop hair depth from being used elsewhere
 		catchNextResourceCopy = true;
 		overrideResource = pCurrentDepthStencilResourceNoHair;
@@ -221,7 +267,9 @@ struct Sub_ShadowMap
 			logger::warn("Original depth texture is null!");
 		}
 		else {
-			logger::info("Writing depth stencil");
+			//TODO: Can I intercept the RTV used for shadows instead of copying again?
+			logger::info("Copying depth stencil for HBAO");
+			HBAOPlus::GetSingleton()->CopyDSVTexture(pCurrentDepthStencilResourceWithHair);
 			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
 		}
 		return val;

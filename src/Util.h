@@ -41,4 +41,5 @@ namespace Util
 	ID3D11DepthStencilState*          CreateDepthStencilState(ID3D11Device* pDevice, BOOL DepthEnable, D3D11_DEPTH_WRITE_MASK DepthWriteMask, D3D11_COMPARISON_FUNC DepthFunc, BOOL StencilEnable, UINT8 StencilReadMask, UINT8 StencilWriteMask, D3D11_STENCIL_OP StencilFailOp, D3D11_STENCIL_OP StencilDepthFailOp, D3D11_STENCIL_OP StencilPassOp, D3D11_COMPARISON_FUNC StencilFunc);
 	ID3D11RasterizerState*            CreateRasterizerState(ID3D11Device* pDevice, D3D11_FILL_MODE FillMode, D3D11_CULL_MODE CullMode, BOOL FrontCounterClockwise, INT DepthBias, FLOAT DepthBiasClamp, FLOAT SlopeScaledDepthBias, BOOL DepthClipEnable, BOOL MultisampleEnable, BOOL AntialiasedLineEnable, BOOL ScissorEnable);
 	void                              PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
+	void                              printHResult(HRESULT hr);
 }

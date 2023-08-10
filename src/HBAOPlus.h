@@ -10,10 +10,15 @@ public:
 	}
 	~HBAOPlus();
 	void Initialize(ID3D11Device* pDevice);
-	void SetInputDepths(ID3D11ShaderResourceView* pDepthStencilSRV, DirectX::XMMATRIX projectionMatrix, float sceneScale);
-	void SetAOParameters(float radius, float bias, float powerExponent, bool blur, GFSDK_SSAO_BlurRadius blurRadius, float sharpness);
+	void SetInput(DirectX::XMMATRIX projectionMatrix, float sceneScale);
+	void CopyDSVTexture(ID3D11Resource* pResource);
+	void SetDepthSRV(ID3D11ShaderResourceView* pSRV);
+	void SetAOParameters();
 	void SetRenderTarget(ID3D11RenderTargetView* pOutputColorRTV, GFSDK_SSAO_BlendMode blendMode);
 	void RenderAO();
+
+	bool gotRTV = false;
+	ID3D11RenderTargetView* pRTV;
 
 private:
 	HBAOPlus();
@@ -23,5 +28,6 @@ private:
 	GFSDK_SSAO_InputData_D3D11 Input;
 	GFSDK_SSAO_Output_D3D11 Output;
 	ID3D11Device*              m_pDevice;
+	ID3D11Resource*           m_pDepthTexture = nullptr;
 	ID3D11ShaderResourceView*  m_pDepthSRV = nullptr;
 };

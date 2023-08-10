@@ -57,6 +57,11 @@ void Load()
 	if (!hL) {
 		logger::info("Could not acquire PIX dll");
 	}
+	const auto    path = std::filesystem::current_path() /= "data/MXAO/GFSDK_SSAO_D3D11.win64.dll";
+	HINSTANCE  hL1 = LoadLibrary(path.generic_wstring().c_str());
+	if (!hL) {
+		logger::error("Could not acquire MXAO dll!");
+	}
 	auto messaging = SKSE::GetMessagingInterface();
 	messaging->RegisterListener("SKSE", MessageHandler);
 

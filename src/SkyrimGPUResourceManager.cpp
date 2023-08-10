@@ -1,26 +1,7 @@
 #include "SkyrimGPUResourceManager.h"
 #include <comdef.h>
 #include <atlstr.h>
-void printHResult(HRESULT hr) {
-	if (hr == E_INVALIDARG) {
-		logger::error("E_INVALIDARG");
-	}
-	if (hr == S_FALSE) {
-		logger::error("S_FALSE");
-	}
-	if (hr == E_NOTIMPL) {
-		logger::error("E_NOTIMPL");
-	}
-	if (hr == E_OUTOFMEMORY) {
-		logger::error("E_OUTOFMEMORY");
-	}
-	if (hr == E_FAIL) {
-		logger::error("E_FAIL");
-	}
-	if (hr == DXGI_ERROR_INVALID_CALL) {
-		logger::error("DXGI_ERROR_INVALID_CALL");
-	}
-}
+#include "Util.h"
 SkyrimGPUResourceManager::SkyrimGPUResourceManager(ID3D11Device* pDevice, IDXGISwapChain* pSwapChain)
 {
 	this->m_pDevice = pDevice;
@@ -74,7 +55,7 @@ SkyrimGPUResourceManager* SkyrimGPUResourceManager::GetInstance() {
 		const char* errConv = sB;
 		if (hr != S_OK) {
 			logger::error("D3D11Device::CreateBuffer() failed: {}", errConv);
-			printHResult(hr);
+			Util::printHResult(hr);
 		}
 		logger::info("Created buffer");
 		buffers[rName] = buffer;

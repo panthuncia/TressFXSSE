@@ -15,8 +15,6 @@ static const size_t PPLL_NODE_SIZE = 16;
 // These are globals, because there should really just be one instance.
 TressFXLayouts* g_TressFXLayouts = 0;
 
-void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
-
 PPLLObject::PPLLObject() : m_Simulation(), m_SDFCollisionSystem()
 {
 	
