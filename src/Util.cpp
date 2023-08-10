@@ -4,6 +4,7 @@
 #include <DirectXMath.h>
 #include "Offsets.h"
 typedef const char* (*_GetFormEditorID)(std::uint32_t a_formID);
+typedef void (*_OverrideScreenSpaceShadowsDepthTexture)(ID3D11ShaderResourceView* pDepthSRV);
 namespace Util
 {
 	std::string GetFormEditorID(const RE::TESForm* a_form)
@@ -14,6 +15,16 @@ namespace Util
 			return func(a_form->formID);
 		}
 		return "";
+	}
+	void OverrideCommunityShadersScreenSpaceShadowsDepthTexture(ID3D11ShaderResourceView* pDepthSRV)
+	{
+		static auto CS = GetModuleHandle(L"CommunityShaders");
+		static auto func = reinterpret_cast<_OverrideScreenSpaceShadowsDepthTexture>(GetProcAddress(CS, "OverrideScreenSpaceShadowsDepthTexture"));
+		if (func) {
+			func(pDepthSRV);
+		} else {
+			logger::info("failed to acquire CS function!");
+		}
 	}
 	void StoreTransform3x4NoScale(DirectX::XMFLOAT3X4& Dest, const RE::NiTransform& Source)
 	{
@@ -232,7 +243,7 @@ namespace Util
 		f.fFar *= RenderScale;
 
 		float fov = GetFOV();
-		logger::info("FOV: {}", fov);
+		//logger::info("FOV: {}", fov);
 		//return glm::perspective(fov, aspect, f.fNear, f.fFar);
 		return Perspective(fov, aspect, f);
 	}

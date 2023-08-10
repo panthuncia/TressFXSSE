@@ -17,7 +17,7 @@
     "detours",
     {
       "name": "imgui",
-      "features": [ "dx11-binding", "win32-binding" ],
+      "features": [ "dx11-binding", "win32-binding", "docking-experimental"],
       "version>=": "1.88"
     }
   ],

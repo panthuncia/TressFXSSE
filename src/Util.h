@@ -42,4 +42,5 @@ namespace Util
 	ID3D11RasterizerState*            CreateRasterizerState(ID3D11Device* pDevice, D3D11_FILL_MODE FillMode, D3D11_CULL_MODE CullMode, BOOL FrontCounterClockwise, INT DepthBias, FLOAT DepthBiasClamp, FLOAT SlopeScaledDepthBias, BOOL DepthClipEnable, BOOL MultisampleEnable, BOOL AntialiasedLineEnable, BOOL ScissorEnable);
 	void                              PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice);
 	void                              printHResult(HRESULT hr);
+	void                              OverrideCommunityShadersScreenSpaceShadowsDepthTexture(ID3D11ShaderResourceView* pDepthSRV);
 }

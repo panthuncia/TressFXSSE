@@ -314,11 +314,11 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	return hr;
 }
 
-//HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
-//{
-//	Menu::GetSingleton()->DrawOverlay();
-//	return (This->*ptrPresent)(SyncInterval, Flags);
-//}
+HRESULT WINAPI hk_IDXGISwapChain_Present(IDXGISwapChain* This, UINT SyncInterval, UINT Flags)
+{
+	Menu::GetSingleton()->DrawOverlay();
+	return (This->*ptrPresent)(SyncInterval, Flags);
+}
 //
 //void hk_ID3D11DeviceContext_DrawIndexed(ID3D11DeviceContext* This, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation)
 //{
@@ -388,12 +388,12 @@ struct Hooks
 			auto manager = RE::BSGraphics::Renderer::GetSingleton();
 			//auto device = manager->GetRuntimeData().forwarder;
 			auto context = manager->GetRuntimeData().context;
-			//auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
+			auto swapchain = manager->GetRuntimeData().renderWindows->swapChain;
 
 			logger::info("Detouring virtual function tables");
 
-			/**(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
-			*(uintptr_t*)&ptrDrawIndexed = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexed, 12);
+			*(uintptr_t*)&ptrPresent = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
+			/**(uintptr_t*)&ptrDrawIndexed = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexed, 12);
 			*(uintptr_t*)&ptrDrawIndexedInstanced = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_DrawIndexedInstanced, 20);*/
 			*(uintptr_t*)&ptrRSSetViewports = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11DeviceContext_RSSetViewports, 44);
 			*(uintptr_t*)&ptrCopyResource = Detours::X64::DetourClassVTable(*(uintptr_t*)context, &hk_ID3D11Device_CopyResource, 47);

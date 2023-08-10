@@ -55,7 +55,7 @@ void PPLLObject::DrawShadows() {
 	
 	ID3D11Buffer* pConstantBuffer;
 	pContext->VSGetConstantBuffers(12, 1, &pConstantBuffer);
-	logger::info("setting shadow buffer");
+	//logger::info("setting shadow buffer");
 	m_pStrandEffect->GetConstantBufferByName("constants12")->SetConstantBuffer(pConstantBuffer);
 
 	EI_PSO* pPSO = GetPSO("DepthOnly", m_pStrandEffect);
@@ -75,7 +75,7 @@ void PPLLObject::Draw()
 	m_gameLoaded = true;
 	//start draw
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	logger::info("Starting TFX Draw");
+	//logger::info("Starting TFX Draw");
 	ID3D11DeviceContext* pContext;
 	m_pManager->m_pDevice->GetImmediateContext(&pContext);
 	m_pPPLL->Clear((EI_CommandContextRef)pContext);
@@ -117,7 +117,7 @@ void PPLLObject::Draw()
 	for (auto hair : m_hairs) {
 		hair.second->Draw(pContext, m_pBuildPSO);
 	}
-	logger::info("End of TFX Draw Debug");
+	//logger::info("End of TFX Draw Debug");
 	m_pPPLL->DoneBuilding((EI_CommandContextRef)pContext);
 
 	// TODO move this to a clear "after all pos and tan usage by rendering" place.
@@ -125,7 +125,7 @@ void PPLLObject::Draw()
 	//necessary?
 	UnbindUAVs(pContext);
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	logger::info("Bind for read");
+	//logger::info("Bind for read");
 	m_pPPLL->BindForRead((EI_CommandContextRef)pContext);
 	pContext->OMSetBlendState(m_pPPLLReadBlendState, &originalBlendFactor, 0x000000FF);
 	pContext->OMSetDepthStencilState(m_pPPLLReadDepthStencilState, originalStencilRef);
@@ -344,8 +344,8 @@ void PPLLObject::UpdateLights()
 	//auto  state = RE::BSGraphics::RendererShadowState::GetSingleton();
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
 	auto  menu = Menu::GetSingleton();
-	logger::info("Active shadow lights: {}", runtimeData.shadowCasterLights.size());
-	logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
+	//logger::info("Active shadow lights: {}", runtimeData.shadowCasterLights.size());
+	//logger::info("num active lights: {}", std::size(runtimeData.activePointLights));
 	for (auto& e : runtimeData.activePointLights) {
 		if (auto bsLight = e.get()) {
 			if (auto niLight = bsLight->light.get()) {
@@ -353,17 +353,17 @@ void PPLLObject::UpdateLights()
 				//if (!bsLight->ambientLight) {
 				//	continue;
 				//}
-				logger::info("Found point light");
+				//logger::info("Found point light");
 				m_nNumLights += 1;
 
 				//pos
 				RE::NiPoint3 pos = niLight->world.translate;
-				logger::info("Light position: {}, {}, {}", pos.x, pos.y, pos.z);
+				//logger::info("Light position: {}, {}, {}", pos.x, pos.y, pos.z);
 				m_vLightPosWS[m_nNumLights - 1] = Util::ToRenderScale(glm::vec3(pos.x, pos.y, pos.z));
 
 				//color (rgb?)
 				auto color = niLight->diffuse;
-				logger::info("Light color: {}, {}, {}", color.red, color.green, color.blue);
+				//logger::info("Light color: {}, {}, {}", color.red, color.green, color.blue);
 				m_vLightColor[m_nNumLights - 1] = glm::vec3(color.red, color.green, color.blue);
 
 				//???

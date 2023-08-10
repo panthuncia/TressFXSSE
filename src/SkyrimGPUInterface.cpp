@@ -58,7 +58,7 @@ static void Transition(EI_CommandContextRef context,
 			printHResult(hr);
 		}*/
 	} else if (from == AMD::EI_STATE_UAV && to == AMD::EI_STATE_VS_SRV){
-		logger::info("Transition CS->VS");
+		//logger::info("Transition CS->VS");
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context)); 
 		ID3D11UnorderedAccessView* UAV_NULL = NULL;
 		pContext->CSSetUnorderedAccessViews(0, 1, &UAV_NULL, 0);
@@ -67,7 +67,7 @@ static void Transition(EI_CommandContextRef context,
 		pContext->IASetInputLayout(nullptr);
 
 	} else if (from == AMD::EI_STATE_VS_SRV && to == AMD::EI_STATE_UAV) {
-		logger::info("Transition VS->CS");
+		//logger::info("Transition VS->CS");
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&context));
 		ID3D11ShaderResourceView* SRV_NULL = NULL;
 		pContext->VSSetShaderResources(1, 1, &SRV_NULL);
@@ -93,7 +93,7 @@ static void UpdateConstants(std::vector<ID3DX11EffectVariable*> cb, void* values
 		D3DX11_EFFECT_TYPE_DESC typeDesc;
 		pParam->GetType()->GetDesc(&typeDesc);
 		uint32_t               nParamBytes = typeDesc.PackedSize;  //pParam->GetParameterSize();
-		logger::info("Updating paramater {}, {} bytes", varDesc.Name, typeDesc.PackedSize);
+		//logger::info("Updating paramater {}, {} bytes", varDesc.Name, typeDesc.PackedSize);
 		uint32_t             nCummulativeBytes = static_cast<uint32_t>(pCurrent - (uint8_t*)values) + nParamBytes;
 		SU_ASSERT(nBytes >= 0);
 		if (nCummulativeBytes > (uint32_t)nBytes) {
@@ -151,11 +151,11 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	//	strHash,
 	//	0,
 	//	0);
-	logger::info("Creating buffer desc");
+	//logger::info("Creating buffer desc");
 	//D3D11_BUFFER_DESC desc = StructuredBufferDesc(structCount, structSize, bUAV, false, true);
 	D3D11_BUFFER_DESC nextDesc = StructuredBufferDesc(structCount, structSize, bUAV, false);
 	r.desc = nextDesc;
-	logger::info("creating buffer");
+	//logger::info("creating buffer");
 	HRESULT hr = pManager->m_pDevice->CreateBuffer(&nextDesc, NULL, &pSB->buffer);
 	Util::printHResult(hr);
 	r.structCount = structCount;
@@ -171,7 +171,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	//srvDesc.Buffer.ElementOffset = 0;
 	srvDesc.Buffer.NumElements = structCount;
 	//srvDesc.Buffer.ElementWidth = structSize;
-	logger::info("creating srv");
+	//logger::info("creating srv");
 	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pSB->buffer, &srvDesc, &r.srv);
 	Util::printHResult(hr1);
 	//SU_ASSERT(r.srv);
@@ -184,19 +184,19 @@ EI_Resource* CreateSB(EI_Device* pContext,
 		uavDesc.Buffer.FirstElement = 0;
 		uavDesc.Buffer.NumElements = structCount;
 		if (bCounter) {
-			logger::info("adding uav counter");
+			//logger::info("adding uav counter");
 			uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
 		} else {
 			uavDesc.Buffer.Flags = 0;
 		}
-		logger::info("Creating UAV");
+		//logger::info("Creating UAV");
 		HRESULT hr2 = pManager->m_pDevice->CreateUnorderedAccessView(pSB->buffer, &uavDesc, &r.uav);
 		Util::printHResult(hr2);
 		const void*       uav_address = static_cast<const void*>(pSB->uav);
 		std::stringstream uav_ss;
 		uav_ss << uav_address;
 		std::string uav_addr = uav_ss.str();
-		logger::info("Addr. of uav: {}", uav_addr);
+		//logger::info("Addr. of uav: {}", uav_addr);
 		SU_ASSERT(r.uav);
 	}
 	if (bUAV) {
@@ -206,7 +206,7 @@ EI_Resource* CreateSB(EI_Device* pContext,
 	std::stringstream srv_ss;
 	srv_ss << srv_address;
 	std::string srv_addr = srv_ss.str();
-	logger::info("Addr. of srv: {}", srv_addr);
+	//logger::info("Addr. of srv: {}", srv_addr);
 	//PrintAllD3D11DebugMessages(pManager->m_pDevice);
 	return pSB;
 }
@@ -242,7 +242,7 @@ extern "C"
 		texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		texDesc.MiscFlags = 0;
 		ID3D11Texture2D* texPtr;
-		logger::info("Creating texture");
+		//logger::info("Creating texture");
 		pManager->m_pDevice->CreateTexture2D(&texDesc, NULL, &texPtr);
 
 		//create SRV
@@ -257,7 +257,7 @@ extern "C"
 		srvDesc.Texture2D.MipLevels = 1;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		ID3D11ShaderResourceView* pSRV;
-		logger::info("Creating SRV");
+		//logger::info("Creating SRV");
 		pManager->m_pDevice->CreateShaderResourceView(texPtr, &srvDesc, &pSRV);
 
 		//create UAV
@@ -270,7 +270,7 @@ extern "C"
 		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 		uavDesc.Texture2D.MipSlice = 0;
 		ID3D11UnorderedAccessView* pUAV;
-		logger::info("Creating UAV");
+		//logger::info("Creating UAV");
 		pManager->m_pDevice->CreateUnorderedAccessView(texPtr, &uavDesc, &pUAV);
 
 		pRW2D->texture = texPtr;
@@ -347,7 +347,7 @@ extern "C"
 	EI_BindLayout* CreateLayout(EI_Device* pDevice, EI_LayoutManagerRef layoutManager, const AMD::TressFXLayoutDescription& description)
 	{
 		UNREFERENCED_PARAMETER(pDevice);
-		logger::info("In CreateLayout");
+		//logger::info("In CreateLayout");
 
 		EI_BindLayout* pLayout = new EI_BindLayout();
 		pLayout->uavNames = description.uavNames;
@@ -373,9 +373,9 @@ extern "C"
 			logger::info("got constant with name: {}", desc.Name);*/
 
 		}
-		logger::info("Layout num UAVs: {}", pLayout->uavs.size());
-		logger::info("Layout num SRVs: {}", pLayout->srvs.size());
-		logger::info("Layout num constants: {}", pLayout->constants.size());
+		//logger::info("Layout num UAVs: {}", pLayout->uavs.size());
+		//logger::info("Layout num SRVs: {}", pLayout->srvs.size());
+		//logger::info("Layout num constants: {}", pLayout->constants.size());
 		return pLayout;
 	}
 
@@ -417,7 +417,7 @@ extern "C"
 
 	void Destroy(EI_Device* pDevice, EI_Resource* pRW2D)
 	{
-		logger::info("In destroy:");
+		//logger::info("In destroy:");
 		UNREFERENCED_PARAMETER(pDevice);
 		if (pRW2D->uav != nullptr)
 			pRW2D->uav->Release();
@@ -434,7 +434,7 @@ extern "C"
 	EI_BindSet* CreateBindSet(EI_Device* commandContext, AMD::TressFXBindSet& bindSet)
 	{
 		UNREFERENCED_PARAMETER(commandContext);
-		logger::info("creating bind set");
+		//logger::info("creating bind set");
 		EI_BindSet* pBindSet = new EI_BindSet;
 
 		// should just replace with a SuArray.  Same as constant buffers.
@@ -455,8 +455,8 @@ extern "C"
 				std::stringstream ss;
 				ss << address;
 				std::string name = ss.str(); 
-				logger::info("Addr. of srv: {}", name);
-				logger::info("Type of srv: {}", type_name<decltype(bindSet.srvs[i]->srv)>());
+				//logger::info("Addr. of srv: {}", name);
+				//logger::info("Type of srv: {}", type_name<decltype(bindSet.srvs[i]->srv)>());
 				/*D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 				pBindSet->srvs[i]->GetDesc(&desc);
 				logger::info("Got format: {}", desc.Format);*/
@@ -485,7 +485,7 @@ extern "C"
 
 	void DestroyBindSet(EI_Device* pDevice, EI_BindSet* pBindSet)
 	{
-		logger::info("Destroying bindset");
+		//logger::info("Destroying bindset");
 		//TODO ignore
 		pDevice = pDevice;
 		if (pBindSet->nSRVs > 0)
@@ -519,19 +519,19 @@ extern "C"
 	{
 		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext)); 
 		//SU_ASSERT(sb.resource->GetType() == D3D11_RESOURCE_DIMENSION_BUFFER);
-		logger::info("mapping buffer");
+		//logger::info("mapping buffer");
 		D3D11_BUFFER_DESC desc;
 		sb.buffer->GetDesc(&desc);
-		logger::info("byte width: {}", desc.ByteWidth);
-		logger::info("usage: {}", desc.Usage);
-		logger::info("bind flags: {}", desc.BindFlags);
-		logger::info("CPU access flags: {}", desc.CPUAccessFlags);
+		//logger::info("byte width: {}", desc.ByteWidth);
+		//logger::info("usage: {}", desc.Usage);
+		//logger::info("bind flags: {}", desc.BindFlags);
+		//logger::info("CPU access flags: {}", desc.CPUAccessFlags);
 		//SuGPUBuffer* pBuffer = static_cast<SuGPUBuffer*>(sb.resource.get());
 		D3D11_MAPPED_SUBRESOURCE mapped_buffer = {};
 		//ZeroMemory(&mapped_buffer, sizeof(D3D11_MAPPED_SUBRESOURCE));
 		HRESULT hr;
 		hr = pDeviceContext->Map(sb.buffer, 0u, D3D11_MAP_WRITE, 0u, &mapped_buffer);
-		logger::info("mapped resource");
+		//logger::info("mapped resource");
 		if (hr != S_OK) {
 			Util::printHResult(hr);
 		}
@@ -547,7 +547,7 @@ extern "C"
 	{
 		ID3D11DeviceContext* pDeviceContext = *((ID3D11DeviceContext**)(&pContext)); 
 		pDeviceContext->Unmap(sb.buffer, 0u);
-		logger::info("Unmapped buffer");
+		//logger::info("Unmapped buffer");
 		//D3D11_BUFFER_DESC desc;
 		//sb.buffer->GetDesc(&desc);
 		//D3D11_MAPPED_SUBRESOURCE mapped_buffer = {};
@@ -592,7 +592,7 @@ extern "C"
 		D3D11_BUFFER_DESC bufferDesc;
 		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 		bufferDesc.ByteWidth = TRESSFX_INDEX_SIZE * indexCount;
-		logger::info("Creating index buffer with {} indices, {} bytes total", indexCount, bufferDesc.ByteWidth);
+		//logger::info("Creating index buffer with {} indices, {} bytes total", indexCount, bufferDesc.ByteWidth);
 		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		bufferDesc.MiscFlags = 0;
@@ -623,12 +623,12 @@ extern "C"
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 
 			set.srvs[i]->GetDesc(&desc);
-			logger::info("Binding SRV: {}", pLayout->srvNames[i]);
+			//logger::info("Binding SRV: {}", pLayout->srvNames[i]);
 			pLayout->srvs[i]->SetResource(set.srvs[i]);
 		}
 		SU_ASSERT(set.nUAVs == pLayout->uavs.size());
 		for (AMD::int32 i = 0; i < set.nUAVs; i++) {
-			logger::info("Binding UAV: {}", pLayout->uavNames[i]);
+			//logger::info("Binding UAV: {}", pLayout->uavNames[i]);
 			pLayout->uavs[i]->SetUnorderedAccessView(set.uavs[i]);
 		}
 		UpdateConstants(pLayout->constants, set.values, set.nBytes);
@@ -691,7 +691,7 @@ extern "C"
 		//TODO need to update variables
 		//pEffect->BindIndexBuffer(pIndexBuffer);
 		ID3D11DeviceContext* pContext = *((ID3D11DeviceContext**)(&commandContext));
-		logger::info("Setting index buffer");
+		//logger::info("Setting index buffer");
 
 		pContext->IASetIndexBuffer((ID3D11Buffer*)drawParams.pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		D3DX11_TECHNIQUE_DESC techDesc;
@@ -801,7 +801,7 @@ void FullscreenPass::Draw(SkyrimGPUResourceManager* pManager, EI_PSO* pPSO)
 	if (pEffect) {
 		ID3D11DeviceContext* pContext;
 		pManager->m_pDevice->GetImmediateContext(&pContext);
-		logger::info("Setting vertex buffers");
+		//logger::info("Setting vertex buffers");
 		pContext->IASetVertexBuffers(0, 1, &m_QuadVertexBuffer , m_DataSize, m_DataOffsets);
 		pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		//pEffect->BindVertexBuffer("QuadStream", m_QuadVertexBuffer);
@@ -809,7 +809,7 @@ void FullscreenPass::Draw(SkyrimGPUResourceManager* pManager, EI_PSO* pPSO)
 		pTechnique->GetDesc(&techDesc);
 		uint32_t numPasses = techDesc.Passes;
 		for (uint32_t i = 0; i < numPasses; ++i) {
-			logger::info("Fullscreen pass...");
+			//logger::info("Fullscreen pass...");
 			auto pass = pTechnique->GetPassByIndex(i);
 			if (pass->IsValid()) {
 			} else {

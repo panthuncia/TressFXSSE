@@ -30,29 +30,6 @@ void HBAOPlus::CopyDSVTexture(ID3D11Resource* pResource) {
 	auto pManager = RE::BSGraphics::Renderer::GetSingleton();
 	if (m_pDepthSRV == nullptr) {
 		auto pDevice = pManager->GetRuntimeData().forwarder;
-		//auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
-		//DXGI_SWAP_CHAIN_DESC swapDesc;
-		//pSwapChain->GetDesc(&swapDesc);
-		//D3D11_TEXTURE2D_DESC desc;
-		//desc.Width = swapDesc.BufferDesc.Width;
-		//desc.Height = swapDesc.BufferDesc.Height;
-		//desc.MipLevels = 1;
-		//desc.ArraySize = 1;
-		//desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-		//desc.SampleDesc.Count = 1;
-		//desc.SampleDesc.Quality = 0;
-		//desc.Usage = D3D11_USAGE_DEFAULT;
-		//desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		//desc.CPUAccessFlags = 0;
-		//desc.MiscFlags = 0;//D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
-		//logger::info("Creating HBAO texture");
-		//HRESULT hr = pDevice->CreateTexture2D(&desc, NULL, &m_pDepthTexture);
-		//Util::printHResult(hr);
-		//if (m_pDepthTexture == nullptr) {
-		//	Util::PrintAllD3D11DebugMessages(pDevice);
-		//	logger::info("HBAO texture creation failed!");
-		//	return;
-		//}
 		m_pDepthTexture = pResource;
 		D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
 		viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;

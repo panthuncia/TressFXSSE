@@ -70,7 +70,7 @@ void Hair::DrawDebugMarkers()
 
 void Hair::UpdateVariables(float gravityMagnitude)
 {
-	logger::info("In hair UpdateVariables");
+	//logger::info("In hair UpdateVariables");
 	if (!m_gotSkeleton)
 		return;
 	/*hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
@@ -134,7 +134,7 @@ void Hair::UpdateVariables(float gravityMagnitude)
 	settings.m_localConstraintsIterations = m_localConstraintsIterations;
 	settings.m_lengthConstraintsIterations = m_lengthConstraintsIterations;  //?
 
-	logger::info("Setting sim parameters");
+	//logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
 }
 void Hair::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
@@ -268,7 +268,7 @@ void Hair::RegisterBones()
 void Hair::UpdateBones()
 {
 	if (!m_gotSkeleton) {
-		logger::warn("UpdateBones called, but we have no skeleton!");
+		//logger::warn("UpdateBones called, but we have no skeleton!");
 		return;
 	}
 	for (uint16_t i = 0; i < m_numBones; i++) {
@@ -297,11 +297,11 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 
 		auto boneRot = m_boneTransforms[i].rotate.Transpose();
 		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
-		logger::info("Bone transform:");
+		/*logger::info("Bone transform:");
 		logger::info("{}, {}, {}, {}", boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0.0);
 		logger::info("{}, {}, {}, {}", boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0.0);
 		logger::info("{}, {}, {}, {}", boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0.0);
-		logger::info("{}, {}, {}, {}", bonePos.x, bonePos.y, bonePos.z, 0.0);
+		logger::info("{}, {}, {}, {}", bonePos.x, bonePos.y, bonePos.z, 0.0);*/
 		matrices->push_back(boneRot.entry[0][0]);
 		matrices->push_back(boneRot.entry[0][1]);
 		matrices->push_back(boneRot.entry[0][2]);
@@ -320,21 +320,21 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 		matrices->push_back(1.0);
 	}
 
-	logger::info("assembled matrices");
+	//logger::info("assembled matrices");
 	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)pManager, &(matrices->front()), BONE_MATRIX_SIZE * m_numBones);
 	delete (matrices);
-	logger::info("updated matrices");
+	//logger::info("updated matrices");
 	ID3D11DeviceContext* context;
 	pManager->m_pDevice->GetImmediateContext(&context);
-	logger::info("Before simulate call");
+	//logger::info("Before simulate call");
 	pSimulation->Simulate((EI_CommandContextRef)context, *m_pHairObject);
-	logger::info("After simulate call");
+	//logger::info("After simulate call");
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	logger::info("End of TFX Simulate Debug");
+	//logger::info("End of TFX Simulate Debug");
 	ID3D11DeviceContext* pContext;
 	pManager->m_pDevice->GetImmediateContext(&pContext);
 	m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
-	logger::info("simulation complete");
+	//logger::info("simulation complete");
 	return true;
 }
 void Hair::UpdateOffsets(float x, float y, float z, float scale)

@@ -78,6 +78,7 @@ public:
 	float                    hairShadowAlphaSlider = 0.35;
 	bool                     thinTipCheckbox = true;
 	bool                     drawShadowsCheckbox = true;
+	bool                     communityShadersScreenSpaceShadowsCheckbox = true;
 	bool                     drawHairCheckbox = true;
 	bool                     HBAOCheckbox = true;
 	bool                     clearBeforeHBAOCheckbox = false;

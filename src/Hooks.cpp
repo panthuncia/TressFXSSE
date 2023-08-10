@@ -182,6 +182,7 @@ struct BSShadowLight_DrawShadows
 ID3D11Texture2D* pCurrentDepthStencilResourceNoHair = nullptr;
 ID3D11Resource*  pOriginalDepthTexture = nullptr;
 ID3D11Texture2D*        pCurrentDepthStencilResourceWithHair = nullptr;
+ID3D11ShaderResourceView* pHairDepthSRV;
 extern bool             catchNextResourceCopy;
 extern ID3D11Resource*  overrideResource;
 struct Sub_DrawShadows
@@ -232,12 +233,29 @@ struct Sub_DrawShadows
 			desc.MiscFlags = 0;
 			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
 		}
+		if (pHairDepthSRV == nullptr) {
+			auto pDevice = pManager->GetRuntimeData().forwarder;
+			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
+			viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			viewDesc.Texture2D.MipLevels = 1;
+			viewDesc.Texture2D.MostDetailedMip = 0;
+			logger::info("Creating Community Shaders depth SRV");
+			HRESULT hr2 = pDevice->CreateShaderResourceView(pCurrentDepthStencilResourceWithHair, &viewDesc, &pHairDepthSRV);
+			Util::printHResult(hr2);
+			if (pHairDepthSRV == nullptr) {
+				//Util::PrintAllD3D11DebugMessages(pDevice);
+				logger::info("Depth SRV creation failed!");
+			}
+		}
 		logger::info("Copying depth stencil");
 		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
 		DrawShadows();
 		//copy new depth with hair
 		pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
-
+		if (Menu::GetSingleton()->communityShadersScreenSpaceShadowsCheckbox && pHairDepthSRV != nullptr) {
+			Util::OverrideCommunityShadersScreenSpaceShadowsDepthTexture(pHairDepthSRV);
+		}
 		//hack to enable AO even if we don't want shadows
 		if (!Menu::GetSingleton()->drawShadowsCheckbox) {
 			logger::info("Restoring original depth to disable shadows");
