@@ -1,9 +1,6 @@
-
-//---------------------------------------------------------------------------------------
-// Hooks interface to TressFX functionality.
+//--------------------------------------------------------------------------------------
+// File: Color.h
 //
-// AMD_TressFX.h is the interface.
-//-------------------------------------------------------------------------------------
 //
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
@@ -25,13 +22,49 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
+//--------------------------------------------------------------------------------------
 
-#if AMD_TRESSFX_COMPILE_DYNAMIC_LIB
-#define AMD_DLL_EXPORTS
-#endif
+#pragma once
 
-#include "AMD_TressFX.h"
 
-#include "TressFXAsset.h"
-#include "TressFXHairObject.h"
+#include <cmath>
 
+class Color
+{
+public:
+    union
+    {
+        struct
+        {
+            float m[4];
+        };  // r, g, b, a
+        struct
+        {
+            float r, g, b, a;
+        };
+    };
+
+    Color() :
+        r(0), g(0), b(0), a(1)
+    {}
+
+    Color(float r, float g, float b, float a = 1.f) :
+        m{ r, g, b, a }
+    {}
+
+    Color(const Color& other) : 
+        m{ other.r, other.g, other.b, other.a }
+    {}
+
+    ~Color(){}
+
+    const float& operator[](unsigned int i) const { return m[i]; }
+    float& operator[](unsigned int i) { return m[i]; }
+
+    Color& operator=(const Color& other)
+    {
+        r = other.r; g = other.g;
+        b = other.b; a = other.a;
+        return *this;
+    }
+};

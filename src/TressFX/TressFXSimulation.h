@@ -1,9 +1,6 @@
-
-//---------------------------------------------------------------------------------------
-// Hooks interface to TressFX functionality.
-//
-// AMD_TressFX.h is the interface.
-//-------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// Invokes simulation compute shaders.
+// ----------------------------------------------------------------------------
 //
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
@@ -26,12 +23,28 @@
 // THE SOFTWARE.
 //
 
-#if AMD_TRESSFX_COMPILE_DYNAMIC_LIB
-#define AMD_DLL_EXPORTS
-#endif
+#ifndef TRESSFXSIMULATION_H_
+#define TRESSFXSIMULATION_H_
 
-#include "AMD_TressFX.h"
+#include "TressFXCommon.h"
+#include "EngineInterface.h"
 
-#include "TressFXAsset.h"
-#include "TressFXHairObject.h"
+class TressFXHairObject;
 
+class TressFXSimulation : private TressFXNonCopyable
+{
+public:
+    void Initialize(EI_Device* pDevice);
+    void Simulate(EI_CommandContext& commandContext, std::vector<TressFXHairObject*>& hairObjects);
+
+private:
+    // Maybe these just need to be compute shader references.
+    std::unique_ptr<EI_PSO> mVelocityShockPropagationPSO;
+    std::unique_ptr<EI_PSO> mIntegrationAndGlobalShapeConstraintsPSO;
+    std::unique_ptr<EI_PSO> mCalculateStrandLevelDataPSO;
+    std::unique_ptr<EI_PSO> mLocalShapeConstraintsPSO;
+    std::unique_ptr<EI_PSO> mLengthConstriantsWindAndCollisionPSO;
+    std::unique_ptr<EI_PSO> mUpdateFollowHairVerticesPSO;
+};
+
+#endif  // TRESSFXSIMULATION_H_

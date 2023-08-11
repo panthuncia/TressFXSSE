@@ -195,7 +195,9 @@ struct EI_AttachmentParams
 enum class EI_ResourceType
 {
 	Undefined = 0,
+	ConstantBuffer,
 	Buffer,
+	IndexBuffer,
 	Texture,
 	Sampler,
 };
@@ -278,7 +280,4 @@ enum EI_BufferFlags {
 #define EI_LogWarning(msg) printf("%s", msg)
 
 
-#include "DX11/DX11EngineInterfaceImpl.h"
-
-
-#include "SceneGLTFImpl.h"
+#include "DX11EngineInterfaceImpl.h"

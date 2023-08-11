@@ -1,8 +1,5 @@
-
 //---------------------------------------------------------------------------------------
-// Hooks interface to TressFX functionality.
-//
-// AMD_TressFX.h is the interface.
+// Constant buffer layouts.
 //-------------------------------------------------------------------------------------
 //
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
@@ -26,12 +23,57 @@
 // THE SOFTWARE.
 //
 
-#if AMD_TRESSFX_COMPILE_DYNAMIC_LIB
-#define AMD_DLL_EXPORTS
+#ifndef TRESSFXCOMMON_H_
+#define TRESSFXCOMMON_H_
+
+#include "AMD_Types.h"
+
+#define TRESSFX_COLLISION_CAPSULES 0
+#define TRESSFX_MAX_NUM_COLLISION_CAPSULES 8
+
+#define TRESSFX_SIM_THREAD_GROUP_SIZE 64
+
+namespace AMD
+{
+#pragma warning(push)
+#pragma warning(disable : 4201)  // disable warning C4201: nonstandard extension used : nameless struct/union
+        AMD_DECLARE_BASIC_VECTOR_TYPE;
+#pragma warning(pop)
+}
+
+
+#ifdef TRESSFX_NON_COPYABLE_MODERN_CPP
+
+class TressFXNonCopyable
+{
+public:
+    TressFXNonCopyable()  = default;
+    ~TressFXNonCopyable() = default;
+
+protected:
+    TressFXNonCopyable(const TressFXNonCopyable&) = delete;
+    void operator=(const TressFXNonCopyable&) = delete;
+};
+
+#else
+
+class TressFXNonCopyable
+{
+public:
+    TressFXNonCopyable() {}
+    ~TressFXNonCopyable() {}
+
+    TressFXNonCopyable(TressFXNonCopyable const&) = delete;
+    TressFXNonCopyable& operator=(TressFXNonCopyable const&) = delete;
+};
+
 #endif
 
-#include "AMD_TressFX.h"
+/// Computes the minimum
+template<class Type>
+inline Type TressFXMin(Type a, Type b)
+{
+    return (a < b) ? a : b;
+}
 
-#include "TressFXAsset.h"
-#include "TressFXHairObject.h"
-
+#endif  // TRESSFXCOMMON_H_

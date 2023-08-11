@@ -2,7 +2,7 @@
 // Invokes simulation compute shaders.
 // ----------------------------------------------------------------------------
 //
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,64 +29,84 @@
 // TressFX
 #include "TressFXLayouts.h"
 #include "TressFXHairObject.h"
+#include "EngineInterface.h"
 
-void TressFXSimulation::Initialize(EI_Device* pDevice, EI_LayoutManagerRef simLayoutManager)
+void TressFXSimulation::Initialize(EI_Device* pDevice)
 {
-    mVelocityShockPropagationPSO = EI_CreateComputeShaderPSO(pDevice, simLayoutManager, TRESSFX_STRING_HASH("VelocityShockPropagation"));
-    mIntegrationAndGlobalShapeConstraintsPSO = EI_CreateComputeShaderPSO(pDevice, simLayoutManager, TRESSFX_STRING_HASH("IntegrationAndGlobalShapeConstraints"));
-    mLocalShapeConstraintsPSO = EI_CreateComputeShaderPSO(pDevice, simLayoutManager, TRESSFX_STRING_HASH("LocalShapeConstraints"));
-    mLengthConstriantsWindAndCollisionPSO = EI_CreateComputeShaderPSO(pDevice, simLayoutManager, TRESSFX_STRING_HASH("LengthConstriantsWindAndCollision"));
-    mUpdateFollowHairVerticesPSO = EI_CreateComputeShaderPSO(pDevice, simLayoutManager, TRESSFX_STRING_HASH("UpdateFollowHairVertices"));
+    EI_BindLayout * layouts[] = { GetSimLayout(), GetSimPosTanLayout() };
+    mVelocityShockPropagationPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "VelocityShockPropagation", layouts, 2);
+    mIntegrationAndGlobalShapeConstraintsPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "IntegrationAndGlobalShapeConstraints", layouts, 2);
+    mCalculateStrandLevelDataPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "CalculateStrandLevelData", layouts, 2);
+    mLocalShapeConstraintsPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "LocalShapeConstraints", layouts, 2);
+    mLengthConstriantsWindAndCollisionPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "LengthConstriantsWindAndCollision", layouts, 2);
+    mUpdateFollowHairVerticesPSO = pDevice->CreateComputeShaderPSO("TressFXSimulation.hlsl", "UpdateFollowHairVertices", layouts, 2);
 }
 
-void TressFXSimulation::Shutdown(EI_Device* pDevice)
+enum DispatchLevel
 {
-    EI_DestroyPSO(pDevice, mVelocityShockPropagationPSO);
-    EI_DestroyPSO(pDevice, mIntegrationAndGlobalShapeConstraintsPSO);
-    EI_DestroyPSO(pDevice, mLocalShapeConstraintsPSO);
-    EI_DestroyPSO(pDevice, mLengthConstriantsWindAndCollisionPSO);
-    EI_DestroyPSO(pDevice, mUpdateFollowHairVerticesPSO);
+    DISPATCHLEVEL_VERTEX,
+    DISPATCHLEVEL_STRAND
+};
+
+void DispatchComputeShader(EI_CommandContext& ctx, EI_PSO * pso, DispatchLevel level, std::vector<TressFXHairObject*>& hairObjects, const bool iterate = false)
+{
+    ctx.BindPSO(pso);
+    for (int i = 0; i < hairObjects.size(); ++i)
+    {
+        int numGroups = (int)((float)hairObjects[i]->GetNumTotalHairVertices() / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
+        if (level == DISPATCHLEVEL_STRAND)
+        {
+            numGroups = (int)(((float)(hairObjects[i]->GetNumTotalHairStrands()) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
+        }
+        EI_BindSet* bindSets[] = { hairObjects[i]->GetSimBindSet(), &hairObjects[i]->GetDynamicState().GetSimBindSet() };
+        ctx.BindSets(pso, 2, bindSets);
+
+        int iterations = 1;
+        if (iterate)
+        {
+            iterations = hairObjects[i]->GetCPULocalShapeIterations();
+        }
+        for (int j = 0; j < iterations; ++j)
+        {
+            ctx.Dispatch(numGroups);
+        }
+        hairObjects[i]->GetDynamicState().UAVBarrier(ctx);
+    }
 }
 
-void TressFXSimulation::Simulate(EI_CommandContextRef commandContext, TressFXHairObject& hairObject)
+void TressFXSimulation::Simulate(EI_CommandContext& commandContext, std::vector<TressFXHairObject*>& hairObjects)
 {
-    // For dispatching one thread per one vertex
-    int numOfGroupsForCS_VertexLevel = (int)((float)hairObject.m_NumTotalVertice / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
-
-    // For dispatching one thread per one strand
-    int numOfGroupsForCS_StrandLevel = (int)(((float)(hairObject.m_NumTotalStrands) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
-	numOfGroupsForCS_StrandLevel;
-	numOfGroupsForCS_VertexLevel;
     // Binding
-    EI_Bind(commandContext, GetSimPosTanLayout(), hairObject.mPosTanCollection.GetSimBindSet());
-    EI_Bind(commandContext, GetSimLayout(), *hairObject.m_pSimBindSet);
-    // IntegrationAndGlobalShapeConstraints
+    for (int i = 0; i < hairObjects.size(); ++i)
     {
-        EI_Dispatch(commandContext, *mIntegrationAndGlobalShapeConstraintsPSO, numOfGroupsForCS_VertexLevel);
-        hairObject.mPosTanCollection.UAVBarrier(commandContext);
+        hairObjects[i]->UpdateConstantBuffer(commandContext);
     }
-	logger::info("2");
-    // VelocityShockPropagation
-    {
-        EI_Dispatch(commandContext, *mVelocityShockPropagationPSO, numOfGroupsForCS_StrandLevel);
-        hairObject.mPosTanCollection.UAVBarrier(commandContext);
-    }
-    // LocalShapeConstraintsWithIteration
-    for (int i = 0; i < hairObject.m_CPULocalShapeIterations; i++)
-    {
-        EI_Dispatch(commandContext, *mLocalShapeConstraintsPSO, numOfGroupsForCS_StrandLevel);
-        hairObject.mPosTanCollection.UAVBarrier(commandContext);
-    }
-    // LengthConstriantsWindAndCollision
-    {
-        EI_Dispatch(commandContext, *mLengthConstriantsWindAndCollisionPSO, numOfGroupsForCS_VertexLevel);
-        hairObject.mPosTanCollection.UAVBarrier(commandContext);
-    }
-    // UpdateFollowHairVertices
-    {
-        //EI_Dispatch(commandContext, *mUpdateFollowHairVerticesPSO, numOfGroupsForCS_VertexLevel);
-        //hairObject.mPosTanCollection.UAVBarrier(commandContext);
-    }
-    hairObject.mSimulationFrame++;
-}
 
+    // IntegrationAndGlobalShapeConstraints
+    DispatchComputeShader(commandContext, mIntegrationAndGlobalShapeConstraintsPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    GetDevice()->GetTimeStamp("IntegrationAndGlobalShapeContraints");
+
+    // Calculate Strand Level Data
+    DispatchComputeShader(commandContext, mCalculateStrandLevelDataPSO.get(), DISPATCHLEVEL_STRAND, hairObjects);
+    GetDevice()->GetTimeStamp("CalculateStrandLevelData");
+
+    // VelocityShockPropagation
+    DispatchComputeShader(commandContext, mVelocityShockPropagationPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    GetDevice()->GetTimeStamp("VelocityShockPropagation");
+
+    DispatchComputeShader(commandContext, mLocalShapeConstraintsPSO.get(), DISPATCHLEVEL_STRAND, hairObjects, true);
+    GetDevice()->GetTimeStamp("LocalShapeConstraints");
+
+    // LengthConstriantsWindAndCollision
+    DispatchComputeShader(commandContext, mLengthConstriantsWindAndCollisionPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    GetDevice()->GetTimeStamp("LengthConstriantsWindAndCollision");
+
+    // UpdateFollowHairVertices
+    DispatchComputeShader(commandContext, mUpdateFollowHairVerticesPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    GetDevice()->GetTimeStamp("UpdateFollowHairVertices");
+
+    for (int i = 0; i < hairObjects.size(); ++i)
+    {
+        hairObjects[i]->IncreaseSimulationFrame();
+    }
+}

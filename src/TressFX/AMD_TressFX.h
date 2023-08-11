@@ -1,8 +1,9 @@
-
 //---------------------------------------------------------------------------------------
-// Hooks interface to TressFX functionality.
+// Main header file for TressFX
+// This will eventually contain the C interface to all functionality.
 //
-// AMD_TressFX.h is the interface.
+// In the meantime, users need to use the individual headers for the components they 
+// require.
 //-------------------------------------------------------------------------------------
 //
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
@@ -26,12 +27,28 @@
 // THE SOFTWARE.
 //
 
-#if AMD_TRESSFX_COMPILE_DYNAMIC_LIB
-#define AMD_DLL_EXPORTS
+#ifndef AMD_TRESSFX_H
+#define AMD_TRESSFX_H
+
+#define AMD_TRESSFX_VERSION_MAJOR                    4
+#define AMD_TRESSFX_VERSION_MINOR                    0
+#define AMD_TRESSFX_VERSION_PATCH                    0
+
+#include "AMD_Types.h"
+
+#ifndef TRESSFX_ASSERT
+#include <assert.h>
+#define TRESSFX_ASSERT assert
 #endif
 
-#include "AMD_TressFX.h"
+// Max number of bones in a skeleton
+#ifndef AMD_TRESSFX_MAX_NUM_BONES
+    #define AMD_TRESSFX_MAX_NUM_BONES 512
+#endif
 
-#include "TressFXAsset.h"
-#include "TressFXHairObject.h"
+// Max number of hair render groups (bump up as needed)
+#ifndef AMD_TRESSFX_MAX_HAIR_GROUP_RENDER
+    #define AMD_TRESSFX_MAX_HAIR_GROUP_RENDER 16
+#endif
 
+#endif

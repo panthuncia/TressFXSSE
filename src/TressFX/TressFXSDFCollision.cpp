@@ -4,7 +4,7 @@
 // as apply that signed distance field to a TressFX simulation.
 // ----------------------------------------------------------------------------
 //
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,33 +35,28 @@
 
 #include <limits.h>
 
-using namespace AMD::TRESSFX;
-using namespace AMD;
-
-TressFXSDFCollision::TressFXSDFCollision()
-    : m_CollisionMargin(0)
-    , m_NumCellsInXAxis(60)
+TressFXSDFCollision::TressFXSDFCollision(
+    EI_Device* pDevice,
+    TressFXSDFInputMeshInterface* pCollMesh,
+    const char * modelName,
+    int numCellsInX,
+    float collisionMargin)
+    : m_CollisionMargin(collisionMargin)
+    , m_NumCellsInXAxis(numCellsInX)
     , m_GridAllocationMutliplier(1.4f)
     , m_NumTotalCells(INT_MAX)
     , m_pSimBindSet(nullptr)
-{
-}
 
-TressFXSDFCollision::~TressFXSDFCollision() {}
-
-void TressFXSDFCollision::Initialize(EI_Device*              pDevice,
-                                     TressFXSDFInputMeshInterface* pCollMesh,
-                                     EI_StringHash modelName)
 {
     m_pInputCollisionMesh = pCollMesh;
 
     // initialize SDF grid using the associated model's bounding box
-    AMD::tressfx_vec3 bmin, bmax;
-    m_pInputCollisionMesh->GetBoundingBox(bmin, bmax);
-    m_CellSize               = (bmax.x - bmin.x) / m_NumCellsInXAxis;
+    Vector3 bmin, bmax;
+    m_pInputCollisionMesh->GetInitialBoundingBox(bmin, bmax);
+    m_CellSize = (bmax.x - bmin.x) / m_NumCellsInXAxis;
     int numExtraPaddingCells = (int)(0.8f * (float)m_NumCellsInXAxis);
     m_PaddingBoundary = numExtraPaddingCells * m_CellSize, numExtraPaddingCells * m_CellSize,
-    numExtraPaddingCells * m_CellSize;
+        numExtraPaddingCells * m_CellSize;
 
     UpdateSDFGrid(bmin, bmax);
 
@@ -73,48 +68,40 @@ void TressFXSDFCollision::Initialize(EI_Device*              pDevice,
     m_NumCellsZ = (int)((bmax.z - bmin.z) / m_CellSize);
     m_NumTotalCells =
         TressFXMin(m_NumTotalCells,
-              (int)(m_GridAllocationMutliplier * m_NumCellsX * m_NumCellsY * m_NumCellsZ));
+        (int)(m_GridAllocationMutliplier * m_NumCellsX * m_NumCellsY * m_NumCellsZ));
 
     // UAV
     m_SignedDistanceFieldUAV =
-        EI_CreateReadWriteSB(pDevice, sizeof(int), m_NumTotalCells, TRESSFX_STRING_HASH("SDF"), modelName);
+        pDevice->CreateBufferResource(sizeof(int), m_NumTotalCells, EI_BF_NEEDSUAV, "SDF");
+
+    // constant buffer
+    m_pConstantBufferResource = pDevice->CreateBufferResource(sizeof(TressFXSDFCollisionParams), 1, EI_BF_UNIFORMBUFFER, "TressFXSDFCollisionConstantBuffer");
 
     // Bind set
-    TressFXBindSet bindSet;
-
-    EI_UAV      UAVs[2];
-    EI_SRV      SRVs[1];
-
-    UAVs[0] = EI_GetUAV(m_SignedDistanceFieldUAV);
-    UAVs[1] = EI_GetUAV(m_pInputCollisionMesh->GetMeshBuffer());
-
-    SRVs[0] = EI_GetSRV(m_pInputCollisionMesh->GetTrimeshVertexIndicesBuffer());
-
-    bindSet.nSRVs  = AMD_ARRAY_SIZE(SRVs);
-    bindSet.nUAVs  = AMD_ARRAY_SIZE(UAVs);
-    bindSet.uavs   = UAVs;
-    bindSet.srvs   = SRVs;
-    bindSet.values = &(m_ConstBuffer);
-    bindSet.nBytes = sizeof(TressFXSDFCollisionConstantBuffer);
-    m_pSimBindSet   = EI_CreateBindSet(pDevice, bindSet);
+    EI_BindSetDescription bindSet =
+    {
+        { &m_pInputCollisionMesh->GetTrimeshVertexIndicesBuffer(), m_SignedDistanceFieldUAV.get(), &m_pInputCollisionMesh->GetMeshBuffer(), m_pConstantBufferResource.get() }
+    };
+    m_pSimBindSet = pDevice->CreateBindSet(GetGenerateSDFLayout(), bindSet);
 }
 
-void TressFXSDFCollision::UpdateSDFGrid(const AMD::tressfx_vec3& tight_bbox_min,
-                                        const AMD::tressfx_vec3& tight_bbox_max)
+void TressFXSDFCollision::UpdateSDFGrid(const Vector3& tight_bbox_min,
+                                        const Vector3& tight_bbox_max)
 {
-	UNREFERENCED_PARAMETER(tight_bbox_max);
-    AMD::tressfx_vec3 bmin = tight_bbox_min - m_PaddingBoundary;
+    Vector3 bmin = tight_bbox_min - m_PaddingBoundary;
     m_Origin               = bmin;
 }
 
-void TressFXSDFCollision::Update(EI_CommandContextRef          commandContext,
+void TressFXSDFCollision::Update(EI_CommandContext&          commandContext,
                                  TressFXSDFCollisionSystem& system)
 {
     if (!m_pInputCollisionMesh)
         return;
 
+    EI_Marker marker(commandContext, "SDFUpdate");
+
     // Update the grid data based on the current bounding box
-    AMD::tressfx_vec3 min, max;
+    Vector3 min, max;
     m_pInputCollisionMesh->GetBoundingBox(min, max);
     UpdateSDFGrid(min, max);
 
@@ -128,57 +115,72 @@ void TressFXSDFCollision::Update(EI_CommandContextRef          commandContext,
     m_ConstBuffer.m_NumCellsY = m_NumCellsY;
     m_ConstBuffer.m_NumCellsZ = m_NumCellsZ;
 
+    commandContext.UpdateBuffer(m_pConstantBufferResource.get(), &m_ConstBuffer);
+
     // Binding UAVs, SRVs and CBs
-    EI_Bind(commandContext, GetGenerateSDFLayout(), *m_pSimBindSet);
 
     // Run InitializeSignedDistanceField. One thread per one cell.
     {
         int numDispatchSize =
             (int)ceil((float)m_NumTotalCells / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
-        EI_Dispatch(commandContext, *(system.m_InitializeSignedDistanceFieldPSO), numDispatchSize);
+        commandContext.BindPSO(system.m_InitializeSignedDistanceFieldPSO.get());
+        EI_BindSet* bindSets[] = { m_pSimBindSet.get() };
+        commandContext.BindSets(system.m_InitializeSignedDistanceFieldPSO.get(), 1, bindSets);
+        commandContext.Dispatch(numDispatchSize);
+        GetDevice()->GetTimeStamp("InitializeSignedDistanceField");
     }
 
 
     EI_Barrier uavMeshAndSDF[] = 
     {
         { & (m_pInputCollisionMesh->GetMeshBuffer()), EI_STATE_UAV, EI_STATE_UAV },
-        { m_SignedDistanceFieldUAV, EI_STATE_UAV, EI_STATE_UAV }
+        { m_SignedDistanceFieldUAV.get(), EI_STATE_UAV, EI_STATE_UAV }
     };
 
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
 
     // Run ConstructSignedDistanceField. One thread per each triangle
     {
         int numDispatchSize = (int)ceil((float)m_pInputCollisionMesh->GetNumMeshTriangle() /
-                                        (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
-        EI_Dispatch(commandContext, *(system.m_ConstructSignedDistanceFieldPSO), numDispatchSize);
+            (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
+        commandContext.BindPSO(system.m_ConstructSignedDistanceFieldPSO.get());
+        EI_BindSet* bindSets[] = { m_pSimBindSet.get() };
+        commandContext.BindSets(system.m_ConstructSignedDistanceFieldPSO.get(), 1, bindSets);
+        commandContext.Dispatch(numDispatchSize);
+        GetDevice()->GetTimeStamp("ConstructSignedDistanceField");
     }
 
     // State transition for DX12
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
 
     // Run FinalizeSignedDistanceField. One thread per each triangle
     {
         int numDispatchSize =
             (int)ceil((float)m_NumTotalCells / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
-        EI_Dispatch(commandContext, *(system.m_FinalizeSignedDistanceFieldPSO), numDispatchSize);
+        commandContext.BindPSO(system.m_FinalizeSignedDistanceFieldPSO.get());
+        EI_BindSet* bindSets[] = { m_pSimBindSet.get() };
+        commandContext.BindSets(system.m_FinalizeSignedDistanceFieldPSO.get(), 1, bindSets);
+        commandContext.Dispatch(numDispatchSize);
+        GetDevice()->GetTimeStamp("FinalizeSignedDistanceField");
     }
 
     // State transition for DX12
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uavMeshAndSDF), uavMeshAndSDF);
 }
 
-void TressFXSDFCollision::CollideWithHair(EI_CommandContextRef          commandContext,
+void TressFXSDFCollision::CollideWithHair(EI_CommandContext&          commandContext,
                                           TressFXSDFCollisionSystem& system,
                                           TressFXHairObject&         hairObject)
 {
     if (!m_pInputCollisionMesh)
         return;
 
+    EI_Marker marker(commandContext, "CollideWithHair");
+
     int numTotalHairVertices = hairObject.GetNumTotalHairVertices();
 
     // Get vertex buffers from the hair object.
-    PosTanCollection& collection = hairObject.GetPosTanCollection();
+    TressFXDynamicState& state = hairObject.GetDynamicState();
 
     // Set the constant buffer parameters
     m_ConstBuffer.m_Origin.x                 = m_Origin.x;
@@ -193,31 +195,27 @@ void TressFXSDFCollision::CollideWithHair(EI_CommandContextRef          commandC
     m_ConstBuffer.m_NumTotalHairVertices     = hairObject.GetNumTotalHairVertices();
     m_ConstBuffer.m_NumHairVerticesPerStrand = hairObject.GetNumVerticesPerStrand();
 
-    // Binding UAVs
-    EI_Bind(commandContext, GetApplySDFLayout(), collection.GetApplySDFBindSet());
-    EI_Bind(commandContext, GetGenerateSDFLayout(), *m_pSimBindSet);
+    commandContext.UpdateBuffer(m_pConstantBufferResource.get(), &m_ConstBuffer);
+
 
     // Run CollideHairVerticesWithSdf. One thread per one hair vertex.
     {
         int numDispatchSize =
             (int)ceil((float)numTotalHairVertices / (float)TRESSFX_SIM_THREAD_GROUP_SIZE);
-        EI_Dispatch(commandContext, *(system.m_CollideHairVerticesWithSdfPSO), numDispatchSize);
+        commandContext.BindPSO(system.m_CollideHairVerticesWithSdfPSO.get());
+        EI_BindSet * bindSets[] = { m_pSimBindSet.get(), &state.GetApplySDFBindSet() };
+        commandContext.BindSets(system.m_CollideHairVerticesWithSdfPSO.get(), 2, bindSets );
+        commandContext.Dispatch(numDispatchSize);
+        GetDevice()->GetTimeStamp("CollideHairVerticesWithSdf");
     }
 
     // State transition for DX12
-    collection.UAVBarrier(commandContext);
+    state.UAVBarrier(commandContext);
 
     //EI_SB_Transition(commandContext, m_SignedDistanceFieldUAV, EI_STATE_UAV, EI_STATE_UAV);
     EI_Barrier uavSDF[] = 
     {
-        { m_SignedDistanceFieldUAV, EI_STATE_UAV, EI_STATE_UAV }
+        { m_SignedDistanceFieldUAV.get(), EI_STATE_UAV, EI_STATE_UAV }
     };
-    EI_SubmitBarriers(commandContext, 1, uavSDF);
+    commandContext.SubmitBarrier(1, uavSDF);
 }
-
-void TressFXSDFCollision::Destroy(EI_Device* pDevice)
-{
-    EI_DestroyBindSet(pDevice, m_pSimBindSet);
-    EI_Destroy(pDevice, m_SignedDistanceFieldUAV);
-}
-

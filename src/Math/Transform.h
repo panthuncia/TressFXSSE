@@ -1,9 +1,6 @@
-
-//---------------------------------------------------------------------------------------
-// Hooks interface to TressFX functionality.
+//--------------------------------------------------------------------------------------
+// File: Transform.h
 //
-// AMD_TressFX.h is the interface.
-//-------------------------------------------------------------------------------------
 //
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
@@ -25,13 +22,34 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
+//--------------------------------------------------------------------------------------
 
-#if AMD_TRESSFX_COMPILE_DYNAMIC_LIB
-#define AMD_DLL_EXPORTS
-#endif
+#pragma once
 
-#include "AMD_TressFX.h"
+#include "Quaternion.h"
+#include "Vector3D.h"
 
-#include "TressFXAsset.h"
-#include "TressFXHairObject.h"
+class TransformSet
+{
+public:
+    TransformSet(void);
+    TransformSet(const TransformSet& other);
+    TransformSet(const Vector3& translation, const Quaternion& rotation);
+    ~TransformSet(void);
 
+private:
+    Vector3 m_Translation;
+    Quaternion m_Rotation;
+
+public:
+    const Vector3& GetTranslation() const { return m_Translation; }
+    const Quaternion& GetRotation() const { return m_Rotation; }
+    Vector3&       GetTranslation() { return m_Translation; }
+    Quaternion&       GetRotation() { return m_Rotation; }
+    void                Inverse();
+    TransformSet   InverseOther() const;
+
+    Vector3 operator*(const Vector3& vector) const;
+    TransformSet operator*(const TransformSet& transform) const;
+    TransformSet& operator=(const TransformSet& other);
+};
