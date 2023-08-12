@@ -1,4 +1,4 @@
-#include "Hair.h"
+#include "HairStrands.h"
 #include "ActorManager.h"
 #include "DDSTextureLoader.h"
 #include "PPLLObject.h"
@@ -11,14 +11,36 @@
 #include <sys/stat.h>
 void printEffectVariables(ID3DX11Effect* pEffect);
 
-Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)
+HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, const char* tfxFilePath, const char* tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)
 {
-	m_pHairObject = new TressFXHairObject;
-	m_hairAsset = asset;
+	m_pHairAsset = new TressFXAsset();
+	FILE* fp = fopen(tfxFilePath, "rb");
+	m_pHairAsset->LoadHairData(fp);
+	fclose(fp);
+
+	m_pHairAsset->GenerateFollowHairs(numFollowHairsPerGuideHair, tipSeparationFactor, 0.012f);
+	m_pHairAsset->ProcessAsset();
+
+	// Load *.tfxbone
+	fp = fopen(tfxboneFilePath, "rb");
+	m_pHairAsset->LoadBoneData(fp, skinNumber, scene);
+	fclose(fp);
+
+	EI_Device*         pDevice = GetDevice();
+	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
+
+	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, name, renderIndex);
+
+	m_pHairObject.reset(hair);
+	m_pScene = scene;
+	m_skinNumber = skinNumber;
+	m_renderIndex = renderIndex;
+
 	m_hairEIResource = new EI_Resource;
-	initialize(resourceManager, texturePath);
+
+	initialize(texturePath);
 	m_hairEIResource->srv = m_hairSRV;
-	m_pHairObject->Create(asset, (EI_Device*)resourceManager, (EI_CommandContextRef)context, name, m_hairEIResource);
+
 	logger::info("Created hair object");
 	m_hairName = name;
 	m_numBones = boneNames.size();
@@ -28,7 +50,7 @@ Hair::Hair(AMD::TressFXAsset* asset, SkyrimGPUResourceManager* resourceManager, 
 	}
 }
 
-Hair::~Hair()
+HairStrands::~HairStrands()
 {
 	auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	logger::info("Destroying hair");
@@ -38,17 +60,17 @@ Hair::~Hair()
 	delete m_hairEIResource;
 }
 
-void Hair::Reload()
+void HairStrands::Reload()
 {
-	auto pManager = SkyrimGPUResourceManager::GetInstance();
-	m_pHairObject->Destroy((EI_Device*)pManager->m_pDevice);
-	ID3D11DeviceContext* pContext;
-	pManager->m_pDevice->GetImmediateContext(&pContext);
-	m_pHairObject->Create(m_hairAsset, (EI_Device*)pManager, (EI_CommandContextRef)pContext, m_hairName, m_hairEIResource);
-	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
+	EI_Device*         pDevice = GetDevice();
+	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
+	m_pHairObject.release();
+	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, m_hairName, m_renderIndex);
+	m_pHairObject.reset(hair);
+	//m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
 }
 
-void Hair::DrawDebugMarkers()
+void HairStrands::DrawDebugMarkers()
 {
 	//bone debug markers
 	std::vector<DirectX::XMMATRIX> positions;
@@ -68,7 +90,7 @@ void Hair::DrawDebugMarkers()
 	}
 }
 
-void Hair::UpdateVariables(float gravityMagnitude)
+void HairStrands::UpdateVariables(float gravityMagnitude)
 {
 	//logger::info("In hair UpdateVariables");
 	if (!m_gotSkeleton)
@@ -94,7 +116,7 @@ void Hair::UpdateVariables(float gravityMagnitude)
 	ppll->m_pStrandEffect->GetVariableByName("g_MatKValue")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matKValueVector));
 	ppll->m_pStrandEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(m_ks2);
 	ppll->m_pStrandEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(m_ex2);
-	ppll->m_pStrandEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_hairAsset->m_numVerticesPerStrand);
+	ppll->m_pStrandEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_pHairAsset->m_numVerticesPerStrand);
 
 	//quad shading params, cbuffer tressfxShadeParameters
 	ppll->m_pQuadEffect->GetVariableByName("g_HairShadowAlpha")->AsScalar()->SetFloat(m_hairShadowAlpha);
@@ -104,7 +126,7 @@ void Hair::UpdateVariables(float gravityMagnitude)
 	ppll->m_pQuadEffect->GetVariableByName("g_MatKValue")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matKValueVector));
 	ppll->m_pQuadEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(m_ks2);
 	ppll->m_pQuadEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(m_ex2);
-	ppll->m_pQuadEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_hairAsset->m_numVerticesPerStrand);
+	ppll->m_pQuadEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_pHairAsset->m_numVerticesPerStrand);
 	//sim parameters
 	//float4 g_Wind;
 	//float4 g_Wind1;
@@ -137,7 +159,7 @@ void Hair::UpdateVariables(float gravityMagnitude)
 	//logger::info("Setting sim parameters");
 	m_pHairObject->UpdateSimulationParameters(settings);
 }
-void Hair::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
+void HairStrands::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
 {
 	m_fiberRadius = fiberRadius;
 	m_fiberSpacing = fiberSpacing;
@@ -159,15 +181,17 @@ void Hair::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, f
 	m_hairShadowAlpha = hairShadowAlpha;
 	m_thinTip = thinTip;
 }
-void Hair::Draw(ID3D11DeviceContext* pContext, EI_PSO* pPSO)
+
+void HairStrands::TransitionRenderingToSim(EI_CommandContext& context)
 {
-	m_pHairObject->DrawStrands((EI_CommandContextRef)pContext, *pPSO);
+	m_pHairObject->GetDynamicState().TransitionRenderingToSim(context);
 }
 
-void Hair::TransitionRenderingToSim(ID3D11DeviceContext* pContext)
+void HairStrands::TransitionSimToRendering(EI_CommandContext& context)
 {
-	m_pHairObject->GetPosTanCollection().TransitionRenderingToSim((EI_CommandContextRef)pContext);
+	m_pHairObject->GetDynamicState().TransitionSimToRendering(context);
 }
+
 
 void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int currentOffset = 0)
 {
@@ -237,7 +261,7 @@ void ListChildren(RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& nodes, int 
 		}
 	}
 }
-void Hair::RegisterBones()
+void HairStrands::RegisterBones()
 {
 	hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
 	if (playerSkeleton == nullptr) {
@@ -265,7 +289,7 @@ void Hair::RegisterBones()
 	logger::info("Got all bones");
 	m_gotSkeleton = true;
 }
-void Hair::UpdateBones()
+void HairStrands::UpdateBones()
 {
 	if (!m_gotSkeleton) {
 		//logger::warn("UpdateBones called, but we have no skeleton!");
@@ -280,7 +304,7 @@ void Hair::UpdateBones()
 		m_boneTransforms[i] = m_pBones[i]->world;
 	}
 }
-bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation)
+bool HairStrands::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation)
 {
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	if (!m_gotSkeleton) {
@@ -337,7 +361,7 @@ bool Hair::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimu
 	//logger::info("simulation complete");
 	return true;
 }
-void Hair::UpdateOffsets(float x, float y, float z, float scale)
+void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
 {
 	ID3D11Device*        pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
@@ -347,7 +371,7 @@ void Hair::UpdateOffsets(float x, float y, float z, float scale)
 	m_currentOffsets[3] = scale;
 	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
 }
-void Hair::ExportOffsets(float x, float y, float z, float scale)
+void HairStrands::ExportOffsets(float x, float y, float z, float scale)
 {
 	json offsets;
 	offsets["x"] = x;
@@ -358,7 +382,7 @@ void Hair::ExportOffsets(float x, float y, float z, float scale)
 	std::ofstream file(m_configPath);
 	file << m_config;
 }
-void Hair::ExportParameters()
+void HairStrands::ExportParameters()
 {
 	json parameters;
 	parameters["fiberRadius"] = m_fiberRadius;
@@ -384,13 +408,13 @@ void Hair::ExportParameters()
 	std::ofstream file(m_configPath);
 	file << m_config;
 }
-void Hair::initialize(SkyrimGPUResourceManager* pManager, std::filesystem::path texturePath)
+void HairStrands::initialize(std::filesystem::path texturePath)
 {
 	//create texture and SRV (empty for now)
-	ID3D11DeviceContext* pContext;
-	pManager->GetInstance()->m_pDevice->GetImmediateContext(&pContext);
-	DirectX::CreateDDSTextureFromFile(pManager->GetInstance()->m_pDevice, pContext, texturePath.generic_wstring().c_str(), &m_hairTexture, &m_hairSRV);
-	logger::info("loaded hair texture");
+	//ID3D11DeviceContext* pContext;
+	//pManager->GetInstance()->m_pDevice->GetImmediateContext(&pContext);
+	//DirectX::CreateDDSTextureFromFile(pManager->GetInstance()->m_pDevice, pContext, texturePath.generic_wstring().c_str(), &m_hairTexture, &m_hairSRV);
+	//logger::info("loaded hair texture");
 	/*D3D11_TEXTURE2D_DESC desc;
 	desc.Width = 256;
 	desc.Height = 256;

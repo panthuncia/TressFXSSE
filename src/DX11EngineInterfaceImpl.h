@@ -136,6 +136,8 @@ struct EI_PSO
 	ID3D11DepthStencilView*    DSV;
 };
 
+EI_Device* GetDevice();
+
 class EI_Device
 {
 public:
@@ -181,6 +183,7 @@ public:
 	void UpdateBuffer(EI_Resource* res, void* data);
 	void BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets);
 	void DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams);
+	void DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams);
 	void SubmitBarrier(int numBarriers, EI_Barrier* barriers);
 	void ClearUint32Image(EI_Resource* res, uint32_t value);
 	void BindPSO(EI_PSO* pso);

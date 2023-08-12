@@ -5,9 +5,8 @@
 #include <d3d12.h>
 #include <d3d11on12.h>
 #include "Detours.h"
-#include "TressFXAsset.h"
-#include "TressFXLayouts.h"
-#include "AMD_TressFX.h"
+#include "TressFX/TressFXAsset.h"
+#include "TressFX/AMD_TressFX.h"
 #include "LOCAL_RE/BSGraphics.h"
 #include "LOCAL_RE/BSGraphicsTypes.h"
 #include "Hair.h"
@@ -26,61 +25,6 @@ decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
 decltype(&ID3D11DeviceContext::RSSetViewports) ptrRSSetViewports;
 decltype(&ID3D11DeviceContext::CopyResource)         ptrCopyResource;
 
-extern "C"
-{
-	void TressFX_DefaultRead(void* ptr, AMD::uint size, EI_Stream* pFile)
-	{
-		FILE* fp = reinterpret_cast<FILE*>(pFile);
-		fread(ptr, size, 1, fp);
-	}
-	void TressFX_DefaultSeek(EI_Stream* pFile, AMD::uint offset)
-	{
-		FILE* fp = reinterpret_cast<FILE*>(pFile);
-		fseek(fp, offset, SEEK_SET);
-	}
-}
-void setCallbacks()
-{
-	AMD::g_Callbacks.pfMalloc = malloc;
-	AMD::g_Callbacks.pfFree = free;
-	AMD::g_Callbacks.pfError = LogError;
-
-	AMD::g_Callbacks.pfRead = TressFX_DefaultRead;
-	AMD::g_Callbacks.pfSeek = TressFX_DefaultSeek;
-
-	AMD::g_Callbacks.pfCreateLayout = CreateLayout;
-	AMD::g_Callbacks.pfDestroyLayout = DestroyLayout;
-
-	AMD::g_Callbacks.pfCreateReadOnlySB = CreateReadOnlySB;
-	AMD::g_Callbacks.pfCreateReadWriteSB = CreateReadWriteSB;
-	AMD::g_Callbacks.pfCreateCountedSB = CreateCountedSB;
-
-	AMD::g_Callbacks.pfClearCounter = ClearCounter;
-	//AMD::g_Callbacks.pfCopy = SuCopy;
-	AMD::g_Callbacks.pfMap = Map;
-	AMD::g_Callbacks.pfUnmap = Unmap;
-
-	AMD::g_Callbacks.pfDestroySB = Destroy;
-
-	//AMD::g_Callbacks.pfCreateRT = SuCreateRT;
-	AMD::g_Callbacks.pfCreate2D = Create2D;
-
-	AMD::g_Callbacks.pfClear2D = Clear2D;
-
-	AMD::g_Callbacks.pfSubmitBarriers = SubmitBarriers;
-
-	AMD::g_Callbacks.pfCreateBindSet = CreateBindSet;
-	AMD::g_Callbacks.pfDestroyBindSet = DestroyBindSet;
-	AMD::g_Callbacks.pfBind = Bind;
-
-	AMD::g_Callbacks.pfCreateComputeShaderPSO = CreateComputeShaderPSO;
-	//AMD::g_Callbacks.pfDestroyPSO = SuDestroyPSO;
-	AMD::g_Callbacks.pfDispatch = Dispatch;
-
-	AMD::g_Callbacks.pfCreateIndexBuffer = CreateIndexBuffer;
-	AMD::g_Callbacks.pfDestroyIB = DestroyIB;
-	AMD::g_Callbacks.pfDraw = DrawIndexedInstanced;
-}
 void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceManager, ID3D11DeviceContext* pContext) {
 	FILE* fp;
 	const auto configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";

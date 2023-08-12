@@ -101,6 +101,16 @@ inline D3D11_PRIMITIVE_TOPOLOGY operator*(EI_Topology Enum)
 	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
 
+static EI_Device* g_device = NULL;
+
+EI_Device* GetDevice()
+{
+	if (g_device == NULL) {
+		g_device = new EI_Device();
+	}
+	return g_device;
+}
+
 EI_Device::EI_Device()
 {
 }
@@ -663,6 +673,13 @@ void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& 
 	logger::info("DrawIndexedInstanced");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	pContext->DrawIndexedInstanced(drawParams.pIndexBuffer->m_indexBufferNumIndices, drawParams.numInstances, 0, 0, 0);
+}
+
+void EI_CommandContext::DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams)
+{
+	logger::info("DrawIndexed");
+	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+	pContext->DrawInstanced(drawParams.numVertices, drawParams.numInstances, 0, 0);
 }
 
 void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
