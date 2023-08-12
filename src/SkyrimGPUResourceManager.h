@@ -32,6 +32,7 @@ public:
 
 	inline static ID3D11Device* m_pDevice;
 	inline static IDXGISwapChain* m_pSwapChain;
+	ID3D11DeviceContext* m_pContext;
 	/// Creates a structured buffer
 	ID3D11Buffer* CreateStructuredBuffer(uint32_t nStructSize,
 		uint32_t nNumStructs,

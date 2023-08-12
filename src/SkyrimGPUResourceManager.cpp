@@ -6,6 +6,7 @@ SkyrimGPUResourceManager::SkyrimGPUResourceManager(ID3D11Device* pDevice, IDXGIS
 {
 	this->m_pDevice = pDevice;
 	this->m_pSwapChain = pSwapChain;
+	pDevice->GetImmediateContext(&this->m_pContext);
 	}
 SkyrimGPUResourceManager::~SkyrimGPUResourceManager() {
 	}
