@@ -4,10 +4,11 @@
 #include <sstream> //for std::stringstream 
 #include <string>  //for std::string
 #include <d3d11.h>
+#include <chrono>
 #include "Util.h"
-#include "PPLLObject.h"
 #include "Menu.h"
 #include "HBAOPlus.h"
+#include "SkyrimTressFX.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
 struct BSFaceGenNiNode_FixSkinInstances
@@ -56,9 +57,9 @@ struct Main_Update
 	static void thunk()
 	{
 		//call main game loop
-		PPLLObject* ppll = PPLLObject::GetSingleton();
-		if (ppll->m_doReload) {
-			ppll->ReloadAllHairs();
+		SkyrimTressFX* tfx = SkyrimTressFX::GetSingleton();
+		if (tfx->m_doReload) {
+			tfx->ReloadAllHairs();
 		}
 		func();
 	}
@@ -74,14 +75,14 @@ struct Hooks
 			auto val = func(a1, a2, a3, a4, a5);
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
-			auto ppll = PPLLObject::GetSingleton();
-			if (ppll->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+			auto tfx = SkyrimTressFX::GetSingleton();
+			if (tfx->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				if (Menu::GetSingleton()->drawHairCheckbox) {
-					ppll->UpdateVariables();
+					//tfx->Update();
 					//ppll->Simulate();
-					ppll->Draw();
-					ppll->m_currentState = state::done_drawing;
+					tfx->Draw();
+					tfx->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 				auto hbao = HBAOPlus::GetSingleton();
@@ -92,7 +93,7 @@ struct Hooks
 					hbao->SetRenderTarget(pRTV, GFSDK_SSAO_MULTIPLY_RGB);
 				}
 				if (Menu::GetSingleton()->HBAOCheckbox) {
-					hbao->SetInput(ppll->m_projXMMatrix, 69.99104);
+					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projXMMatrix, 69.99104);
 					if (Menu::GetSingleton()->clearBeforeHBAOCheckbox) {
 						logger::info("Clearing RTV");
 						float clearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
@@ -115,9 +116,9 @@ struct Hooks
 			func(BSGraphics_Renderer, unk);
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
-			auto ppll = PPLLObject::GetSingleton();
-			if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				MarkerRender::GetSingleton()->DrawAllMarkers(ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
+			auto tfx = SkyrimTressFX::GetSingleton();
+			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				MarkerRender::GetSingleton()->DrawAllMarkers(tfx->m_activeScene.scene.get()->m_viewXMMatrix, tfx->m_activeScene.scene.get()->m_projXMMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
 		}
@@ -127,9 +128,9 @@ struct Hooks
 void DrawShadows() {
 	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:")
 	auto camera = RE::PlayerCamera::GetSingleton();
-	auto ppll = PPLLObject::GetSingleton();
-	ppll->m_currentState = state::draw_shadows;
-	if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+	auto tfx = SkyrimTressFX::GetSingleton();
+	tfx->m_currentState = state::draw_shadows;
+	if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 		//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
 		/*if (skipFrame) {
 				skipFrame--;
@@ -159,11 +160,11 @@ void DrawShadows() {
 			//ppll->m_markerPositions.push_back(transform);
 
 			//get viewport
-			auto              currentViewport = ppll->m_currentViewport;
+			auto              currentViewport = tfx->m_activeScene.scene.get()->m_currentViewport;
 			DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(currentViewport.TopLeftX, currentViewport.TopLeftY, currentViewport.Width, currentViewport.Height);
-			ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
-			logger::info("drawing hair shadows");
-			PPLLObject::GetSingleton()->DrawShadows();
+			//ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
+			//logger::info("drawing hair shadows");
+			//tfx->DrawShadows();
 			//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 	}
 }
@@ -306,16 +307,17 @@ void hookMainDraw() {
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow light draws
 	
 	//2nd depth pass
-	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0xC6, 0x17A));  //TODO AE //shadow light draws
+	//stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0xC6, 0x17A));  //TODO AE //shadow light draws
 	
 	//3rd depth pass
-	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0x12B, 0x17A));  //TODO AE //shadow light draws
+	//stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0x12B, 0x17A));  //TODO AE //shadow light draws
 
 	//4th depth pass, copy depth
-	stl::write_thunk_call<Sub_DrawShadows>(REL::RelocationID(100421, 82084).address() + REL::Relocate(0x4F9, 0x17A));            //TODO AE //shadow light draws
+	//stl::write_thunk_call<Sub_DrawShadows>(REL::RelocationID(100421, 82084).address() + REL::Relocate(0x4F9, 0x17A));            //TODO AE //shadow light draws
 
 	//shadow map, replace depth
-	stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
+	//stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
+	
 	//stl::write_vfunc<0x0A, BSShadowLight_DrawShadows>(RE::VTABLE_BSShadowDirectionalLight[0]);
 
 	//draw markers
@@ -325,23 +327,27 @@ void hookFacegen()
 {
 	stl::write_vfunc<0x3E, BSFaceGenNiNode_FixSkinInstances>(RE::VTABLE_BSFaceGenNiNode[0]);
 }
+using namespace std::chrono;
 namespace LightHooks{
 	void Install(){
 		UpdateHooks::Hook();
 	}
 	void UpdateHooks::Nullsub()
 	{
-		PPLLObject::GetSingleton()->UpdateLights();
+		SkyrimTressFX::GetSingleton()->UpdateLights();
 		//get current transforms now, because they're borked later
-		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs){
-			hairPair.second->UpdateBones();
+		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects){
+			hair.hairStrands->UpdateBones();
 		}
 		//simulate before render pass
-		auto ppll = PPLLObject::GetSingleton();
+		auto tfx = SkyrimTressFX::GetSingleton();
 		auto camera = RE::PlayerCamera::GetSingleton();
 		if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-			ppll->UpdateVariables();
-			ppll->Simulate();
+			uint64_t ms = duration_cast<milliseconds>(
+				system_clock::now().time_since_epoch()).count();
+			double time = ms / 1000;
+			tfx->Update();
+			tfx->Simulate(time, false, false);
 		}
 		_Nullsub();
 	}

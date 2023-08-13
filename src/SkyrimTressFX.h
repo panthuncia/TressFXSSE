@@ -13,6 +13,13 @@ class CollisionMesh;
 class Simulation;
 class EI_Scene;
 
+enum state
+{
+	draw_shadows = 0,
+	draw_strands = 1,
+	done_drawing = 2
+};
+
 struct TressFXSSEData
 {
 	std::string              m_userEditorID;
@@ -119,6 +126,11 @@ public:
 	void DestroyLayouts();
 	void SetOITMethod(OITMethod method);
 	void DestroyOITResources(OITMethod method);
+	void ReloadAllHairs();
+	void UpdateLights();
+	void Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollisionResponse);
+	void Update();
+	bool m_doReload = false;
 
 	float  m_time;       // WallClock in seconds.
 	float  m_deltaTime;  // The elapsed time in milliseconds since the previous frame.
@@ -133,11 +145,15 @@ public:
 	bool   m_collisionResponse = true;
 	bool   m_useDepthApproximation = true;
 
+	state m_currentState = state::draw_strands;
+
 private:
 	void                    DrawHair();
 	void                    DrawCollisionMesh();
 	void                    GenerateMarchingCubes();
 	void                    DrawSDF();
 	void                    LoadScene();
+	void                    UpdateSimulationParameters();
+	void                    UpdateRenderingParameters();
 	TressFXSceneDescription LoadTFXUserFiles();
 };

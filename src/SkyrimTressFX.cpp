@@ -6,6 +6,10 @@
 #include "TressFX/TressFXShortCut.h"
 
 using json = nlohmann::json;
+// This could instead be retrieved as a variable from the
+// script manager, or passed as an argument.
+static const size_t AVE_FRAGS_PER_PIXEL = 12;
+static const size_t PPLL_NODE_SIZE = 16;
 
 SkyrimTressFX::~SkyrimTressFX()
 {
@@ -26,6 +30,65 @@ void SkyrimTressFX::OnCreate()
 	}
 
 	LoadScene();
+
+	m_activeScene.viewConstantBuffer.CreateBufferResource("viewConstants");
+	EI_BindSetDescription set = { { m_activeScene.viewConstantBuffer.GetBufferResource() } };
+	m_activeScene.viewBindSet = GetDevice()->CreateBindSet(GetViewLayout(), set);
+
+	m_activeScene.shadowViewConstantBuffer.CreateBufferResource("shadowViewConstants");
+	EI_BindSetDescription shadowSet = { { m_activeScene.shadowViewConstantBuffer.GetBufferResource() } };
+	m_activeScene.shadowViewBindSet = GetDevice()->CreateBindSet(GetViewLayout(), shadowSet);
+
+	m_activeScene.lightConstantBuffer.CreateBufferResource("LightConstants");
+}
+
+void SkyrimTressFX::Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollisionResponse)
+{
+	SimulationContext ctx;
+	ctx.hairStrands.resize(m_activeScene.objects.size());
+	ctx.collisionMeshes.resize(m_activeScene.collisionMeshes.size());
+	for (size_t i = 0; i < m_activeScene.objects.size(); ++i) {
+		ctx.hairStrands[i] = m_activeScene.objects[i].hairStrands.get();
+	}
+	for (size_t i = 0; i < m_activeScene.collisionMeshes.size(); ++i) {
+		ctx.collisionMeshes[i] = m_activeScene.collisionMeshes[i].get();
+	}
+	m_pSimulation->StartSimulation(fTime, ctx, bUpdateCollMesh, bSDFCollisionResponse);
+}
+
+void SkyrimTressFX::Update(){
+	UpdateSimulationParameters();
+	UpdateRenderingParameters();
+}
+
+void SkyrimTressFX::UpdateSimulationParameters()
+{
+	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
+		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateSimulationParameters(&m_activeScene.objects[i].simulationSettings, m_deltaTime);
+	}
+}
+
+void SkyrimTressFX::UpdateRenderingParameters()
+{
+	std::vector<const TressFXRenderingSettings*> RenderSettings;
+	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
+		// For now, just using distance of camera to 0, 0, 0, but should be passing in a root position for the hair object we want to LOD
+		float Distance = sqrtf(m_activeScene.scene->GetCameraPos().x * m_activeScene.scene->GetCameraPos().x + m_activeScene.scene->GetCameraPos().y * m_activeScene.scene->GetCameraPos().y + m_activeScene.scene->GetCameraPos().z * m_activeScene.scene->GetCameraPos().z);
+		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateRenderingParameters(&m_activeScene.objects[i].renderingSettings, m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL, m_deltaTime, Distance);
+		RenderSettings.push_back(&m_activeScene.objects[i].renderingSettings);
+	}
+
+	// Update shade parameters for correct implementation
+	switch (m_eOITMethod) {
+	case OIT_METHOD_SHORTCUT:
+		m_pShortCut->UpdateShadeParameters(RenderSettings);
+		break;
+	case OIT_METHOD_PPLL:
+		m_pPPLL->UpdateShadeParameters(RenderSettings);
+		break;
+	default:
+		break;
+	}
 }
 
 void SkyrimTressFX::LoadScene()
@@ -53,7 +116,11 @@ void SkyrimTressFX::LoadScene()
 			desc.objects[i].numFollowHairs,
 			desc.objects[i].tipSeparationFactor,
 			desc.objects[i].hairObjectName,
-			desc.objects[i].tressfxSSEData.boneNames);
+			desc.objects[i].tressfxSSEData.boneNames,
+			desc.objects[i].tressfxSSEData.m_configData,
+			desc.objects[i].tressfxSSEData.m_configPath,
+			desc.objects[i].tressfxSSEData.m_initialOffsets,
+			desc.objects[i].tressfxSSEData.m_userEditorID);
 
 		hair->GetTressFXHandle()->PopulateDrawStrandsBindSet(GetDevice(), &desc.objects[i].initialRenderingSettings);
 		m_activeScene.objects.push_back({ std::unique_ptr<HairStrands>(hair), desc.objects[i].initialSimulationSettings, desc.objects[i].initialRenderingSettings, desc.objects[i].name.c_str() });
@@ -70,6 +137,50 @@ void SkyrimTressFX::LoadScene()
 			desc.collisionMeshes[i].followBone.c_str());
 		m_activeScene.collisionMeshes.push_back(std::unique_ptr<CollisionMesh>(mesh));
 	}
+}
+void SkyrimTressFX::UpdateLights() {
+	auto  accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
+	auto shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
+	auto& runtimeData = shadowSceneNode->GetRuntimeData();
+	int   i = 0;
+	for (auto& e : runtimeData.activePointLights) {
+		auto bsLight = e.get();
+		if (!bsLight) {
+			continue;
+		}
+		auto niLight = bsLight->light.get();
+		if (!niLight) {
+			continue;
+		}
+		i += 1;
+		float x;
+		float y;
+		float z;
+		niLight->world.rotate.ToEulerAnglesXYZ(z, y, x);
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { niLight->diffuse.red, niLight->diffuse.blue, niLight->diffuse.green };
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightDirWS = { x, y, z };
+		//m_activeScene.lightConstantBuffer->LightInfo[i].LightInnerConeCos = lightInfo.innerConeCos;
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = bsLight->luminance;
+		//m_activeScene.lightConstantBuffer->LightInfo[i].LightOuterConeCos = lightInfo.outerConeCos;
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightPositionWS = { niLight->world.translate.x, niLight->world.translate.x, niLight->world.translate.x };
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 1000;//???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;//???
+		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapIndex = lightInfo.shadowMapIndex;
+		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowProjection = *(AMD::float4x4*)&lightInfo.mLightViewProj;  // ugh .. need a proper math library
+		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowParams = { lightInfo.depthBias, .1f, 100.0f, 0.f };       // Near and Far are currently hard-coded because we are hard-coding them elsewhere
+		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapSize = GetDevice()->GetShadowBufferResource()->GetWidth() / 2;
+		m_activeScene.lightConstantBuffer->UseDepthApproximation = m_useDepthApproximation;
+	}
+	m_activeScene.lightConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
+	m_activeScene.lightConstantBuffer->NumLights = i;
+}
+void SkyrimTressFX::ReloadAllHairs()
+{
+	for (auto& object : m_activeScene.objects) {
+		object.hairStrands.get()->Reload();
+	}
+	m_doReload = false;
+	logger::info("Done reloading");
 }
 
 void SkyrimTressFX::Draw()
@@ -405,11 +516,12 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				hairDesc.initialRenderingSettings = renderSettings;
 				hairDesc.tressfxSSEData = tfxData;
 				hairDesc.numFollowHairs = 0;          //TODO
-				hairDesc.mesh = 0;                    //???
+				hairDesc.mesh = m_activeScene.scene.get()->skinIDBonesMap.size();
 				hairDesc.tipSeparationFactor = 1.0f;  //???
 				sd.objects.push_back(hairDesc);
 				//TODO collision mesh
 			}
+			m_activeScene.scene.get()->skinIDBonesMap[m_activeScene.scene.get()->skinIDBonesMap.size()] = bones;
 		}
 	}
 }

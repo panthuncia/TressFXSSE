@@ -12,10 +12,11 @@
 #include "SkyrimGPUResourceManager.h"
 #include "ActorManager.h"
 #include "Menu.h"
-#include "PPLLObject.h"
 #include <iostream>
 #include <filesystem>
 #include "HBAOPlus.h"
+#include "MarkerRender.h"
+#include "SkyrimTressFX.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
 decltype(&D3D11CreateDeviceAndSwapChain)             ptrD3D11CreateDeviceAndSwapChain;
 decltype(&ID3D11DeviceContext::DrawIndexed)          ptrDrawIndexed;
@@ -70,13 +71,13 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 
 	SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device, swapchain);
 	//init hair resources
-	auto ppll = PPLLObject::GetSingleton();
-	ppll->Initialize();
+	auto tfx = SkyrimTressFX::GetSingleton();
+	tfx->OnCreate();
 
 	Menu::GetSingleton()->Init(swapchain, device, context);
 	std::vector<std::string> hairNames;
-	for (const auto& [k, v] : PPLLObject::GetSingleton()->m_hairs) {
-		hairNames.push_back(k);
+	for (auto& hair : tfx->m_activeScene.objects) {
+		hairNames.push_back(hair.hairStrands.get()->m_hairName);
 	}
 	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
 
@@ -111,13 +112,14 @@ void hk_ID3D11DeviceContext_RSSetViewports(ID3D11DeviceContext* This, UINT NumVi
 	//logger::info("Num viewports: {}", NumViewports);
 	//take first viewport
 	if (NumViewports > 0) {
-		auto ppll = PPLLObject::GetSingleton();
-		ppll->m_currentViewport.TopLeftX = pViewports->TopLeftX;
-		ppll->m_currentViewport.TopLeftY = pViewports->TopLeftY;
-		ppll->m_currentViewport.Height = pViewports->Height;
-		ppll->m_currentViewport.Width = pViewports->Width;
-		ppll->m_currentViewport.MinDepth = pViewports->MinDepth;
-		ppll->m_currentViewport.MaxDepth = pViewports->MaxDepth;
+		auto tfx = SkyrimTressFX::GetSingleton();
+		auto scene = tfx->m_activeScene.scene.get();
+		scene->m_currentViewport.TopLeftX = pViewports->TopLeftX;
+		scene->m_currentViewport.TopLeftY = pViewports->TopLeftY;
+		scene->m_currentViewport.Height = pViewports->Height;
+		scene->m_currentViewport.Width = pViewports->Width;
+		scene->m_currentViewport.MinDepth = pViewports->MinDepth;
+		scene->m_currentViewport.MaxDepth = pViewports->MaxDepth;
 	}
 	(This->*ptrRSSetViewports)(NumViewports, pViewports);
 }

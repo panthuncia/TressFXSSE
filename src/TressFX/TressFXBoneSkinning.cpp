@@ -130,11 +130,11 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
             continue;
 
         sTokens.clear();
-        int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
+        int numFound0 = SuStringTokenizer(sLine, " ", sTokens, false);
 
         std::string token;
 
-        if (numFound > 0)
+        if (numFound0 > 0)
         {
             token = sTokens[0];
         }
@@ -401,7 +401,7 @@ void TressFXBoneSkinning::Initialize(EI_RenderTargetSet * renderTargetSet, EI_De
     m_pComputeEffectSkinning = pDevice->CreateComputeShaderPSO("TressFXBoneSkinning.hlsl", "BoneSkinning", layouts, 1);
 }
 
-Vector3 TressFXBoneSkinning::SkinPosition( int i )
+Vector3 TressFXBoneSkinning::SkinPosition( int i0 )
 {
     int global_id = 0;
 

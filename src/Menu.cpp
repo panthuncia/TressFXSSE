@@ -2,7 +2,7 @@
 
 #include <dinput.h>
 #include <magic_enum.hpp>
-#include "PPLLObject.h"
+#include "SkyrimTressFX.h"
 #define SETTING_MENU_TOGGLEKEY "Toggle Key"
 
 void SetupImGuiStyle()
@@ -302,7 +302,7 @@ void Menu::DrawSettings()
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	if (ImGui::Button("Reload hairs")) {
 		
-		PPLLObject::GetSingleton()->m_doReload = true;
+		SkyrimTressFX::GetSingleton()->m_doReload = true;
 	}
 	DrawHairSelector();
 	DrawOffsetSliders();
@@ -364,7 +364,12 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Max depth", &aoDepthThresholdMaxViewDepthSlider, 0.0f, 10000.0f);
 	ImGui::SliderFloat("Depth threshold sharpness", &aoDepthThresholdSharpnessSlider, 0.0f, 100.0f);
 	if (ImGui::Button("Export parameters")) {
-		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
+		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects) {
+			if (hair.name == activeHairs[selectedHair]) {
+				hair.hairStrands.get()->ExportParameters();
+			}
+		}
+		//PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
 	}
 	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
 	ImGui::SliderFloat("Point lighting diffuse amount", &pointLightDiffuseAmount, 0.0f, 1.0f);
@@ -431,7 +436,11 @@ void Menu::DrawOffsetSliders()
 		offsetSlidersUpdated = true;
 	}
 	if (ImGui::Button("Export offsets")) {
-		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);
+		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects) {
+			if (hair.name == activeHairs[selectedHair]) {
+				hair.hairStrands.get()->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);
+			}
+		}
 	}
 }
 void Menu::DrawQueues()

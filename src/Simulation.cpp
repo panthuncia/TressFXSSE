@@ -50,8 +50,7 @@ void Simulation::StartSimulation(
 	double             fTime,
 	SimulationContext& ctx,
 	bool               bUpdateCollMesh,
-	bool               bSDFCollisionResponse,
-	bool               bAsync)
+	bool               bSDFCollisionResponse)
 {
 	// When we are done submitting sim commands, we will restore this as the default command list.
 	// TODO Maybe pass this explicitly, rather than setting as default and retrieving from there.
@@ -61,9 +60,9 @@ void Simulation::StartSimulation(
 	// We are only accumulating commands for submission now.  There will be a wait for actual
 	// submission after this.
 	EI_CommandContext* simContext = renderContext;
-	if (bAsync) {
+	/*if (bAsync) {
 		simContext = &GetDevice()->GetCurrentCommandContext();
-	}
+	}*/
 
 	if (bUpdateCollMesh) {
 		// Updates the skinned version of the mesh,

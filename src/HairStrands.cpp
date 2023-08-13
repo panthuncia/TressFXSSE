@@ -1,7 +1,6 @@
 #include "HairStrands.h"
 #include "ActorManager.h"
 #include "DDSTextureLoader.h"
-#include "PPLLObject.h"
 #include "Util.h"
 #include <Menu.h>
 #include <RE/S/ShadowState.h>
@@ -10,7 +9,7 @@
 #include <sys/stat.h>
 void printEffectVariables(ID3DX11Effect* pEffect);
 
-HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames)
+HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID)
 {
 	m_pHairAsset = new TressFXAsset();
 	FILE* fp = fopen(tfxFilePath.c_str(), "rb");
@@ -42,6 +41,13 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	for (int i = 0; i < m_numBones; i++) {
 		m_boneNames[i] = boneNames[i];
 	}
+	m_config = config;
+	m_configPath = configPath.generic_string();
+	m_currentOffsets[0] = initialOffsets[0];
+	m_currentOffsets[1] = initialOffsets[1];
+	m_currentOffsets[2] = initialOffsets[2];
+	m_currentOffsets[3] = initialOffsets[3];
+	m_userEditorID = userEditorID;
 }
 
 HairStrands::~HairStrands()
@@ -86,72 +92,7 @@ void HairStrands::DrawDebugMarkers()
 
 void HairStrands::UpdateVariables(float gravityMagnitude)
 {
-	//logger::info("In hair UpdateVariables");
-	if (!m_gotSkeleton)
-		return;
-	/*hdt::ActorManager::Skeleton* playerSkeleton = hdt::ActorManager::instance()->m_playerSkeleton;
-	if (playerSkeleton == NULL)
-		return;*/
 
-	PPLLObject* ppll = PPLLObject::GetSingleton();
-
-	//thin tip
-	ppll->m_pStrandEffect->GetVariableByName("g_bThinTip")->AsScalar()->SetBool(m_thinTip);
-
-	//ratio TODO: What does this do?
-	ppll->m_pStrandEffect->GetVariableByName("g_Ratio")->AsScalar()->SetFloat(m_fiberRatio);
-	//strand shading params, cbuffer tressfxShadeParameters
-	ppll->m_pStrandEffect->GetVariableByName("g_HairShadowAlpha")->AsScalar()->SetFloat(0.004);
-	ppll->m_pStrandEffect->GetVariableByName("g_FiberRadius")->AsScalar()->SetFloat(m_fiberRadius);
-	ppll->m_pStrandEffect->GetVariableByName("g_FiberSpacing")->AsScalar()->SetFloat(m_fiberSpacing);
-	DirectX::XMVECTOR matBaseColorVector = DirectX::XMVectorSet(1, 1, 1, m_hairOpacity);
-	ppll->m_pStrandEffect->GetVariableByName("g_MatBaseColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matBaseColorVector));
-	DirectX::XMVECTOR matKValueVector = DirectX::XMVectorSet(0, m_kd, m_ks1, m_ex1);
-	ppll->m_pStrandEffect->GetVariableByName("g_MatKValue")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matKValueVector));
-	ppll->m_pStrandEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(m_ks2);
-	ppll->m_pStrandEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(m_ex2);
-	ppll->m_pStrandEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_pHairAsset->m_numVerticesPerStrand);
-
-	//quad shading params, cbuffer tressfxShadeParameters
-	ppll->m_pQuadEffect->GetVariableByName("g_HairShadowAlpha")->AsScalar()->SetFloat(m_hairShadowAlpha);
-	ppll->m_pQuadEffect->GetVariableByName("g_FiberRadius")->AsScalar()->SetFloat(m_fiberRadius);
-	ppll->m_pQuadEffect->GetVariableByName("g_FiberSpacing")->AsScalar()->SetFloat(m_fiberSpacing);
-	ppll->m_pQuadEffect->GetVariableByName("g_MatBaseColor")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matBaseColorVector));
-	ppll->m_pQuadEffect->GetVariableByName("g_MatKValue")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&matKValueVector));
-	ppll->m_pQuadEffect->GetVariableByName("g_fHairKs2")->AsScalar()->SetFloat(m_ks2);
-	ppll->m_pQuadEffect->GetVariableByName("g_fHairEx2")->AsScalar()->SetFloat(m_ex2);
-	ppll->m_pQuadEffect->GetVariableByName("g_NumVerticesPerStrand")->AsScalar()->SetInt(m_pHairAsset->m_numVerticesPerStrand);
-	//sim parameters
-	//float4 g_Wind;
-	//float4 g_Wind1;
-	//float4 g_Wind2;
-	//float4 g_Wind3;
-
-	//float4 g_Shape;        // damping, local stiffness, global stiffness, global range.
-	//float4 g_GravTimeTip;  // gravity maginitude (assumed to be in negative y direction.)
-	//int4   g_SimInts;      // Length iterations, local iterations, collision flag.
-	//int4   g_Counts;       // num strands per thread group, num follow hairs per guid hair, num verts per strand.
-	//float4 g_VSP;          // VSP parmeters
-
-	TressFXSimulationSettings settings;
-	settings.m_damping = m_damping;
-	settings.m_localConstraintStiffness = m_localConstraintsStiffness;    //0.8;
-	settings.m_globalConstraintStiffness = m_globalConstraintsStiffness;  //0.0;
-	settings.m_globalConstraintsRange = m_globalConstraintsRange;
-	settings.m_gravityMagnitude = gravityMagnitude;
-	settings.m_vspAccelThreshold = m_vspAccelThreshold;
-	settings.m_vspCoeff = m_vspAmount;
-	settings.m_tipSeparation = 0;
-	settings.m_windMagnitude = 0;
-	settings.m_windAngleRadians = 0;
-	settings.m_windDirection[0] = 0;
-	settings.m_windDirection[1] = 0;
-	settings.m_windDirection[2] = 0;
-	settings.m_localConstraintsIterations = m_localConstraintsIterations;
-	settings.m_lengthConstraintsIterations = m_lengthConstraintsIterations;  //?
-
-	//logger::info("Setting sim parameters");
-	//m_pHairObject->UpdateSimulationParameters(settings);
 }
 void HairStrands::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
 {

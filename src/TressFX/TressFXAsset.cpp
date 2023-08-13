@@ -427,7 +427,7 @@ bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scen
 
     for (int i = 0; i < numOfBones; ++i)
     {
-        boneEngineIds[i] = scene->GetBoneIdByName(skinNumber, boneNames[i].c_str());
+		boneEngineIds[i] = i;  //scene->GetBoneIdByName(skinNumber, boneNames[i].c_str()); //TODO: not used for now
     }
 
     // Reading the number of strands 

@@ -46,7 +46,7 @@ public:
 	void StartSimulation(
 		double             fTime,
 		SimulationContext& ctx,
-		bool bUpdateCollMesh, bool bSDFCollisionResponse, bool bAsync);
+		bool bUpdateCollMesh, bool bSDFCollisionResponse);
 	void WaitOnSimulation();
 
 private:

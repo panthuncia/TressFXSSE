@@ -15,7 +15,7 @@ class TressFXPPLL;
 class HairStrands
 {
 public:
-	HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames);
+	HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, nlohmann::json data, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID);
 	~HairStrands();
 	void UpdateOffsets(float x, float y, float z, float scale);
 	void UpdateVariables(float gravityMagnitude);
