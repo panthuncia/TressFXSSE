@@ -9,6 +9,4 @@ public:
 	};
 	EI_Scene() {}
 	~EI_Scene() {}
-
-
 };

@@ -15,7 +15,7 @@ class TressFXPPLL;
 class HairStrands
 {
 public:
-	HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, const char* tfxFilePath, const char* tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath);
+	HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames);
 	~HairStrands();
 	void UpdateOffsets(float x, float y, float z, float scale);
 	void UpdateVariables(float gravityMagnitude);
@@ -34,7 +34,7 @@ public:
 
 	std::string        m_configPath;
 	nlohmann::json     m_config;
-	EI_StringHash      m_hairName;
+	std::string      m_hairName;
 	TressFXAsset*	  m_pHairAsset;
 	std::string       m_userEditorID;
 
@@ -56,24 +56,24 @@ private:
 	float                     m_currentOffsets[4];
 
 	//rendering and sim parameters
-	float m_fiberRadius = 0.002;
-	float m_fiberSpacing = 0.1;
-	float m_fiberRatio = 0.5;
-	float m_kd = 0.07;
-	float m_ks1 = 0.17;
-	float m_ex1 = 14.4;
-	float m_ks2 = 0.72;
-	float m_ex2 = 11.8;
+	float m_fiberRadius = 0.002f;
+	float m_fiberSpacing = 0.1f;
+	float m_fiberRatio = 0.5f;
+	float m_kd = 0.07f;
+	float m_ks1 = 0.17f;
+	float m_ex1 = 14.4f;
+	float m_ks2 = 0.72f;
+	float m_ex2 = 11.8f;
 	int m_localConstraintsIterations = 3;
 	int m_lengthConstraintsIterations = 3;
-	float m_localConstraintsStiffness = 0.9;
-	float m_globalConstraintsStiffness = 0.4;
-	float m_globalConstraintsRange = 0.3;
-	float m_damping = 0.06;
-	float m_vspAmount = 0.75;
-	float m_vspAccelThreshold = 1.2;
-	float m_hairOpacity = 0.63;
-	float m_hairShadowAlpha = 0.35;
+	float m_localConstraintsStiffness = 0.9f;
+	float m_globalConstraintsStiffness = 0.4f;
+	float m_globalConstraintsRange = 0.3f;
+	float m_damping = 0.06f;
+	float m_vspAmount = 0.75f;
+	float m_vspAccelThreshold = 1.2f;
+	float m_hairOpacity = 0.63f;
+	float m_hairShadowAlpha = 0.35f;
 	bool  m_thinTip = true;
 
 	//if we have obtained bones

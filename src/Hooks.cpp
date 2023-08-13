@@ -1,7 +1,6 @@
 #include "Hooks.h"
 #include "HookEvents.h"
 #include "ActorManager.h"
-#include "Hair.h"
 #include <sstream> //for std::stringstream 
 #include <string>  //for std::string
 #include <d3d11.h>

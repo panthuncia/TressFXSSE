@@ -253,6 +253,24 @@ std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Re
 	return std::unique_ptr<EI_RenderTargetSet>(pNewRenderTargetSet);
 }
 
+std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Resource** pResourcesArray, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues)
+{
+	std::vector<EI_ResourceFormat> FormatArray(numResources);
+
+	for (uint32_t i = 0; i < numResources; ++i) {
+		assert(pResourcesArray[i]->m_ResourceType == EI_ResourceType::Texture);
+		D3D11_TEXTURE2D_DESC desc;
+		pResourcesArray[i]->m_pTexture->GetDesc(&desc);
+		FormatArray[i] = desc.Format;
+		if (FormatArray[i] == DXGI_FORMAT_R32_TYPELESS) {
+			FormatArray[i] = DXGI_FORMAT_D32_FLOAT;
+		}
+	}
+	std::unique_ptr<EI_RenderTargetSet> result = CreateRenderTargetSet(FormatArray.data(), numResources, AttachmentParams, clearValues);
+	result->SetResources(pResourcesArray);
+	return result;
+}
+
 std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int width, const int height, const size_t channels, const size_t channelSize, const char* name, AMD::float4* ClearValues /*= nullptr*/)
 {
 	logger::info("CreateRenderTarget");
@@ -587,7 +605,7 @@ void EI_Device::OnCreate()
 	m_pFullscreenIndexBuffer = CreateBufferResource(sizeof(uint32_t), 4, EI_BF_INDEXBUFFER, "FullScreenIndexBuffer");
 }
 
-void EI_Device::GetTimeStamp(char* name)
+void EI_Device::GetTimeStamp(const char* name)
 {
 	//???
 }
@@ -650,19 +668,19 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 		auto bindSet = bindSets[i];
 		switch (bindSet->stage) {
 		case EI_VS:
-			pContext->VSSetConstantBuffers(0, bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->VSSetShaderResources(0, bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->VSSetSamplers(0, bindSet->samplers.size(), bindSet->samplers.data());
+			pContext->VSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
+			pContext->VSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
+			pContext->VSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
 			break;
 		case EI_PS:
-			pContext->PSSetConstantBuffers(0, bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->PSSetShaderResources(0, bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->PSSetSamplers(0, bindSet->samplers.size(), bindSet->samplers.data());
+			pContext->PSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
+			pContext->PSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
+			pContext->PSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
 			break;
 		case EI_CS:
-			pContext->CSSetConstantBuffers(0, bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->CSSetShaderResources(0, bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->CSSetSamplers(0, bindSet->samplers.size(), bindSet->samplers.data());
+			pContext->CSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
+			pContext->CSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
+			pContext->CSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
 			break;
 		}
 	}
@@ -710,4 +728,10 @@ void EI_CommandContext::BindPSO(EI_PSO* pso)
 		//need different stencil ref?
 		pContext->OMSetDepthStencilState(pso->depthStencilState, 0);
 	}
+}
+
+void EI_CommandContext::Dispatch(int numGroups)
+{
+	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+	pContext->Dispatch(numGroups, 1, 1);
 }

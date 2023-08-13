@@ -1,14 +1,11 @@
 #include "SkyrimTressFX.h"
 #include "SDF.h"
 #include "Scene.h"
+#include "Simulation.h"
 #include "TressFX/TressFXPPLL.h"
 #include "TressFX/TressFXShortCut.h"
-#include "Simulation.h"
-using json = nlohmann::json;
 
-SkyrimTressFX::SkyrimTressFX()
-{
-}
+using json = nlohmann::json;
 
 SkyrimTressFX::~SkyrimTressFX()
 {
@@ -18,21 +15,61 @@ void SkyrimTressFX::OnCreate()
 {
 	GetDevice()->OnCreate();
 	m_activeScene.scene.reset(new EI_Scene);
+
+	const EI_ResourceFormat FormatArray[] = { GetDevice()->GetColorBufferFormat(), GetDevice()->GetDepthBufferFormat() };
+	// Create a debug render pass
+	{
+		const EI_AttachmentParams AttachmentParams[] = { { EI_RenderPassFlags::Load | EI_RenderPassFlags::Store },
+			{ EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store } };
+
+		m_pDebugRenderTargetSet = GetDevice()->CreateRenderTargetSet(FormatArray, 2, AttachmentParams, nullptr);
+	}
+
 	LoadScene();
 }
 
 void SkyrimTressFX::LoadScene()
 {
-	TressFXSceneDescription sceneDescription = LoadTFXUserFiles();
+	TressFXSceneDescription desc = LoadTFXUserFiles();
 
 	// TODO Why?
 	DestroyLayouts();
 
-    InitializeLayouts();
+	InitializeLayouts();
 
 	m_pPPLL.reset(new TressFXPPLL);
 	m_pShortCut.reset(new TressFXShortCut);
 	m_pSimulation.reset(new Simulation);
+
+	EI_Device*         pDevice = GetDevice();
+	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
+	for (size_t i = 0; i < desc.objects.size(); ++i) {
+		HairStrands* hair = new HairStrands(
+			m_activeScene.scene.get(),
+			desc.objects[i].mesh,
+			(int)i,
+			desc.objects[i].tfxFilePath,
+			desc.objects[i].tfxBoneFilePath,
+			desc.objects[i].numFollowHairs,
+			desc.objects[i].tipSeparationFactor,
+			desc.objects[i].hairObjectName,
+			desc.objects[i].tressfxSSEData.boneNames);
+
+		hair->GetTressFXHandle()->PopulateDrawStrandsBindSet(GetDevice(), &desc.objects[i].initialRenderingSettings);
+		m_activeScene.objects.push_back({ std::unique_ptr<HairStrands>(hair), desc.objects[i].initialSimulationSettings, desc.objects[i].initialRenderingSettings, desc.objects[i].name.c_str() });
+	}
+
+	for (size_t i = 0; i < desc.collisionMeshes.size(); ++i) {
+		CollisionMesh* mesh = new CollisionMesh(
+			m_activeScene.scene.get(), m_pDebugRenderTargetSet.get(),
+			desc.collisionMeshes[i].name.c_str(),
+			desc.collisionMeshes[i].tfxMeshFilePath.c_str(),
+			desc.collisionMeshes[i].numCellsInXAxis,
+			desc.collisionMeshes[i].collisionMargin,
+			desc.collisionMeshes[i].mesh,
+			desc.collisionMeshes[i].followBone.c_str());
+		m_activeScene.collisionMeshes.push_back(std::unique_ptr<CollisionMesh>(mesh));
+	}
 }
 
 void SkyrimTressFX::Draw()
@@ -242,26 +279,26 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				scale = offsets["scale"].get<float>();
 			}
 		}
-		float fiberRadius = 0.002;
-		float fiberSpacing = 0.1;
-		float fiberRatio = 0.5;
-		float kd = 0.07;
-		float ks1 = 0.17;
-		float ex1 = 14.4;
-		float ks2 = 0.72;
-		float ex2 = 11.8;
-		float hairOpacity = 0.63;
-		float hairShadowAlpha = 0.35;
+		float fiberRadius = 0.002f;
+		float fiberSpacing = 0.1f;
+		float fiberRatio = 0.5f;
+		float kd = 0.07f;
+		float ks1 = 0.17f;
+		float ex1 = 14.4f;
+		float ks2 = 0.72f;
+		float ex2 = 11.8f;
+		float hairOpacity = 0.63f;
+		float hairShadowAlpha = 0.35f;
 		bool  thinTip = true;
 		int   localConstraintsIterations = 3;
 		int   lengthConstraintsIterations = 3;
-		float localConstraintsStiffness = 0.9;
-		float globalConstraintsStiffness = 0.9;
-		float globalConstraintsRange = 0.9;
-		float damping = 0.06;
-		float vspAmount = 0.75;
-		float vspAccelThreshold = 1.2;
-		float gravityMagnitude = 0.09;
+		float localConstraintsStiffness = 0.9f;
+		float globalConstraintsStiffness = 0.9f;
+		float globalConstraintsRange = 0.9f;
+		float damping = 0.06f;
+		float vspAmount = 0.75f;
+		float vspAccelThreshold = 1.2f;
+		float gravityMagnitude = 0.09f;
 		if (data.contains("parameters")) {
 			logger::info("params");
 			auto params = data["parameters"];
@@ -335,6 +372,7 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				tfxData.m_configData = data;
 				tfxData.m_configPath = configPath;
 				tfxData.m_userEditorID = editorID;
+				tfxData.boneNames = bones;
 
 				TressFXSimulationSettings simSettings;
 				simSettings.m_vspCoeff = vspAmount;
@@ -366,9 +404,9 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				hairDesc.initialSimulationSettings = simSettings;
 				hairDesc.initialRenderingSettings = renderSettings;
 				hairDesc.tressfxSSEData = tfxData;
-				hairDesc.numFollowHairs = 0; //TODO
-				hairDesc.mesh = 0; //???
-				hairDesc.tipSeparationFactor = 1.0f; //???
+				hairDesc.numFollowHairs = 0;          //TODO
+				hairDesc.mesh = 0;                    //???
+				hairDesc.tipSeparationFactor = 1.0f;  //???
 				sd.objects.push_back(hairDesc);
 				//TODO collision mesh
 			}

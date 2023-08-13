@@ -17,8 +17,10 @@
 
 #pragma once
 
-#include "AMD_Types.h"
+#include "TressFX/AMD_Types.h"
 #include <vector>
+
+using namespace DirectX;
 
 // tressfx gpu interface implementation
 class EI_Device;              // ID3D11Device
@@ -281,3 +283,4 @@ enum EI_BufferFlags {
 
 
 #include "DX11EngineInterfaceImpl.h"
+#include "Scene.h"

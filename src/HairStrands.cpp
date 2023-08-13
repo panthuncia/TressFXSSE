@@ -10,10 +10,10 @@
 #include <sys/stat.h>
 void printEffectVariables(ID3DX11Effect* pEffect);
 
-HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, const char* tfxFilePath, const char* tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, ID3D11DeviceContext* context, EI_StringHash name, std::vector<std::string> boneNames, std::filesystem::path texturePath)
+HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames)
 {
 	m_pHairAsset = new TressFXAsset();
-	FILE* fp = fopen(tfxFilePath, "rb");
+	FILE* fp = fopen(tfxFilePath.c_str(), "rb");
 	m_pHairAsset->LoadHairData(fp);
 	fclose(fp);
 
@@ -21,24 +21,19 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, const
 	m_pHairAsset->ProcessAsset();
 
 	// Load *.tfxbone
-	fp = fopen(tfxboneFilePath, "rb");
+	fp = fopen(tfxboneFilePath.c_str(), "rb");
 	m_pHairAsset->LoadBoneData(fp, skinNumber, scene);
 	fclose(fp);
 
 	EI_Device*         pDevice = GetDevice();
 	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
 
-	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, name, renderIndex);
+	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, name.c_str(), renderIndex);
 
 	m_pHairObject.reset(hair);
 	m_pScene = scene;
 	m_skinNumber = skinNumber;
 	m_renderIndex = renderIndex;
-
-	m_hairEIResource = new EI_Resource;
-
-	initialize(texturePath);
-	m_hairEIResource->srv = m_hairSRV;
 
 	logger::info("Created hair object");
 	m_hairName = name;
@@ -53,7 +48,7 @@ HairStrands::~HairStrands()
 {
 	auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	logger::info("Destroying hair");
-	m_pHairObject->Destroy((EI_Device*)pDevice);
+	delete m_pHairAsset;
 	m_hairSRV->Release();
 	m_hairTexture->Release();
 	delete m_hairEIResource;
@@ -64,7 +59,7 @@ void HairStrands::Reload()
 	EI_Device*         pDevice = GetDevice();
 	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
 	m_pHairObject.release();
-	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, m_hairName, m_renderIndex);
+	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, m_hairName.c_str(), m_renderIndex);
 	m_pHairObject.reset(hair);
 	//m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
 }
@@ -156,7 +151,7 @@ void HairStrands::UpdateVariables(float gravityMagnitude)
 	settings.m_lengthConstraintsIterations = m_lengthConstraintsIterations;  //?
 
 	//logger::info("Setting sim parameters");
-	m_pHairObject->UpdateSimulationParameters(settings);
+	//m_pHairObject->UpdateSimulationParameters(settings);
 }
 void HairStrands::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
 {

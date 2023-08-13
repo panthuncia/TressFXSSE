@@ -9,8 +9,7 @@
 #include "TressFX/AMD_TressFX.h"
 #include "LOCAL_RE/BSGraphics.h"
 #include "LOCAL_RE/BSGraphicsTypes.h"
-#include "SkyrimGPUInterface.h"
-#include "SkeletonInterface.h"
+#include "SkyrimGPUResourceManager.h"
 #include "ActorManager.h"
 #include "Menu.h"
 #include "PPLLObject.h"
@@ -58,7 +57,6 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		ppImmediateContext);
 	
 	logger::info("Loading hair API");
-	setCallbacks();
 	
 	logger::info("Accessing render device information");
 

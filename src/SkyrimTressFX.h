@@ -15,10 +15,11 @@ class EI_Scene;
 
 struct TressFXSSEData
 {
-	std::string           m_userEditorID;
-	std::filesystem::path m_configPath;
-	nlohmann::json        m_configData;
-	float                 m_initialOffsets[4];
+	std::string              m_userEditorID;
+	std::filesystem::path    m_configPath;
+	nlohmann::json           m_configData;
+	float                    m_initialOffsets[4];
+	std::vector<std::string> boneNames;
 };
 
 struct TressFXObject
@@ -85,7 +86,11 @@ struct TressFXSceneDescription
 class SkyrimTressFX
 {
 public:
-	SkyrimTressFX();
+	static SkyrimTressFX* GetSingleton()
+	{
+		static SkyrimTressFX tfx;
+		return &tfx;
+	}
 	~SkyrimTressFX();
 
 	void OnCreate();
@@ -97,6 +102,8 @@ public:
 	std::unique_ptr<TressFXPPLL>     m_pPPLL;
 	std::unique_ptr<TressFXShortCut> m_pShortCut;
 	std::unique_ptr<Simulation>      m_pSimulation;
+
+	std::unique_ptr<EI_RenderTargetSet> m_pDebugRenderTargetSet = nullptr;
 
 	enum OITMethod
 	{
@@ -127,10 +134,10 @@ public:
 	bool   m_useDepthApproximation = true;
 
 private:
-	void DrawHair();
-	void DrawCollisionMesh();
-	void GenerateMarchingCubes();
-	void DrawSDF();
-	void LoadScene();
+	void                    DrawHair();
+	void                    DrawCollisionMesh();
+	void                    GenerateMarchingCubes();
+	void                    DrawSDF();
+	void                    LoadScene();
 	TressFXSceneDescription LoadTFXUserFiles();
 };

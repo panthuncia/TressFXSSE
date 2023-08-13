@@ -12,20 +12,6 @@ typedef DXGI_FORMAT EI_ResourceFormat;
 
 const static int MaxRenderAttachments = 5;
 
-class EI_Resource
-{
-public:
-	ID3D11Buffer*              buffer = nullptr;
-	ID3D11Texture2D*           texture = nullptr;
-	ID3D11UnorderedAccessView* uav = nullptr;
-	ID3D11ShaderResourceView*  srv = nullptr;
-	ID3D11ShaderResourceView*  rtv = nullptr;  //renderable texture view- same as SRV in DX11, sushi has a separate type
-	D3D11_BUFFER_DESC          desc;
-	bool                       hasUAV;
-	uint32_t                   structCount;
-	uint32_t                   structSize;
-	void*                      data;
-};
 struct EI_BindLayout
 {
 	//~EI_BindLayout();
@@ -105,8 +91,9 @@ struct EI_RenderTargetSet
 	bool                    m_ClearDepth = false;
 };
 
-struct EI_PSO
+class EI_PSO
 {
+public:
 	EI_BindPoint               bp;
 	ID3D11VertexShader*        VS = nullptr;
 	ID3D11ClassInstance**      VSClassInstances;
@@ -136,6 +123,21 @@ struct EI_PSO
 	ID3D11DepthStencilView*    DSV;
 };
 
+class EI_CommandContext
+{
+public:
+	EI_CommandContext() {}
+	~EI_CommandContext() {}
+	void UpdateBuffer(EI_Resource* res, void* data);
+	void BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets);
+	void DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams);
+	void DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams);
+	void SubmitBarrier(int numBarriers, EI_Barrier* barriers);
+	void ClearUint32Image(EI_Resource* res, uint32_t value);
+	void BindPSO(EI_PSO* pso);
+	void Dispatch(int numGroups);
+};
+
 EI_Device* GetDevice();
 
 class EI_Device
@@ -147,6 +149,8 @@ public:
 	EI_CommandContext&                  GetCurrentCommandContext() { return m_currentCommandContext; }
 	EI_Resource*                        GetColorBufferResource() { return m_colorBuffer.get(); }
 	EI_Resource*                        GetDepthBufferResource() { return m_depthBuffer.get(); }
+	EI_ResourceFormat                   GetDepthBufferFormat() { return DXGI_FORMAT_R24G8_TYPELESS; }
+	EI_ResourceFormat                   GetColorBufferFormat() { return DXGI_FORMAT_R8G8B8A8_UNORM; }
 	void                                OnCreate();
 	std::unique_ptr<EI_Resource>        CreateBufferResource(int structSize, const int structCount, const unsigned int flags, EI_StringHash name);
 	std::unique_ptr<EI_BindLayout>      CreateLayout(const EI_LayoutDescription& description);
@@ -154,15 +158,16 @@ public:
 	std::unique_ptr<EI_Resource>        CreateResourceFromFile(const char* szFilename, bool useSRGB /*= false*/);
 	std::unique_ptr<EI_Resource>        CreateUint32Resource(const int width, const int height, const int arraySize, const char* name, uint32_t ClearValue /*= 0*/);
 	std::unique_ptr<EI_RenderTargetSet> CreateRenderTargetSet(const EI_ResourceFormat* pResourceFormats, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues);
+	std::unique_ptr<EI_RenderTargetSet> CreateRenderTargetSet(const EI_Resource** pResourcesArray, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues);
 	std::unique_ptr<EI_Resource>        CreateRenderTargetResource(const int width, const int height, const size_t channels, const size_t channelSize, const char* name, AMD::float4* ClearValues /*= nullptr*/);
 	std::unique_ptr<EI_PSO>             CreateComputeShaderPSO(const char* shaderName, const char* entryPoint, EI_BindLayout** layouts, int numLayouts);
 	std::unique_ptr<EI_PSO>             CreateGraphicsPSO(const char* vertexShaderName, const char* vertexEntryPoint, const char* fragmentShaderName, const char* fragmentEntryPoint, EI_PSOParams& psoParams);
-	void                                BeginRenderPass(EI_CommandContext& commandContext, const EI_RenderTargetSet* pRenderTargetSet, const wchar_t* pPassName, uint32_t width /*= 0*/, uint32_t height /*= 0*/);
+	void                                BeginRenderPass(EI_CommandContext& commandContext, const EI_RenderTargetSet* pRenderTargetSet, const wchar_t* pPassName, uint32_t width = 0, uint32_t height = 0);
 	void                                EndRenderPass(EI_CommandContext& commandContext);
 	
 	//why is this in EI_Device?
 	void DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& pso, EI_BindSet** bindSets, uint32_t numBindSets);
-	void GetTimeStamp(char* name);
+	void GetTimeStamp(const char* name);
 
 private:
 	std::unique_ptr<EI_Resource> CreateIndexBufferResource(int structSize, const int structCount, EI_StringHash name);
@@ -177,14 +182,11 @@ private:
 	EI_CommandContext            m_currentCommandContext;
 };
 
-class EI_CommandContext
+//??
+class EI_Marker
 {
 public:
-	void UpdateBuffer(EI_Resource* res, void* data);
-	void BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets);
-	void DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams);
-	void DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams);
-	void SubmitBarrier(int numBarriers, EI_Barrier* barriers);
-	void ClearUint32Image(EI_Resource* res, uint32_t value);
-	void BindPSO(EI_PSO* pso);
+	EI_Marker(EI_CommandContext& ctx, const char* string) {}
+
+private:
 };
