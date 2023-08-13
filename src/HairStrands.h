@@ -21,7 +21,7 @@ public:
 	void UpdateVariables(float gravityMagnitude);
 	//lol
 	void SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip);
-	bool Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation);
+	bool GetUpdatedBones(EI_CommandContext context);
 	void TransitionRenderingToSim(EI_CommandContext& context);
 	void TransitionSimToRendering(EI_CommandContext& context);
 	void DrawDebugMarkers();
@@ -30,6 +30,7 @@ public:
 	void ExportOffsets(float x, float y, float z, float scale);
 	void ExportParameters();
 	void Reload();
+	TressFXHairObject* GetTressFXHandle() { return m_pHairObject.get(); }
 
 	std::string        m_configPath;
 	nlohmann::json     m_config;

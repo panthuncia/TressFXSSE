@@ -1,19 +1,26 @@
 #pragma once
-#include "TressFX/TressFXAsset.h"
-#include "TressFX/AMD_Types.h"
+#include "HairStrands.h"
 #include "TressFX/AMD_TressFX.h"
+#include "TressFX/AMD_Types.h"
+#include "TressFX/TressFXAsset.h"
 #include "TressFX/TressFXCommon.h"
 #include "TressFX/TressFXSDFCollision.h"
 #include "TressFX/TressFXSettings.h"
-#include "Hair.h"
 class CollisionMesh;
 class TressFXPPLL;
 class TressFXShortCut;
 class CollisionMesh;
 class Simulation;
 class EI_Scene;
-typedef HairStrands Hair;
-// in-memory scene
+
+struct TressFXSSEData
+{
+	std::string           m_userEditorID;
+	std::filesystem::path m_configPath;
+	nlohmann::json        m_configData;
+	float                 m_initialOffsets[4];
+};
+
 struct TressFXObject
 {
 	std::unique_ptr<HairStrands> hairStrands;
@@ -21,7 +28,7 @@ struct TressFXObject
 	TressFXRenderingSettings     renderingSettings;
 	std::string                  name;
 };
-
+// in-memory scene
 struct TressFXScene
 {
 	std::vector<TressFXObject>                  objects;
@@ -38,17 +45,55 @@ struct TressFXScene
 
 	std::unique_ptr<EI_Scene> scene;
 };
+// scene description - no live objects
+struct TressFXObjectDescription
+{
+	std::string               name;
+	std::string               tfxFilePath;
+	std::string               tfxBoneFilePath;
+	std::string               hairObjectName;
+	int                       numFollowHairs;
+	float                     tipSeparationFactor;
+	int                       mesh;
+	TressFXSimulationSettings initialSimulationSettings;
+	TressFXRenderingSettings  initialRenderingSettings;
+	TressFXSSEData            tressfxSSEData;
+};
 
-class SkyrimTressFX {
+struct TressFXCollisionMeshDescription
+{
+	std::string name;
+	std::string tfxMeshFilePath;
+	int         numCellsInXAxis;
+	float       collisionMargin;
+	int         mesh;
+	std::string followBone;
+};
+
+struct TressFXSceneDescription
+{
+	std::vector<TressFXObjectDescription>        objects;
+	std::vector<TressFXCollisionMeshDescription> collisionMeshes;
+
+	std::string gltfFilePath;
+	std::string gltfFileName;
+	std::string gltfBonePrefix;
+
+	float startOffset;
+};
+
+class SkyrimTressFX
+{
 public:
 	SkyrimTressFX();
 	~SkyrimTressFX();
 
+	void OnCreate();
 	void Draw();
 	void RecreateSizeDependentResources();
 
 	TressFXScene m_activeScene;
-	
+
 	std::unique_ptr<TressFXPPLL>     m_pPPLL;
 	std::unique_ptr<TressFXShortCut> m_pShortCut;
 	std::unique_ptr<Simulation>      m_pSimulation;
@@ -83,4 +128,9 @@ public:
 
 private:
 	void DrawHair();
+	void DrawCollisionMesh();
+	void GenerateMarchingCubes();
+	void DrawSDF();
+	void LoadScene();
+	TressFXSceneDescription LoadTFXUserFiles();
 };

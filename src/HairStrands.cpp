@@ -2,7 +2,6 @@
 #include "ActorManager.h"
 #include "DDSTextureLoader.h"
 #include "PPLLObject.h"
-#include "SkyrimGPUInterface.h"
 #include "Util.h"
 #include <Menu.h>
 #include <RE/S/ShadowState.h>
@@ -304,14 +303,14 @@ void HairStrands::UpdateBones()
 		m_boneTransforms[i] = m_pBones[i]->world;
 	}
 }
-bool HairStrands::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation* pSimulation)
+bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 {
 	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
 	if (!m_gotSkeleton) {
 		return false;
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
-	std::vector<float>* matrices = new std::vector<float>();
+	std::vector<AMD::float4x4>* matrices = new std::vector<AMD::float4x4>();
 	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
@@ -321,44 +320,29 @@ bool HairStrands::Simulate(SkyrimGPUResourceManager* pManager, TressFXSimulation
 
 		auto boneRot = m_boneTransforms[i].rotate.Transpose();
 		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
-		/*logger::info("Bone transform:");
-		logger::info("{}, {}, {}, {}", boneRot.entry[0][0], boneRot.entry[0][1], boneRot.entry[0][2], 0.0);
-		logger::info("{}, {}, {}, {}", boneRot.entry[1][0], boneRot.entry[1][1], boneRot.entry[1][2], 0.0);
-		logger::info("{}, {}, {}, {}", boneRot.entry[2][0], boneRot.entry[2][1], boneRot.entry[2][2], 0.0);
-		logger::info("{}, {}, {}, {}", bonePos.x, bonePos.y, bonePos.z, 0.0);*/
-		matrices->push_back(boneRot.entry[0][0]);
-		matrices->push_back(boneRot.entry[0][1]);
-		matrices->push_back(boneRot.entry[0][2]);
-		matrices->push_back(0.0);
-		matrices->push_back(boneRot.entry[1][0]);
-		matrices->push_back(boneRot.entry[1][1]);
-		matrices->push_back(boneRot.entry[1][2]);
-		matrices->push_back(0.0);
-		matrices->push_back(boneRot.entry[2][0]);
-		matrices->push_back(boneRot.entry[2][1]);
-		matrices->push_back(boneRot.entry[2][2]);
-		matrices->push_back(0.0);
-		matrices->push_back(bonePos.x);
-		matrices->push_back(bonePos.y);
-		matrices->push_back(bonePos.z);
-		matrices->push_back(1.0);
+		
+		AMD::float4x4 mat = { boneRot.entry[0][0],
+			boneRot.entry[0][1],
+			boneRot.entry[0][2],
+			0.0,
+			boneRot.entry[1][0],
+			boneRot.entry[1][1],
+			boneRot.entry[1][2],
+			0.0,
+			boneRot.entry[2][0],
+			boneRot.entry[2][1],
+			boneRot.entry[2][2],
+			0.0,
+			bonePos.x,
+			bonePos.y,
+			bonePos.z,
+			0.0 };
+		matrices->push_back(mat);
 	}
 
 	//logger::info("assembled matrices");
-	m_pHairObject->UpdateBoneMatrices((EI_CommandContextRef)pManager, &(matrices->front()), BONE_MATRIX_SIZE * m_numBones);
+	m_pHairObject->UpdateBoneMatrices(&(matrices->front()), m_numBones);
 	delete (matrices);
-	//logger::info("updated matrices");
-	ID3D11DeviceContext* context;
-	pManager->m_pDevice->GetImmediateContext(&context);
-	//logger::info("Before simulate call");
-	pSimulation->Simulate((EI_CommandContextRef)context, *m_pHairObject);
-	//logger::info("After simulate call");
-	//PrintAllD3D11DebugMessages(m_pManager->m_pDevice);
-	//logger::info("End of TFX Simulate Debug");
-	ID3D11DeviceContext* pContext;
-	pManager->m_pDevice->GetImmediateContext(&pContext);
-	m_pHairObject->GetPosTanCollection().TransitionSimToRendering((EI_CommandContextRef)pContext);
-	//logger::info("simulation complete");
 	return true;
 }
 void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
@@ -369,7 +353,7 @@ void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
 	m_currentOffsets[1] = y;
 	m_currentOffsets[2] = z;
 	m_currentOffsets[3] = scale;
-	m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
+	//m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
 }
 void HairStrands::ExportOffsets(float x, float y, float z, float scale)
 {

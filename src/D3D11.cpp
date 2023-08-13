@@ -9,7 +9,6 @@
 #include "TressFX/AMD_TressFX.h"
 #include "LOCAL_RE/BSGraphics.h"
 #include "LOCAL_RE/BSGraphicsTypes.h"
-#include "Hair.h"
 #include "SkyrimGPUInterface.h"
 #include "SkeletonInterface.h"
 #include "ActorManager.h"
@@ -25,175 +24,6 @@ decltype(&ID3D11DeviceContext::DrawIndexedInstanced) ptrDrawIndexedInstanced;
 decltype(&ID3D11DeviceContext::RSSetViewports) ptrRSSetViewports;
 decltype(&ID3D11DeviceContext::CopyResource)         ptrCopyResource;
 
-void LoadTFXUserFiles(PPLLObject* ppll, SkyrimGPUResourceManager* gpuResourceManager, ID3D11DeviceContext* pContext) {
-	FILE* fp;
-	const auto configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
-	const auto assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
-	const auto texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX";
-	std::vector<std::string> usedNames;
-	for (const auto& entry : std::filesystem::directory_iterator(configPath)) {
-		std::string configFile = entry.path().generic_string(); 
-		logger::info("config file: {}", configFile);
-		std::ifstream f(configFile);
-		json data;
-		try {
-			data = json::parse(f);
-		} catch(json::parse_error e) {
-			logger::error("Error parsing hair config at {}: {}", configFile, e.what());
-		}
-		std::string baseAssetName = data["asset"].get<std::string>();
-		const auto  assetTexturePath = texturePath / (baseAssetName + ".dds");
-		std::string assetName = baseAssetName;
-		uint32_t i = 1;
-		while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {
-			i += 1;
-			assetName = baseAssetName + "#" + std::to_string(i); 
-		}
-		logger::info("Asset name: {}", assetName);
-		std::string assetFileName = baseAssetName + ".tfx";
-		std::string boneFileName = baseAssetName + ".tfxbone";  
-		const auto thisAssetPath = assetPath / assetFileName;
-		const auto thisBonePath = assetPath / boneFileName;
-
-		const auto bones = data["bones"].get<std::vector<std::string>>();
-		for (auto bone : bones) {
-			logger::info("bone: {}", bone);
-		}
-
-		fopen_s(&fp, thisAssetPath.generic_string().c_str(), "rb");
-		if (!fp) {
-			logger::error("Asset file opening failed");
-		}
-		FILE* fpBone;
-		fopen_s(&fpBone, thisBonePath.generic_string().c_str(), "rb");
-		if (!fpBone) {
-			logger::error("Bone file opening failed");
-		}
-		AMD::TressFXAsset* asset = new AMD::TressFXAsset();
-		logger::info("Loading hair data");
-		asset->LoadHairData(fp);
-		fclose(fp);
-		logger::info("Loading bone data");
-		SkeletonInterface placeholder;
-		asset->LoadBoneData(placeholder, fpBone);
-		fclose(fp);
-		asset->ProcessAsset();
-		if (!data.contains("editorids")) {
-			logger::warn("Hair config {} has no editor IDs, discarding.", configFile);
-		}
-		const auto editorIDs = data["editorids"].get<std::vector<std::string>>();
-		for (auto editorID : editorIDs) {
-			logger::info("adding hair for editor id: {}", editorID);
-			auto hairName = editorID + ":" + assetName;
-			ppll->m_hairs[hairName] = new Hair(asset, gpuResourceManager, pContext, hairName.c_str(), bones, assetTexturePath);
-			ppll->m_hairs[hairName]->m_configPath = configFile;
-			ppll->m_hairs[hairName]->m_config = data;
-			if (data.contains("offsets")) {
-				logger::info("loading offsets");
-				auto  offsets = data["offsets"];
-				float x = 0.0;
-				if (offsets.contains("x")) {
-					x = offsets["x"].get<float>();
-				}
-				float y = 0.0;
-				if (offsets.contains("y")) {
-					y = offsets["y"].get<float>();
-				}
-				float z = 0.0;
-				if (offsets.contains("z")) {
-					z = offsets["z"].get<float>();
-				}
-				float scale = 0.0;
-				if (offsets.contains("scale")) {
-					scale = offsets["scale"].get<float>();
-				}
-				ppll->m_hairs[hairName]->UpdateOffsets(x, y, z, scale);
-			}
-			if (data.contains("parameters")) {
-				logger::info("params");
-				auto  params = data["parameters"];
-				float fiberRadius = 0.002;
-				if (params.contains("fiberRadius")) {
-					fiberRadius = params["fiberRadius"].get<float>();
-				}
-				float fiberSpacing = 0.1;
-				if (params.contains("fiberSpacing")) {
-					fiberSpacing = params["fiberSpacing"].get<float>();
-				}
-				float fiberRatio = 0.5;
-				if (params.contains("fiberRatio")) {
-					fiberRatio = params["fiberRatio"].get<float>();
-				}
-				float kd = 0.07;
-				if (params.contains("kd")) {
-					kd = params["kd"].get<float>();
-				}
-				float ks1 = 0.17;
-				if (params.contains("ks1")) {
-					ks1 = params["ks1"].get<float>();
-				}
-				float ex1 = 14.4;
-				if (params.contains("ex1")) {
-					ex1 = params["ex1"].get<float>();
-				}
-				float ks2 = 0.72;
-				if (params.contains("ks2")) {
-					ks2 = params["ks2"].get<float>();
-				}
-				float ex2 = 11.8;
-				if (params.contains("ex2")) {
-					ex2 = params["ex2"].get<float>();
-				}
-				float hairOpacity = 0.63;
-				if (params.contains("hairOpacity")) {
-					hairOpacity = params["hairOpacity"].get<float>();
-				}
-				float hairShadowAlpha = 0.35;
-				if (params.contains("hairShadowAlpha")) {
-					hairShadowAlpha = params["hairShadowAlpha"].get<float>();
-				}
-				bool thinTip = true;
-				if (params.contains("thinTip")) {
-					thinTip = params["thinTip"].get<bool>();
-				}
-				int localConstraintsIterations = 3;
-				if (params.contains("localConstraintsIterations")) {
-					localConstraintsIterations = params["localConstraintsIterations"].get<int>();
-				}
-				int lengthConstraintsIterations = 3;
-				if (params.contains("lengthConstraintsIterations")) {
-					localConstraintsIterations = params["lengthConstraintsIterations"].get<int>();
-				}
-				float localConstraintsStiffness = 0.9;
-				if (params.contains("localConstraintsStiffness")) {
-					localConstraintsStiffness = params["localConstraintsStiffness"].get<float>();
-				}
-				float globalConstraintsStiffness = 0.9;
-				if (params.contains("globalConstraintsStiffness")) {
-					globalConstraintsStiffness = params["globalConstraintsStiffness"].get<float>();
-				}
-				float globalConstraintsRange = 0.9;
-				if (params.contains("globalConstraintsRange")) {
-					globalConstraintsRange = params["globalConstraintsRange"].get<float>();
-				}
-				float damping = 0.06;
-				if (params.contains("damping")) {
-					damping = params["damping"].get<float>();
-				}
-				float vspAmount = 0.75;
-				if (params.contains("vspAmount")) {
-					vspAmount = params["vspAmount"].get<float>();
-				}
-				float vspAccelThreshold = 1.2;
-				if (params.contains("vspAccelThreshold")) {
-					vspAccelThreshold = params["vspAccelThreshold"].get<float>();
-				}
-				ppll->m_hairs[hairName]->SetRenderingAndSimParameters(fiberRadius, fiberSpacing, fiberRatio, kd, ks1, ex1, ks2, ex2, localConstraintsIterations, lengthConstraintsIterations, localConstraintsStiffness, globalConstraintsStiffness, globalConstraintsRange, damping, vspAmount, vspAccelThreshold, hairOpacity, hairShadowAlpha, thinTip);
-				ppll->m_hairs[hairName]->m_userEditorID = editorID;
-			}
-		}
-	}
-}
 HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	IDXGIAdapter*               pAdapter,
 	D3D_DRIVER_TYPE             DriverType,
@@ -244,7 +74,6 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	//init hair resources
 	auto ppll = PPLLObject::GetSingleton();
 	ppll->Initialize();
-	LoadTFXUserFiles(ppll, gpuResourceManager, context);
 
 	Menu::GetSingleton()->Init(swapchain, device, context);
 	std::vector<std::string> hairNames;

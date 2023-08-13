@@ -61,45 +61,6 @@ public:
 private:
 	PPLLObject();
 
-	struct PipelineState
-	{
-		ID3D11VertexShader*         VS = nullptr;
-		ID3D11ClassInstance**       VSClassInstances;
-		UINT                        numVSClassInstances = 0;
-		ID3D11PixelShader*          PS = nullptr;
-		ID3D11ClassInstance**       PSClassInstances;
-		UINT                        numPSClassInstances = 0;
-		ID3D11ComputeShader*        CS = nullptr;
-		ID3D11ClassInstance**       CSClassInstances;
-		UINT                        numCSClassInstances = 0;
-		ID3D11BlendState*           blendState = nullptr;
-		FLOAT                       blendFactor[4] = {0};
-		UINT                        sampleMask = 0;
-		ID3D11RasterizerState*      rasterizerState = nullptr;
-		ID3D11DepthStencilState*    depthStencilState = nullptr;
-		UINT                        stencilRef = 0;
-		ID3D11InputLayout*          inputLayout = nullptr;
-		D3D11_PRIMITIVE_TOPOLOGY    primitiveTopology;
-		ID3D11Buffer*               indexBuffer = nullptr;
-		DXGI_FORMAT                 indexBufferFormat;
-		UINT                        indexBufferOffset = 0;
-		UINT                        numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-		ID3D11Buffer*               vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		UINT                        vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		UINT                        vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		UINT                        numRTVs = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
-		ID3D11RenderTargetView*    RTVs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
-		ID3D11DepthStencilView*     DSV;
-		UINT                        numPSSRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
-		ID3D11ShaderResourceView*   PSSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-		//UINT                        numUAVs = 0;
-		//ID3D11UnorderedAccessView** UAVs = nullptr;
-		UINT                        numPSSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
-		ID3D11SamplerState* PSSamplers[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT];
-	};
-	PipelineState GetCurrentPipelineState();
-	void SetCurrentPipelineState(PipelineState);
-
 	ID3DX11Effect*            m_pTressFXSimEffect;
 	ID3DX11Effect*            m_pTressFXSDFCollisionEffect;
 	EI_PSO*                   m_pBuildPSO;
