@@ -155,6 +155,7 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 	int i = 0;
 	for (EI_ResourceDescription resourceDescription : layout->description.resources) {
 		EI_Resource* resource = bindSet.resources[i];
+		logger::info("resource name: {}", resource->name);
 		switch (resourceDescription.type) {
 		case EI_RESOURCETYPE_BUFFER_RO:
 			set->srvs.push_back(resource->SRView);
@@ -191,13 +192,13 @@ std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFil
 	std::filesystem::path name = szFilename;
 	logger::info("Creating texture from file");
 	DirectX::CreateDDSTextureFromFile(pDevice, pContext, name.generic_wstring().c_str(), (ID3D11Resource**)&res->m_pTexture, &res->SRView);
+	res->name = szFilename;
 	return std::unique_ptr<EI_Resource>(res);
 }
 
 std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, const int height, const int arraySize, const char* name, uint32_t ClearValue /*= 0*/)
 {
 	UNREFERENCED_PARAMETER(ClearValue);
-	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateUint32Resource");
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Buffer;
@@ -219,7 +220,13 @@ std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, co
 	desc.MiscFlags = 0;
 	res->m_textureWidth = width;
 	res->m_textureHeight = height;
-	SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateTexture2D(&desc, nullptr, &res->m_pTexture);
+	res->name = name;
+	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateTexture2D(&desc, nullptr, &res->m_pTexture);
+	if (FAILED(hr)) {
+		logger::info("UInt32 texture creation failed");
+		Util::PrintAllD3D11DebugMessages();
+		exit(1);
+	}
 	return std::unique_ptr<EI_Resource>(res);
 }
 
@@ -266,13 +273,18 @@ std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Re
 
 std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Resource** pResourcesArray, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues)
 {
+	logger::info("Create render target set 1");
+	logger::info("num resources: {}", numResources);
 	std::vector<EI_ResourceFormat> FormatArray(numResources);
 
 	for (uint32_t i = 0; i < numResources; ++i) {
+		logger::info("Resource address: {}", Util::ptr_to_string((void*)pResourcesArray[i]));
 		assert(pResourcesArray[i]->m_ResourceType == EI_ResourceType::Texture);
 		D3D11_TEXTURE2D_DESC desc;
+		logger::info("Texture address: {}", Util::ptr_to_string(pResourcesArray[i]->m_pTexture));
 		pResourcesArray[i]->m_pTexture->GetDesc(&desc);
-		FormatArray[i] = desc.Format;
+		logger::info("got desc");
+		FormatArray.push_back(desc.Format);
 		if (FormatArray[i] == DXGI_FORMAT_R32_TYPELESS) {
 			FormatArray[i] = DXGI_FORMAT_D32_FLOAT;
 		}
@@ -284,7 +296,6 @@ std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Re
 
 std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int width, const int height, const size_t channels, const size_t channelSize, const char* name, AMD::float4* ClearValues /*= nullptr*/)
 {
-	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateRenderTarget");
 	EI_Resource* res = new EI_Resource;
 
@@ -363,6 +374,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int wid
 	//res->m_pTexture->CreateSRV(0, res->SRView, &srvDesc);
 	logger::info("Creating SRV");
 	pDevice->CreateShaderResourceView(res->m_pTexture, &srvDesc, &res->SRView);
+	res->name = name;
 	return std::unique_ptr<EI_Resource>(res);
 }
 
@@ -394,6 +406,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr)) {
 		logger::error("standard buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
+		exit(1);
 	}
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Format = format;
@@ -409,6 +422,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr1)) {
 		logger::error("standard buffer SRV creation failed");
 		Util::PrintAllD3D11DebugMessages();
+		exit(1);
 	}
 	//SU_ASSERT(r.srv);
 
@@ -430,6 +444,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr2)) {
 		logger::error("standard buffer UAV creation failed");
 		Util::PrintAllD3D11DebugMessages();
+		exit(1);
 	}
 	logger::info("Addr. of uav: {}", Util::ptr_to_string(res->UAView));
 	res->name = name;
@@ -453,6 +468,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateIndexBufferResource(int structSize
 	if (FAILED(hr)) {
 		logger::error("index buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
+		exit(1);
 	}
 	EI_Resource* res = new EI_Resource;
 	res->m_indexBufferNumIndices = structCount;
@@ -485,6 +501,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateConstantBufferResource(int structS
 	if (FAILED(hr)) {
 		logger::info("Constant buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
+		exit(1);
 	}
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::ConstantBuffer;
@@ -522,6 +539,11 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 	//logger::info("creating srv");
 	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pStructuredBuffer, &srvDesc, &pResource->SRView);
 	Util::printHResult(hr1);
+	if (FAILED(hr)) {
+		logger::info("Structured buffer SRV creation failed");
+		Util::PrintAllD3D11DebugMessages();
+		exit(1);
+	}
 	//SU_ASSERT(r.srv);
 
 	if (uav) {
@@ -539,6 +561,11 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 		//logger::info("Creating UAV");
 		HRESULT hr2 = pManager->m_pDevice->CreateUnorderedAccessView(pStructuredBuffer, &uavDesc, &pResource->UAView);
 		Util::printHResult(hr2);
+		if (FAILED(hr2)) {
+			logger::info("Structured buffer UAV creation failed");
+			Util::PrintAllD3D11DebugMessages();
+			exit(1);
+		}
 		logger::info("Addr. of uav: {}", Util::ptr_to_string(pResource->UAView));
 	}
 	pResource->name = name;
@@ -717,6 +744,26 @@ void EI_Device::GetTimeStamp(const char* name)
 	//???
 }
 
+void EI_Device::CreateColorAndDepthResources(ID3D11RenderTargetView* pColorTextureView, ID3D11DepthStencilView* pDepthStencilView) {
+	EI_Resource* pColorResource = new EI_Resource;
+	EI_Resource* pDepthResource = new EI_Resource;
+
+	pColorResource->name = "Main game RTV";
+	pColorResource->RTView = pColorTextureView;
+	ID3D11Resource* pColorTexture;
+	pColorTextureView->GetResource(&pColorTexture);
+	pColorResource->m_pTexture = (ID3D11Texture2D*)pColorTexture;
+
+	pDepthResource->name = "Main game DSV";
+	pDepthResource->DSView = pDepthStencilView;
+	ID3D11Resource* pDepthTexture;
+	pDepthStencilView->GetResource(&pDepthTexture);
+	pDepthResource->m_pTexture = (ID3D11Texture2D*)pDepthTexture;
+
+	m_colorBuffer = std::unique_ptr<EI_Resource>(pColorResource);
+	m_depthBuffer = std::unique_ptr<EI_Resource>(pDepthResource);
+}
+
 //end device funcs
 
 EI_Resource::EI_Resource() :
@@ -824,10 +871,14 @@ void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
 
 void EI_CommandContext::ClearUint32Image(EI_Resource* res, uint32_t value)
 {
-	logger::info("ClearUint32");
+	logger::info("Resource address: {}", Util::ptr_to_string(res));
+	logger::info("ClearUint32: {}", res->name);
 	assert(res->m_ResourceType == EI_ResourceType::Buffer && "Trying to clear a non-UAV resource");
 	auto   pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	UINT32 values[4] = { value, value, value, value };
+	logger::info("clear value: {}", value);
+	logger::info("texture address: {}", Util::ptr_to_string(res->m_pTexture));
+	logger::info("dimensions: {}, {}", res->m_textureWidth, res->m_textureHeight);
 	pContext->ClearUnorderedAccessViewUint(res->UAView, values);
 }
 

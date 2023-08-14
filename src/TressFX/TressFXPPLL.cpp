@@ -135,10 +135,13 @@ bool TressFXPPLL::Create(EI_Device* pDevice, int width, int height, int nNodes, 
     m_PPLLCounter = pDevice->CreateBufferResource(sizeof(uint32_t), 1, EI_BF_NEEDSUAV, "PPLLNodes");
 
     // Create bind sets
+	logger::info("Fill bindset");
     CreateFillBindSet(pDevice);
+	logger::info("Resolve bindset");
     CreateResolveBindSet(pDevice);
 
     // Create RenderPasss sets
+	logger::info("create render target set");
     CreatePPLLRenderTargetSet(pDevice);
     return true;
 }
@@ -211,7 +214,7 @@ void TressFXPPLL::Clear(EI_CommandContext& context)
         };
         context.SubmitBarrier(AMD_ARRAY_SIZE(readToClear), readToClear);
     }
-
+	logger::info("About to clear");
     context.ClearUint32Image(m_PPLLHeads.get(), TRESSFX_PPLL_NULL_PTR);
 
     uint32_t clearCounter = 0;
@@ -275,23 +278,30 @@ void TressFXPPLL::DrawHairStrands(EI_CommandContext& commandContext, int numHair
 void TressFXPPLL::Draw(EI_CommandContext& commandContext, int numHairStrands, HairStrands** hairStrands, EI_BindSet* viewBindSet, EI_BindSet* lightBindSet)
 {
     // Clear out resources
+	logger::info("Clear");
     Clear(commandContext);
 
     // Render the fill pass
-    BeginFill(commandContext);
+	logger::info("Begin fill");
+	BeginFill(commandContext);
     {
         EI_BindSet* ExtraBindSets[] = { viewBindSet, m_pPPLLFillBindSet.get(), GetDevice()->GetSamplerBindSet() };
+		logger::info("Draw all strands");
         DrawHairStrands(commandContext, numHairStrands, hairStrands, m_PPLLFillPSO.get(), ExtraBindSets, 3);
     }
+	logger::info("End fill");
     EndFill(commandContext);
     GetDevice()->GetTimeStamp("PPLL Fill");
 
     // Hair Resolve pass
+	logger::info("Begin resolve");
     BeginResolve(commandContext);
     {
         EI_BindSet* BindSets[] = { m_pPPLLResolveBindSet.get(), m_ShadeParamsBindSet.get(), viewBindSet, lightBindSet, GetDevice()->GetSamplerBindSet() };
-        GetDevice()->DrawFullScreenQuad(commandContext, *m_PPLLResolvePSO, BindSets, 5);
+		logger::info("Draw fullscreen quad");
+		GetDevice()->DrawFullScreenQuad(commandContext, *m_PPLLResolvePSO, BindSets, 5);
     }
+	logger::info("End resolve");
     EndResolve(commandContext);
     GetDevice()->GetTimeStamp("PPLL Resolve");
 

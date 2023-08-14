@@ -170,6 +170,9 @@ public:
 	//why is this in EI_Device?
 	void DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& pso, EI_BindSet** bindSets, uint32_t numBindSets);
 	void GetTimeStamp(const char* name);
+	//necessary because we don't create our own buffers
+	//we steal them from the game
+	void CreateColorAndDepthResources(ID3D11RenderTargetView* pColorTextureView, ID3D11DepthStencilView* pDepthStencilView);
 
 private:
 	std::unique_ptr<EI_Resource> CreateStandardBufferResource(int structSize, const int structCount, EI_StringHash name);

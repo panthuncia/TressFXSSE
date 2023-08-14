@@ -105,7 +105,7 @@ public:
 	}
 	~SkyrimTressFX();
 
-	void OnCreate();
+	void OnCreate(int width, int height);
 	void Draw();
 	void RecreateSizeDependentResources();
 
@@ -122,7 +122,7 @@ public:
 		OIT_METHOD_PPLL,
 		OIT_METHOD_SHORTCUT
 	};
-	OITMethod m_eOITMethod;
+	OITMethod m_eOITMethod = OIT_METHOD_PPLL;
 	int       m_nScreenWidth;
 	int       m_nScreenHeight;
 	int       m_nPPLLNodes;
@@ -135,6 +135,7 @@ public:
 	void UpdateLights();
 	void Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollisionResponse);
 	void Update();
+	void CreateRenderResources();
 	bool m_doReload = false;
 
 	float  m_time;       // WallClock in seconds.
@@ -149,6 +150,7 @@ public:
 	bool   m_generateSDF = true;
 	bool   m_collisionResponse = true;
 	bool   m_useDepthApproximation = true;
+	bool   m_gameLoaded = false;
 
 	state m_currentState = state::draw_strands;
 

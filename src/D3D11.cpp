@@ -73,7 +73,7 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	SkyrimGPUResourceManager::GetInstance(device, swapchain);
 	//init hair resources
 	auto tfx = SkyrimTressFX::GetSingleton();
-	tfx->OnCreate();
+	tfx->OnCreate(pSwapChainDesc->BufferDesc.Width, pSwapChainDesc->BufferDesc.Height);
 
 	Menu::GetSingleton()->Init(swapchain, device, context);
 	std::vector<std::string> hairNames;

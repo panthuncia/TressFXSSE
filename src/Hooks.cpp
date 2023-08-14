@@ -76,6 +76,10 @@ struct Hooks
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto tfx = SkyrimTressFX::GetSingleton();
+			//if this is the first frame, we need to grab the color texture
+			if (!tfx->m_gameLoaded) {
+				tfx->CreateRenderResources();
+			}
 			if (tfx->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				if (Menu::GetSingleton()->drawHairCheckbox) {

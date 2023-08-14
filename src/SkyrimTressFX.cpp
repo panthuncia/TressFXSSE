@@ -12,8 +12,12 @@ SkyrimTressFX::~SkyrimTressFX()
 {
 }
 
-void SkyrimTressFX::OnCreate()
+void SkyrimTressFX::OnCreate(int width, int height)
 {
+	m_nScreenHeight = height;
+	m_nScreenWidth = width;
+	m_nPPLLNodes = m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL;
+
 	GetDevice()->OnCreate();
 	m_activeScene.scene.reset(new EI_Scene);
 
@@ -51,6 +55,21 @@ void SkyrimTressFX::Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollis
 		ctx.collisionMeshes[i] = m_activeScene.collisionMeshes[i].get();
 	}
 	m_pSimulation->StartSimulation(fTime, ctx, bUpdateCollMesh, bSDFCollisionResponse);
+}
+
+//this function has to be executed once at a specific location in render loop
+void SkyrimTressFX::CreateRenderResources() {
+	m_gameLoaded = true;
+	//get current render target and depth stencil
+	ID3D11RenderTargetView* pRTV;
+	ID3D11DepthStencilView* pDSV;
+	logger::info("RTV address: {}", Util::ptr_to_string(pRTV));
+	logger::info("DSV address: {}", Util::ptr_to_string(pDSV));
+	logger::info("Getting game RTV and DSV");
+	SkyrimGPUResourceManager::GetInstance()->m_pContext->OMGetRenderTargets(1, &pRTV, &pDSV);
+	GetDevice()->CreateColorAndDepthResources(pRTV, pDSV);
+	logger::info("Creating OIT resources");
+	RecreateSizeDependentResources();
 }
 
 void SkyrimTressFX::Update(){
@@ -169,7 +188,7 @@ void SkyrimTressFX::UpdateRenderingParameters()
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		// For now, just using distance of camera to 0, 0, 0, but should be passing in a root position for the hair object we want to LOD
 		float Distance = sqrtf(m_activeScene.scene->GetCameraPos().x * m_activeScene.scene->GetCameraPos().x + m_activeScene.scene->GetCameraPos().y * m_activeScene.scene->GetCameraPos().y + m_activeScene.scene->GetCameraPos().z * m_activeScene.scene->GetCameraPos().z);
-		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateRenderingParameters(&m_activeScene.objects[i].renderingSettings, m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL, m_deltaTime, Distance);
+		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateRenderingParameters(&m_activeScene.objects[i].renderingSettings, m_nPPLLNodes, m_deltaTime, Distance);
 		RenderSettings.push_back(&m_activeScene.objects[i].renderingSettings);
 	}
 
@@ -288,6 +307,7 @@ void SkyrimTressFX::Draw()
 {
 	// Do hair draw - will pick correct render approach
 	if (m_drawHair) {
+		logger::info("Draw hair");
 		DrawHair();
 	}
 	// Render debug collision mesh if needed
@@ -295,16 +315,21 @@ void SkyrimTressFX::Draw()
 
 	if (m_drawCollisionMesh || m_drawMarchingCubes) {
 		if (m_drawMarchingCubes) {
+			logger::info("Generate marching cubes");
 			GenerateMarchingCubes();
 		}
 
+		logger::info("Begin render pass");
 		GetDevice()->BeginRenderPass(commandList, m_pDebugRenderTargetSet.get(), L"DrawCollisionMesh Pass");
 		if (m_drawCollisionMesh) {
+			logger::info("Draw collision mesh");
 			DrawCollisionMesh();
 		}
 		if (m_drawMarchingCubes) {
+			logger::info("Draw SDF");
 			DrawSDF();
 		}
+		logger::info("End render pass");
 		GetDevice()->EndRenderPass(GetDevice()->GetCurrentCommandContext());
 	}
 }
@@ -321,9 +346,11 @@ void SkyrimTressFX::DrawHair()
 
 	switch (m_eOITMethod) {
 	case OIT_METHOD_PPLL:
+		logger::info("Draw PPLL");
 		m_pPPLL->Draw(pRenderCommandList, numHairStrands, hairStrands.data(), m_activeScene.viewBindSet.get(), m_activeScene.lightBindSet.get());
 		break;
 	case OIT_METHOD_SHORTCUT:
+		logger::info("Draw ShortCut");
 		m_pShortCut->Draw(pRenderCommandList, numHairStrands, hairStrands.data(), m_activeScene.viewBindSet.get(), m_activeScene.lightBindSet.get());
 		break;
 	};
@@ -370,8 +397,10 @@ void SkyrimTressFX::DestroyLayouts()
 
 void SkyrimTressFX::SetOITMethod(OITMethod method)
 {
-	if (method == m_eOITMethod)
+	if (method == m_eOITMethod) {
+		logger::warn("Already in this OIT method...");
 		return;
+	}
 
 	// Flush the GPU before switching
 	//GetDevice()->FlushGPU();
@@ -416,18 +445,20 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 	//};
 	//m_activeScene.lightBindSet = GetDevice()->CreateBindSet(GetLightLayout(), lightSet);
 
-	//// TressFX Usage
-	//switch (m_eOITMethod) {
-	//case OIT_METHOD_PPLL:
-	//	m_nPPLLNodes = m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL;
-	//	m_pPPLL.reset(new TressFXPPLL);
-	//	m_pPPLL->Initialize(m_nScreenWidth, m_nScreenHeight, m_nPPLLNodes, PPLL_NODE_SIZE);
-	//	break;
-	//case OIT_METHOD_SHORTCUT:
-	//	m_pShortCut.reset(new TressFXShortCut);
-	//	m_pShortCut->Initialize(m_nScreenWidth, m_nScreenHeight);
-	//	break;
-	//};
+	// TressFX Usage
+	switch (m_eOITMethod) {
+	case OIT_METHOD_PPLL:
+		logger::info("Setting OIT method to PPLL");
+		m_nPPLLNodes = m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL;
+		m_pPPLL.reset(new TressFXPPLL);
+		m_pPPLL->Initialize(m_nScreenWidth, m_nScreenHeight, m_nPPLLNodes, PPLL_NODE_SIZE);
+		break;
+	case OIT_METHOD_SHORTCUT:
+		logger::info("Setting OIT method to ShortCut");
+		m_pShortCut.reset(new TressFXShortCut);
+		m_pShortCut->Initialize(m_nScreenWidth, m_nScreenHeight);
+		break;
+	};
 }
 
 TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
