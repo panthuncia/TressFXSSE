@@ -143,33 +143,34 @@ std::unique_ptr<EI_BindLayout> EI_Device::CreateLayout(const EI_LayoutDescriptio
 std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_BindSetDescription& bindSet)
 {
 	logger::info("CreateBindSet");
-	EI_BindSet set;
-	set.stage = layout->description.stage;
+	EI_BindSet* set = new EI_BindSet;
+	set->stage = layout->description.stage;
 	int i = 0;
 	for (EI_ResourceDescription resourceDescription : layout->description.resources) {
 		EI_Resource* resource = bindSet.resources[i];
 		switch (resourceDescription.type) {
 		case EI_RESOURCETYPE_BUFFER_RO:
-			set.srvs.push_back(resource->SRView);
+			set->srvs.push_back(resource->SRView);
 			break;
 		case EI_RESOURCETYPE_IMAGE_RO:
-			set.srvs.push_back(resource->SRView);
+			set->srvs.push_back(resource->SRView);
 			break;
 		case EI_RESOURCETYPE_BUFFER_RW:
-			set.uavs.push_back(resource->UAView);
+			set->uavs.push_back(resource->UAView);
 			break;
 		case EI_RESOURCETYPE_IMAGE_RW:
-			set.uavs.push_back(resource->UAView);
+			set->uavs.push_back(resource->UAView);
 			break;
 		case EI_RESOURCETYPE_SAMPLER:
-			set.samplers.push_back(resource->m_pSampler);
+			set->samplers.push_back(resource->m_pSampler);
 			break;
 		case EI_RESOURCETYPE_UNIFORM:
-			set.cbuffers.push_back(resource->m_pBuffer);
+			set->cbuffers.push_back(resource->m_pBuffer);
 			break;
 		}
 		i += 1;
 	}
+	return std::unique_ptr<EI_BindSet>(set);
 }
 
 std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFilename, bool useSRGB /*= false*/)
@@ -232,7 +233,7 @@ std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Re
 		if (AttachmentParams[i].Flags & EI_RenderPassFlags::Clear) {
 			if (AttachmentParams[i].Flags & EI_RenderPassFlags::Depth) {
 				pNewRenderTargetSet->m_ClearValues[i].DepthStencil.Depth = clearValues[currentClearValueRef++];
-				pNewRenderTargetSet->m_ClearValues[i].DepthStencil.Stencil = (uint32_t)clearValues[currentClearValueRef++];
+				pNewRenderTargetSet->m_ClearValues[i].DepthStencil.Stencil = (uint8_t)clearValues[currentClearValueRef++];
 				pNewRenderTargetSet->m_ClearValues[i].Format = DXGI_FORMAT_D32_FLOAT;
 				pNewRenderTargetSet->m_HasDepth = true;
 				pNewRenderTargetSet->m_ClearDepth = true;
@@ -276,6 +277,7 @@ std::unique_ptr<EI_RenderTargetSet> EI_Device::CreateRenderTargetSet(const EI_Re
 
 std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int width, const int height, const size_t channels, const size_t channelSize, const char* name, AMD::float4* ClearValues /*= nullptr*/)
 {
+	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateRenderTarget");
 	EI_Resource* res = new EI_Resource;
 
@@ -461,6 +463,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 		Util::printHResult(hr2);
 		logger::info("Addr. of uav: {}", Util::ptr_to_string(pResource->UAView));
 	}
+	return std::unique_ptr<EI_Resource>(pResource);
 }
 std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName, const char* entryPoint, EI_BindLayout** layouts, int numLayouts)
 {
@@ -511,8 +514,8 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 	depthDesc.StencilEnable = psoParams.stencilTestEnable;
 	depthDesc.DepthFunc = *psoParams.depthCompareOp;
 	depthDesc.DepthWriteMask = psoParams.depthWriteEnable ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-	depthDesc.StencilReadMask = psoParams.stencilReadMask;
-	depthDesc.StencilWriteMask = psoParams.stencilWriteMask;
+	depthDesc.StencilReadMask = (uint8_t)psoParams.stencilReadMask;
+	depthDesc.StencilWriteMask = (uint8_t)psoParams.stencilWriteMask;
 	depthDesc.BackFace.StencilDepthFailOp = *psoParams.backDepthFailOp;
 	depthDesc.BackFace.StencilFailOp = *psoParams.backFailOp;
 	depthDesc.BackFace.StencilFunc = *psoParams.backCompareOp;
@@ -554,7 +557,8 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 	result->primitiveTopology = *psoParams.primitiveTopology;
 	result->numRTVs = depthOnly ? 0 : 1;
 	result->bp = EI_BP_GRAPHICS;
-
+	
+	return std::unique_ptr<EI_PSO>(result);
 }
 
 void EI_Device::BeginRenderPass(EI_CommandContext& commandContext, const EI_RenderTargetSet* pRenderTargetSet, const wchar_t* pPassName, uint32_t width /*= 0*/, uint32_t height /*= 0*/)
@@ -613,7 +617,14 @@ void EI_Device::DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& ps
 
 void EI_Device::OnCreate()
 {
+	logger::info("Create dullscreen index buffer");
 	m_pFullscreenIndexBuffer = CreateBufferResource(sizeof(uint32_t), 4, EI_BF_INDEXBUFFER, "FullScreenIndexBuffer");
+	// finish creating the index buffer
+	uint32_t indexArray[] = { 0, 1, 2, 3 };
+	m_currentCommandContext.UpdateBuffer(m_pFullscreenIndexBuffer.get(), indexArray);
+
+	logger::info("Create default texture");
+	m_DefaultWhiteTexture = CreateResourceFromFile("DefaultWhite.png", true);
 }
 
 void EI_Device::GetTimeStamp(const char* name)
@@ -654,7 +665,7 @@ void EI_RenderTargetSet::SetResources(const EI_Resource** pResourcesArray)
 	}
 	if (m_HasDepth) {
 		m_depthView = pResourcesArray[m_NumResources - 1]->DSView;
-	} else {
+	} else if (m_NumResources>0){
 		m_renderTargets[m_NumResources - 1] = pResourcesArray[m_NumResources - 1]->RTView;
 	}
 }

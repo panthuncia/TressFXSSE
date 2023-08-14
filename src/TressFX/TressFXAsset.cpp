@@ -408,7 +408,7 @@ bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scen
     EI_Seek(ioObject, 0);
     EI_Read((void*)&numOfBones, sizeof(AMD::int32), ioObject);
 
-    size_t startOfBoneNames = (sizeof(AMD::int32) * numOfBones);
+    //size_t startOfBoneNames = (sizeof(AMD::int32) * numOfBones);
     //size_t currentNamePosition = startOfBoneNames;
     //size_t currentOffSetPosition = 0;
 

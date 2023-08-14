@@ -88,11 +88,70 @@ void SkyrimTressFX::Update(){
 		{ camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2], glm::dot(eye, glm::vec3(camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2])) },
 		{ 0, 0, 0, 1 });
 
-	m_activeScene.scene.get()->m_projMatrix = AMD::float4x4(projMatrix[0][0]);
-	m_activeScene.scene.get()->m_viewMatrix = AMD::float4x4(viewMatrix[0][0]);
+	AMD::float4x4 amdProjMatrix;
+	amdProjMatrix.m[0] = projMatrix[0][0];
+	amdProjMatrix.m[1] = projMatrix[0][1];
+	amdProjMatrix.m[2] = projMatrix[0][2];
+	amdProjMatrix.m[3] = projMatrix[0][3];
+	amdProjMatrix.m[4] = projMatrix[1][0];
+	amdProjMatrix.m[5] = projMatrix[1][1];
+	amdProjMatrix.m[6] = projMatrix[1][2];
+	amdProjMatrix.m[7] = projMatrix[1][3];
+	amdProjMatrix.m[8] = projMatrix[2][0];
+	amdProjMatrix.m[9] = projMatrix[2][1];
+	amdProjMatrix.m[10] = projMatrix[2][2];
+	amdProjMatrix.m[11] = projMatrix[2][3];
+	amdProjMatrix.m[12] = projMatrix[3][0];
+	amdProjMatrix.m[13] = projMatrix[3][1];
+	amdProjMatrix.m[14] = projMatrix[3][2];
+	amdProjMatrix.m[15] = projMatrix[3][3];
+	m_activeScene.scene.get()->m_projMatrix = amdProjMatrix;
+
+	AMD::float4x4 amdViewMatrix;
+	amdViewMatrix.m[0] = viewMatrix[0][0];
+	amdViewMatrix.m[1] = viewMatrix[0][1];
+	amdViewMatrix.m[2] = viewMatrix[0][2];
+	amdViewMatrix.m[3] = viewMatrix[0][3];
+	amdViewMatrix.m[4] = viewMatrix[1][0];
+	amdViewMatrix.m[5] = viewMatrix[1][1];
+	amdViewMatrix.m[6] = viewMatrix[1][2];
+	amdViewMatrix.m[7] = viewMatrix[1][3];
+	amdViewMatrix.m[8] = viewMatrix[2][0];
+	amdViewMatrix.m[9] = viewMatrix[2][1];
+	amdViewMatrix.m[10] = viewMatrix[2][2];
+	amdViewMatrix.m[11] = viewMatrix[2][3];
+	amdViewMatrix.m[12] = viewMatrix[3][0];
+	amdViewMatrix.m[13] = viewMatrix[3][1];
+	amdViewMatrix.m[14] = viewMatrix[3][2];
+	amdViewMatrix.m[15] = viewMatrix[3][3];
+	m_activeScene.scene.get()->m_viewMatrix = amdViewMatrix;
+	
 	auto viewProjMatrix = projMatrix * viewMatrix;
-	m_activeScene.scene.get()->m_viewProjMatrix = AMD::float4x4(viewProjMatrix[0][0]);
-	m_activeScene.scene.get()->m_cameraPos = AMD::float4(cameraPos.x, cameraPos.y, cameraPos.z, 1);
+	AMD::float4x4 amdViewProjMatrix;
+	amdViewProjMatrix.m[0] = viewProjMatrix[0][0];
+	amdViewProjMatrix.m[1] = viewProjMatrix[0][1];
+	amdViewProjMatrix.m[2] = viewProjMatrix[0][2];
+	amdViewProjMatrix.m[3] = viewProjMatrix[0][3];
+	amdViewProjMatrix.m[4] = viewProjMatrix[1][0];
+	amdViewProjMatrix.m[5] = viewProjMatrix[1][1];
+	amdViewProjMatrix.m[6] = viewProjMatrix[1][2];
+	amdViewProjMatrix.m[7] = viewProjMatrix[1][3];
+	amdViewProjMatrix.m[8] = viewProjMatrix[2][0];
+	amdViewProjMatrix.m[9] = viewProjMatrix[2][1];
+	amdViewProjMatrix.m[10] = viewProjMatrix[2][2];
+	amdViewProjMatrix.m[11] = viewProjMatrix[2][3];
+	amdViewProjMatrix.m[12] = viewProjMatrix[3][0];
+	amdViewProjMatrix.m[13] = viewProjMatrix[3][1];
+	amdViewProjMatrix.m[14] = viewProjMatrix[3][2];
+	amdViewProjMatrix.m[15] = viewProjMatrix[3][3];
+	m_activeScene.scene.get()->m_viewProjMatrix = amdViewProjMatrix;
+
+	AMD::float4 amdCameraPos;
+	amdCameraPos.x = cameraPos.x;
+	amdCameraPos.y = cameraPos.y;
+	amdCameraPos.z = cameraPos.z;
+	amdCameraPos.w = 1.0;
+	m_activeScene.scene.get()->m_cameraPos = amdCameraPos;
 	UpdateSimulationParameters();
 	UpdateRenderingParameters();
 }
@@ -140,8 +199,8 @@ void SkyrimTressFX::LoadScene()
 	m_pShortCut.reset(new TressFXShortCut);
 	m_pSimulation.reset(new Simulation);
 
-	EI_Device*         pDevice = GetDevice();
-	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
+	//EI_Device*         pDevice = GetDevice();
+	//EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
 	for (size_t i = 0; i < desc.objects.size(); ++i) {
 		HairStrands* hair = new HairStrands(
 			m_activeScene.scene.get(),
@@ -320,6 +379,7 @@ void SkyrimTressFX::SetOITMethod(OITMethod method)
 
 void SkyrimTressFX::DestroyOITResources(OITMethod method)
 {
+	UNREFERENCED_PARAMETER(method);
 	// TressFX Usage
 	switch (m_eOITMethod) {
 	case OIT_METHOD_PPLL:
@@ -367,7 +427,7 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 {
 	TressFXSceneDescription  sd;
-	FILE*                    fp;
+	//FILE*                    fp;
 	const auto               configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
 	const auto               assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
 	const auto               texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX";
@@ -552,12 +612,13 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				hairDesc.initialRenderingSettings = renderSettings;
 				hairDesc.tressfxSSEData = tfxData;
 				hairDesc.numFollowHairs = 0;          //TODO
-				hairDesc.mesh = m_activeScene.scene.get()->skinIDBoneNamesMap.size();
+				hairDesc.mesh = (int)m_activeScene.scene.get()->skinIDBoneNamesMap.size();
 				hairDesc.tipSeparationFactor = 1.0f;  //???
 				sd.objects.push_back(hairDesc);
 				//TODO collision mesh
 			}
-			m_activeScene.scene.get()->skinIDBoneNamesMap[m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
+			m_activeScene.scene.get()->skinIDBoneNamesMap[(int)m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
 		}
 	}
+	return sd;
 }

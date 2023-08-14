@@ -438,6 +438,7 @@ void TressFXHairObject::UpdateSimulationParameters(const TressFXSimulationSettin
 
 void TressFXHairObject::UpdateRenderingParameters(const TressFXRenderingSettings* parameters, const int NodePoolSize, float timeStep, float Distance, bool ShadowUpdate /*= false*/)
 {
+	UNREFERENCED_PARAMETER(timeStep);
     // Update Render Parameters
     m_RenderCB->FiberRadius = parameters->m_FiberRadius;	// Don't modify radius by LOD multiplier as this one is used to calculate shadowing and that calculation should remain unaffected
     
@@ -501,6 +502,8 @@ void TressFXHairObject::UpdateRenderingParameters(const TressFXRenderingSettings
 
 void TressFXDynamicState::CreateGPUResources(EI_Device* pDevice, int numVertices, int numStrands, const char * name, TressFXAsset* asset)
 {
+	UNREFERENCED_PARAMETER(name);
+	UNREFERENCED_PARAMETER(asset);
     m_PositionsPrev = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "PosPrev");
     m_PositionsPrevPrev = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "PosPrevPrev");
     m_Positions = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "Pos");
@@ -527,6 +530,7 @@ void TressFXDynamicState::CreateGPUResources(EI_Device* pDevice, int numVertices
 
 void TressFXDynamicState::UploadGPUData(EI_CommandContext& commandContext, void* pos, void* tan, int numVertices)
 {
+	UNREFERENCED_PARAMETER(numVertices);
     TRESSFX_ASSERT(m_Positions != nullptr);
     TRESSFX_ASSERT(m_Tangents != nullptr);
     TRESSFX_ASSERT(m_PositionsPrev != nullptr);

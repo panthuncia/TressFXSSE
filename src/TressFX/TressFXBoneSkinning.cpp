@@ -179,7 +179,7 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
             m_pTempNormals.resize(m_NumVertices);
             memset(boneSkinningData.data(), 0, sizeof(TressFXBoneSkinningData) * m_NumVertices);
 
-            int index = 0;
+            unsigned int index = 0;
 
             while (1)
             {
@@ -197,7 +197,7 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
                 int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
                 assert(numFound == 15);
 
-                int vertexIndex = atoi(sTokens[0].c_str());
+                unsigned int vertexIndex = atoi(sTokens[0].c_str());
                 assert(vertexIndex == index);
 
                 AMD::float3& pos = m_pTempVertices[index];
@@ -247,7 +247,7 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
             m_NumTriangles = atoi(sTokens[1].c_str());
             int numIndices = m_NumTriangles * 3;
             m_pTempIndices.resize(numIndices);
-            int index = 0;
+            unsigned int index = 0;
 
             while (1)
             {
@@ -265,7 +265,7 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
                 int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
                 assert(numFound == 4);
 
-                int triangleIndex = atoi(sTokens[0].c_str());
+                unsigned int triangleIndex = atoi(sTokens[0].c_str());
                 assert(triangleIndex == index);
 
                 m_pTempIndices[index * 3 + 0] = atoi(sTokens[1].c_str());

@@ -7,6 +7,8 @@ int EI_Scene::GetBoneIdByName(int skinIndex, const char* boneName) {
 			return i;
 		}
 	}
+	logger::error("encountered incorrect bone name!");
+	return -1;
 }
 std::vector<DirectX::XMMATRIX>& EI_Scene::GetWorldSpaceSkeletonMats(int m_skinNumber) {
 	return skinIDBoneTransformsMap[m_skinNumber];

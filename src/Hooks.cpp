@@ -93,7 +93,7 @@ struct Hooks
 					hbao->SetRenderTarget(pRTV, GFSDK_SSAO_MULTIPLY_RGB);
 				}
 				if (Menu::GetSingleton()->HBAOCheckbox) {
-					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projMatrix, 69.99104);
+					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projMatrix, (float)69.99104);
 					if (Menu::GetSingleton()->clearBeforeHBAOCheckbox) {
 						logger::info("Clearing RTV");
 						float clearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
@@ -345,7 +345,7 @@ namespace LightHooks{
 		if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 			uint64_t ms = duration_cast<milliseconds>(
 				system_clock::now().time_since_epoch()).count();
-			double time = ms / 1000;
+			double time = (double)ms / 1000;
 			tfx->Update();
 			tfx->Simulate(time, false, false);
 		}

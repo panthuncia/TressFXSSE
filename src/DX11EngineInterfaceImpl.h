@@ -152,6 +152,7 @@ public:
 	EI_ResourceFormat                   GetDepthBufferFormat() { return DXGI_FORMAT_R24G8_TYPELESS; }
 	EI_ResourceFormat                   GetColorBufferFormat() { return DXGI_FORMAT_R8G8B8A8_UNORM; }
 	EI_BindSet*                         GetSamplerBindSet() { return m_pSamplerBindSet.get(); }
+	EI_Resource*                        GetDefaultWhiteTexture() { return m_DefaultWhiteTexture.get(); }
 	void                                OnCreate();
 	std::unique_ptr<EI_Resource>        CreateBufferResource(int structSize, const int structCount, const unsigned int flags, EI_StringHash name);
 	std::unique_ptr<EI_BindLayout>      CreateLayout(const EI_LayoutDescription& description);
@@ -182,6 +183,9 @@ private:
 
 	std::unique_ptr<EI_Resource> m_pFullscreenIndexBuffer;
 	EI_CommandContext            m_currentCommandContext;
+
+	// Default resource to use when a resource is missing
+	std::unique_ptr<EI_Resource> m_DefaultWhiteTexture;
 };
 
 //??

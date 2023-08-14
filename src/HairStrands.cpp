@@ -280,7 +280,7 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 	}
 
 	//logger::info("assembled matrices");
-	m_pHairObject->UpdateBoneMatrices(&(m_boneMatrices.front()), m_numBones);
+	m_pHairObject->UpdateBoneMatrices(&(m_boneMatrices.front()), (int)m_numBones);
 	SkyrimTressFX::GetSingleton()->m_activeScene.scene.get()->skinIDBoneTransformsMap[m_skinNumber] = m_boneMatricesXMMATRIX;
 	return true;
 }
