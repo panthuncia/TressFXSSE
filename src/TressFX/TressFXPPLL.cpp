@@ -167,8 +167,8 @@ void TressFXPPLL::CreateResolveBindSet(EI_Device* pDevice)
 void TressFXPPLL::CreatePPLLRenderTargetSet(EI_Device* pDevice)
 {
     const EI_Resource* ResourceArray[] = { pDevice->GetColorBufferResource(), pDevice->GetDepthBufferResource() };
-    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Load | EI_RenderPassFlags::Store},
-                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store} };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::load | EI_RenderPassFlags::Store},
+                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
     m_PPLLRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 2, AttachmentParams, nullptr);
 }
 

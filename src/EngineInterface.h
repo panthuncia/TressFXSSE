@@ -178,7 +178,7 @@ enum EI_LayoutState {
 enum EI_RenderPassFlags
 {
 	None = 0,
-	Load = 0x01,
+	load = 0x01,
 	Clear = 0x02,
 	Store = 0x04,
 	Depth = 0x08,

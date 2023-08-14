@@ -69,7 +69,8 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	//init marker renderer
 	MarkerRender::GetSingleton()->InitRenderResources();
 
-	SkyrimGPUResourceManager* gpuResourceManager = SkyrimGPUResourceManager::GetInstance(device, swapchain);
+	//init manager
+	SkyrimGPUResourceManager::GetInstance(device, swapchain);
 	//init hair resources
 	auto tfx = SkyrimTressFX::GetSingleton();
 	tfx->OnCreate();

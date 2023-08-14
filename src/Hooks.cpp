@@ -93,7 +93,7 @@ struct Hooks
 					hbao->SetRenderTarget(pRTV, GFSDK_SSAO_MULTIPLY_RGB);
 				}
 				if (Menu::GetSingleton()->HBAOCheckbox) {
-					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projXMMatrix, 69.99104);
+					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projMatrix, 69.99104);
 					if (Menu::GetSingleton()->clearBeforeHBAOCheckbox) {
 						logger::info("Clearing RTV");
 						float clearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
@@ -118,7 +118,7 @@ struct Hooks
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto tfx = SkyrimTressFX::GetSingleton();
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				MarkerRender::GetSingleton()->DrawAllMarkers(tfx->m_activeScene.scene.get()->m_viewXMMatrix, tfx->m_activeScene.scene.get()->m_projXMMatrix);
+				MarkerRender::GetSingleton()->DrawAllMarkers(tfx->m_activeScene.scene.get()->m_viewMatrix, tfx->m_activeScene.scene.get()->m_projMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
 		}

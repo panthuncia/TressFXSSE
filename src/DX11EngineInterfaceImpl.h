@@ -151,6 +151,7 @@ public:
 	EI_Resource*                        GetDepthBufferResource() { return m_depthBuffer.get(); }
 	EI_ResourceFormat                   GetDepthBufferFormat() { return DXGI_FORMAT_R24G8_TYPELESS; }
 	EI_ResourceFormat                   GetColorBufferFormat() { return DXGI_FORMAT_R8G8B8A8_UNORM; }
+	EI_BindSet*                         GetSamplerBindSet() { return m_pSamplerBindSet.get(); }
 	void                                OnCreate();
 	std::unique_ptr<EI_Resource>        CreateBufferResource(int structSize, const int structCount, const unsigned int flags, EI_StringHash name);
 	std::unique_ptr<EI_BindLayout>      CreateLayout(const EI_LayoutDescription& description);
@@ -177,6 +178,7 @@ private:
 	std::unique_ptr<EI_Resource>  m_depthBuffer;
 	std::unique_ptr<EI_Resource> m_colorBuffer;
 	std::unique_ptr<EI_Resource> m_shadowBuffer;
+	std::unique_ptr<EI_BindSet>   m_pSamplerBindSet = nullptr;
 
 	std::unique_ptr<EI_Resource> m_pFullscreenIndexBuffer;
 	EI_CommandContext            m_currentCommandContext;
@@ -186,7 +188,11 @@ private:
 class EI_Marker
 {
 public:
-	EI_Marker(EI_CommandContext& ctx, const char* string) {}
+	EI_Marker(EI_CommandContext& ctx, const char* string)
+	{
+		UNREFERENCED_PARAMETER(ctx);
+		UNREFERENCED_PARAMETER(string);
+	}
 
 private:
 };

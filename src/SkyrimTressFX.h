@@ -6,6 +6,11 @@
 #include "TressFX/TressFXCommon.h"
 #include "TressFX/TressFXSDFCollision.h"
 #include "TressFX/TressFXSettings.h"
+#include "TressFX/TressFXShortCut.h"
+#include "TressFX/TressFXPPLL.h"
+#include "SDF.h"
+#include "Scene.h"
+#include "Simulation.h"
 class CollisionMesh;
 class TressFXPPLL;
 class TressFXShortCut;

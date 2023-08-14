@@ -35,6 +35,7 @@ TressFXSDFMarchingCubes::TressFXSDFMarchingCubes()
 
 void TressFXSDFMarchingCubes::Initialize(const char * name, EI_Scene* gltfImplementation, EI_RenderTargetSet * renderPass)
 {
+	UNREFERENCED_PARAMETER(name);
     m_pGLTFImplementation = gltfImplementation;
 
     EI_Device* pDevice = GetDevice();
@@ -222,7 +223,8 @@ void TressFXSDFMarchingCubes::Update(EI_CommandContext& commandContext)
             commandContext.BindPSO(m_pComputeEffectRunMarchingCubesOnSdf.get());
             commandContext.Dispatch(numDispatchSize);
         }
-        EI_Resource& sdfDataBuffer = m_pSDF->GetSDFDataGPUBuffer();
+        //EI_Resource& sdfDataBuffer = 
+		m_pSDF->GetSDFDataGPUBuffer();
     }
     EI_Barrier barrier[] =
     {

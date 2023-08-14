@@ -59,7 +59,7 @@ void Load()
 	}
 	const auto    path = std::filesystem::current_path() /= "data/MXAO/GFSDK_SSAO_D3D11.win64.dll";
 	HINSTANCE  hL1 = LoadLibrary(path.generic_wstring().c_str());
-	if (!hL) {
+	if (!hL1) {
 		logger::error("Could not acquire MXAO dll!");
 	}
 	auto messaging = SKSE::GetMessagingInterface();

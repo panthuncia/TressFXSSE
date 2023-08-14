@@ -1,12 +1,15 @@
 #include "HBAOPlus.h"
-#include "Util.h"
 #include "Menu.h"
-HBAOPlus::HBAOPlus() {
+#include "TressFX/TressFXCommon.h"
+#include "Util.h"
+HBAOPlus::HBAOPlus()
+{
 }
-HBAOPlus::~HBAOPlus() {
-
+HBAOPlus::~HBAOPlus()
+{
 }
-void HBAOPlus::Initialize(ID3D11Device* pDevice) {
+void HBAOPlus::Initialize(ID3D11Device* pDevice)
+{
 	//init HBAOPlus
 	GFSDK_SSAO_CustomHeap  CustomHeap;
 	CustomHeap.new_ = ::   operator new;
@@ -26,7 +29,8 @@ void HBAOPlus::Initialize(ID3D11Device* pDevice) {
 	m_pDevice = pDevice;
 }
 
-void HBAOPlus::CopyDSVTexture(ID3D11Resource* pResource) {
+void HBAOPlus::CopyDSVTexture(ID3D11Resource* pResource)
+{
 	auto pManager = RE::BSGraphics::Renderer::GetSingleton();
 	if (m_pDepthSRV == nullptr) {
 		auto pDevice = pManager->GetRuntimeData().forwarder;
@@ -50,15 +54,31 @@ void HBAOPlus::CopyDSVTexture(ID3D11Resource* pResource) {
 	//logger::info("Copied resource");
 }
 
-void HBAOPlus::SetDepthSRV(ID3D11ShaderResourceView* pSRV){
+void HBAOPlus::SetDepthSRV(ID3D11ShaderResourceView* pSRV)
+{
 	m_pDepthSRV = pSRV;
 }
 
-void HBAOPlus::SetInput(DirectX::XMMATRIX projectionMatrix, float sceneScale)
+void HBAOPlus::SetInput(AMD::float4x4 projection, float sceneScale)
 {
-	DirectX::XMFLOAT4X4 projectionFloats;
-	DirectX::XMStoreFloat4x4(&projectionFloats, projectionMatrix);
-	float matrix[16] = { projectionFloats._11, projectionFloats._12, projectionFloats._13, projectionFloats._14, projectionFloats._21, projectionFloats._22, projectionFloats._23, projectionFloats._24, projectionFloats._31, projectionFloats._32, projectionFloats._33, projectionFloats._34, projectionFloats._41, projectionFloats._42, projectionFloats._43, projectionFloats._44 };
+	float matrix[16] = {
+		projection.m[0],
+		projection.m[1],
+		projection.m[2],
+		projection.m[3],
+		projection.m[4],
+		projection.m[5],
+		projection.m[6],
+		projection.m[7],
+		projection.m[8],
+		projection.m[9],
+		projection.m[10],
+		projection.m[11],
+		projection.m[12],
+		projection.m[13],
+		projection.m[14],
+		projection.m[15]
+	};
 
 	Input.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
 	//Input.DepthData.pFullResDepthTextureSRV = pDepthStencilTextureSRV;
@@ -66,10 +86,11 @@ void HBAOPlus::SetInput(DirectX::XMMATRIX projectionMatrix, float sceneScale)
 	Input.DepthData.ProjectionMatrix.Layout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
 	Input.DepthData.MetersToViewSpaceUnits = sceneScale;
 	//GFSDK_SSAO_InputViewport vp;
-	//Input.DepthData.Viewport = 
+	//Input.DepthData.Viewport =
 }
 
-void HBAOPlus::SetAOParameters() {
+void HBAOPlus::SetAOParameters()
+{
 	auto menu = Menu::GetSingleton();
 	Params.BackgroundAO.Enable = false;
 	Params.ForegroundAO.Enable = true;
@@ -89,14 +110,16 @@ void HBAOPlus::SetAOParameters() {
 	Params.StepCount = GFSDK_SSAO_STEP_COUNT_8;
 }
 
-void HBAOPlus::SetRenderTarget(ID3D11RenderTargetView* pOutputColorRTV, GFSDK_SSAO_BlendMode blendMode) {
+void HBAOPlus::SetRenderTarget(ID3D11RenderTargetView* pOutputColorRTV, GFSDK_SSAO_BlendMode blendMode)
+{
 	Output.pRenderTargetView = pOutputColorRTV;
 	Output.Blend.Mode = blendMode;
 	gotRTV = true;
 	pRTV = pOutputColorRTV;
 }
 
-void HBAOPlus::RenderAO() {
+void HBAOPlus::RenderAO()
+{
 	auto manager = RE::BSGraphics::Renderer::GetSingleton();
 	auto pContext = manager->GetRuntimeData().context;
 	status = pAOContext->RenderAO(pContext, Input, Params, Output);

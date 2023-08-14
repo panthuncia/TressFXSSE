@@ -1,5 +1,6 @@
 #pragma once
 #include "GFSDK_SSAO.h"
+#include "TressFX/TressFXCommon.h"
 class HBAOPlus
 {
 public:
@@ -10,7 +11,7 @@ public:
 	}
 	~HBAOPlus();
 	void Initialize(ID3D11Device* pDevice);
-	void SetInput(DirectX::XMMATRIX projectionMatrix, float sceneScale);
+	void SetInput(AMD::float4x4 projection, float sceneScale);
 	void CopyDSVTexture(ID3D11Resource* pResource);
 	void SetDepthSRV(ID3D11ShaderResourceView* pSRV);
 	void SetAOParameters();

@@ -48,6 +48,7 @@ TressFXSDFCollision::TressFXSDFCollision(
     , m_pSimBindSet(nullptr)
 
 {
+	UNREFERENCED_PARAMETER(modelName);
     m_pInputCollisionMesh = pCollMesh;
 
     // initialize SDF grid using the associated model's bounding box
@@ -88,6 +89,7 @@ TressFXSDFCollision::TressFXSDFCollision(
 void TressFXSDFCollision::UpdateSDFGrid(const Vector3& tight_bbox_min,
                                         const Vector3& tight_bbox_max)
 {
+	UNREFERENCED_PARAMETER(tight_bbox_max);
     Vector3 bmin = tight_bbox_min - m_PaddingBoundary;
     m_Origin               = bmin;
 }

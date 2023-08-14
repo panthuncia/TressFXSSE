@@ -400,6 +400,8 @@ void TressFXAsset::ComputeRestLengths()
 
 bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scene)
 {
+	UNREFERENCED_PARAMETER(skinNumber);
+	UNREFERENCED_PARAMETER(scene);
     m_boneSkinningData.resize(0);
 
     AMD::int32 numOfBones = 0;
@@ -407,8 +409,8 @@ bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scen
     EI_Read((void*)&numOfBones, sizeof(AMD::int32), ioObject);
 
     size_t startOfBoneNames = (sizeof(AMD::int32) * numOfBones);
-    size_t currentNamePosition = startOfBoneNames;
-    size_t currentOffSetPosition = 0;
+    //size_t currentNamePosition = startOfBoneNames;
+    //size_t currentOffSetPosition = 0;
 
     std::vector<std::string> boneNames(numOfBones);
     std::vector<int> boneEngineIds(numOfBones);
@@ -438,7 +440,7 @@ bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scen
     if (m_numGuideStrands < numOfStrandsInStream)
         return 0;
 
-    AMD::int32 boneSkinningMemSize = m_numTotalStrands * sizeof(TressFXBoneSkinningData);
+   // AMD::int32 boneSkinningMemSize = m_numTotalStrands * sizeof(TressFXBoneSkinningData);
     m_boneSkinningData.resize(m_numTotalStrands);
 
     TressFXBoneSkinningData skinData;

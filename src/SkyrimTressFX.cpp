@@ -1,10 +1,7 @@
 #include "SkyrimTressFX.h"
-#include "SDF.h"
-#include "Scene.h"
-#include "Simulation.h"
-#include "TressFX/TressFXPPLL.h"
-#include "TressFX/TressFXShortCut.h"
-
+#include "glm/gtc/matrix_transform.hpp"
+#include "Util.h"
+#include "SkyrimGPUResourceManager.h"
 using json = nlohmann::json;
 // This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
@@ -23,8 +20,8 @@ void SkyrimTressFX::OnCreate()
 	const EI_ResourceFormat FormatArray[] = { GetDevice()->GetColorBufferFormat(), GetDevice()->GetDepthBufferFormat() };
 	// Create a debug render pass
 	{
-		const EI_AttachmentParams AttachmentParams[] = { { EI_RenderPassFlags::Load | EI_RenderPassFlags::Store },
-			{ EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store } };
+		const EI_AttachmentParams AttachmentParams[] = { { EI_RenderPassFlags::load | EI_RenderPassFlags::Store },
+			{ EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store } };
 
 		m_pDebugRenderTargetSet = GetDevice()->CreateRenderTargetSet(FormatArray, 2, AttachmentParams, nullptr);
 	}
@@ -57,6 +54,45 @@ void SkyrimTressFX::Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollis
 }
 
 void SkyrimTressFX::Update(){
+
+	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
+	auto          wtc = playerCam->worldToCam;
+	//transpose rotation
+	glm::mat worldToCamMat = glm::mat4({ wtc[0][0], wtc[1][0], wtc[2][0], wtc[0][3] },
+		{ wtc[0][1], wtc[1][1], wtc[2][1], wtc[1][3] },
+		{ wtc[0][2], wtc[1][2], wtc[2][2], wtc[2][3] },
+		{ wtc[3][0], wtc[3][1], wtc[3][2], wtc[3][3] });
+
+	RE::NiPoint3 translation = playerCam->world.translate;  //tps->translation;
+
+	glm::vec3 cameraPos = Util::ToRenderScale(glm::vec3(translation.x, translation.y, translation.z));
+
+	DXGI_SWAP_CHAIN_DESC swapDesc;
+	SkyrimGPUResourceManager::GetInstance()->m_pSwapChain->GetDesc(&swapDesc);
+	//projection matrix
+	glm::mat4 projMatrix = Util::GetPlayerProjectionMatrix(playerCam->GetRuntimeData2().viewFrustum, swapDesc.BufferDesc.Width, swapDesc.BufferDesc.Height);
+
+	//calculate view matrix from worldToCam
+	auto projCalcInverse = glm::inverse(projMatrix);
+	auto wtcInvProj = projCalcInverse * worldToCamMat;
+
+	glm::mat4 camRotCalc = (glm::mat4({ wtcInvProj[0][0], wtcInvProj[0][1], worldToCamMat[0][2], 0 },
+		{ wtcInvProj[1][0], wtcInvProj[1][1], worldToCamMat[1][2], 0 },
+		{ wtcInvProj[2][0], wtcInvProj[2][1], worldToCamMat[2][2], 0 },
+		{ 0, 0, 0, 1 }));
+	auto      camRotCalcTransp = glm::transpose(camRotCalc);
+
+	glm::vec3 eye = -cameraPos;
+	glm::mat4 viewMatrix = glm::mat4({ camRotCalcTransp[0][0], camRotCalcTransp[0][1], camRotCalcTransp[0][2], glm::dot(eye, glm::vec3(camRotCalcTransp[0][0], camRotCalcTransp[0][1], camRotCalcTransp[0][2])) },
+		{ camRotCalcTransp[1][0], camRotCalcTransp[1][1], camRotCalcTransp[1][2], glm::dot(eye, glm::vec3(camRotCalcTransp[1][0], camRotCalcTransp[1][1], camRotCalcTransp[1][2])) },
+		{ camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2], glm::dot(eye, glm::vec3(camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2])) },
+		{ 0, 0, 0, 1 });
+
+	m_activeScene.scene.get()->m_projMatrix = AMD::float4x4(projMatrix[0][0]);
+	m_activeScene.scene.get()->m_viewMatrix = AMD::float4x4(viewMatrix[0][0]);
+	auto viewProjMatrix = projMatrix * viewMatrix;
+	m_activeScene.scene.get()->m_viewProjMatrix = AMD::float4x4(viewProjMatrix[0][0]);
+	m_activeScene.scene.get()->m_cameraPos = AMD::float4(cameraPos.x, cameraPos.y, cameraPos.z, 1);
 	UpdateSimulationParameters();
 	UpdateRenderingParameters();
 }
@@ -516,12 +552,12 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 				hairDesc.initialRenderingSettings = renderSettings;
 				hairDesc.tressfxSSEData = tfxData;
 				hairDesc.numFollowHairs = 0;          //TODO
-				hairDesc.mesh = m_activeScene.scene.get()->skinIDBonesMap.size();
+				hairDesc.mesh = m_activeScene.scene.get()->skinIDBoneNamesMap.size();
 				hairDesc.tipSeparationFactor = 1.0f;  //???
 				sd.objects.push_back(hairDesc);
 				//TODO collision mesh
 			}
-			m_activeScene.scene.get()->skinIDBonesMap[m_activeScene.scene.get()->skinIDBonesMap.size()] = bones;
+			m_activeScene.scene.get()->skinIDBoneNamesMap[m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
 		}
 	}
 }

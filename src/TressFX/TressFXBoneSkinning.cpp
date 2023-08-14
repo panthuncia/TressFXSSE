@@ -162,7 +162,8 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
                     continue;
 
                 sTokens.clear();
-                int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
+                //int numFound = 
+				SuStringTokenizer(sLine, " ", sTokens, false);
                 boneNames.push_back(sTokens[1]);
                 countBone++;
 
@@ -287,6 +288,7 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
 void TressFXBoneSkinning::Initialize(EI_RenderTargetSet * renderTargetSet, EI_Device*  pDevice,
                                        EI_CommandContext& commandContext, const char * name)
 {
+	UNREFERENCED_PARAMETER(name);
     // TODO: Following code should be moved to TransarencyPlugin.cpp.
 
     // load an effect for rendering
@@ -403,6 +405,7 @@ void TressFXBoneSkinning::Initialize(EI_RenderTargetSet * renderTargetSet, EI_De
 
 Vector3 TressFXBoneSkinning::SkinPosition( int i0 )
 {
+	UNREFERENCED_PARAMETER(i0);
     int global_id = 0;
 
     AMD::float3 vert = m_pTempVertices[global_id];
@@ -459,6 +462,7 @@ void TressFXBoneSkinning::GetInitialBoundingBox(Vector3& min, Vector3& max)
 
 void TressFXBoneSkinning::Update(EI_CommandContext& commandContext, double fTime)
 {
+	UNREFERENCED_PARAMETER(fTime);
     if (!m_pComputeEffectSkinning || !m_pScene || !m_pScene->GetWorldSpaceSkeletonMats(m_skinNumber).size())
         return;
 
@@ -467,7 +471,7 @@ void TressFXBoneSkinning::Update(EI_CommandContext& commandContext, double fTime
     // update animation model before getting the skinning matrices.
     //m_pModel->UpdateObject(fTime);
     std::vector<XMMATRIX> boneMatrices = m_pScene->GetWorldSpaceSkeletonMats(m_skinNumber);
-    const float*              pBoneMatricesInWS = (const float*)&boneMatrices[0];
+    //const float*              pBoneMatricesInWS = (const float*)&boneMatrices[0];
   
     //-----------------------------
     // 1. BoneSkinning

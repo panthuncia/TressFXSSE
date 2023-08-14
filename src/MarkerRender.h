@@ -2,7 +2,8 @@
 #include <DirectXTK/Model.h>
 #include <d3d11.h>
 #include <string>
-
+#include "glm/gtc/matrix_transform.hpp"
+#include "TressFX/TressFXCommon.h"
 class MarkerRender
 {
 public:
@@ -15,6 +16,7 @@ public:
 	void InitRenderResources();
 	void DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
 	void                           DrawAllMarkers(DirectX::XMMATRIX viewXMMatrix, DirectX::XMMATRIX projXMMatrix);
+	void                           DrawAllMarkers(AMD::float4x4 viewMatrix, AMD::float4x4 projMatrix);
 	void                           ClearMarkers();
 	std::vector<DirectX::XMMATRIX> m_markerPositions;
 

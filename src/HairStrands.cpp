@@ -7,6 +7,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
+#include "SkyrimTressFX.h"
 void printEffectVariables(ID3DX11Effect* pEffect);
 
 HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID)
@@ -52,7 +53,7 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 
 HairStrands::~HairStrands()
 {
-	auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
+	//auto pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 	logger::info("Destroying hair");
 	delete m_pHairAsset;
 	m_hairSRV->Release();
@@ -92,7 +93,7 @@ void HairStrands::DrawDebugMarkers()
 
 void HairStrands::UpdateVariables(float gravityMagnitude)
 {
-
+	UNREFERENCED_PARAMETER(gravityMagnitude);
 }
 void HairStrands::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
 {
@@ -246,11 +247,11 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 		return false;
 	}
 	//float scale = playerSkeleton->skeleton->world.scale;
-	std::vector<AMD::float4x4>* matrices = new std::vector<AMD::float4x4>();
 	//logger::info("Skeleton has {} bones", playerSkeleton->skeleton->GetChildren().size());
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
 	logger::info("num bones: {}", m_numBones);
+	
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = Util::ToRenderScale(glm::vec3(m_boneTransforms[i].translate.x, m_boneTransforms[i].translate.y, m_boneTransforms[i].translate.z));
 
@@ -273,18 +274,20 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 			bonePos.y,
 			bonePos.z,
 			0.0 };
-		matrices->push_back(mat);
+		m_boneMatrices[i]=mat;
+		DirectX::XMFLOAT4X4 matFloats = DirectX::XMFLOAT4X4(mat.m);
+		m_boneMatricesXMMATRIX[i] = DirectX::XMLoadFloat4x4(&matFloats);
 	}
 
 	//logger::info("assembled matrices");
-	m_pHairObject->UpdateBoneMatrices(&(matrices->front()), m_numBones);
-	delete (matrices);
+	m_pHairObject->UpdateBoneMatrices(&(m_boneMatrices.front()), m_numBones);
+	SkyrimTressFX::GetSingleton()->m_activeScene.scene.get()->skinIDBoneTransformsMap[m_skinNumber] = m_boneMatricesXMMATRIX;
 	return true;
 }
 void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
 {
-	ID3D11Device*        pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
-	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
+	//ID3D11Device*        pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
+	//ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
 	m_currentOffsets[0] = x;
 	m_currentOffsets[1] = y;
 	m_currentOffsets[2] = z;

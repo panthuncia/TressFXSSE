@@ -42,6 +42,9 @@ public:
 	std::string     m_boneNames[AMD_TRESSFX_MAX_NUM_BONES];
 	RE::NiAVObject* m_pBones[AMD_TRESSFX_MAX_NUM_BONES];
 	RE::NiTransform m_boneTransforms[AMD_TRESSFX_MAX_NUM_BONES];
+	std::vector<AMD::float4x4> m_boneMatrices;
+	//tressfx uses both formats for some reason?
+	std::vector<DirectX::XMMATRIX> m_boneMatricesXMMATRIX;
 
 private:
 	void                      initialize(std::filesystem::path texturePath);

@@ -231,8 +231,8 @@ void TressFXShortCut::CreateDepthsAlphaRenderTargetSet(EI_Device* pDevice)
 {
     // For shortcut depth alpha render pass, we need InvAlphaTexture bound with Depth buffer.
     const EI_Resource* ResourceArray[] = { m_pInvAlpha.get(), GetDevice()->GetDepthBufferResource() };
-    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Load | EI_RenderPassFlags::Clear | EI_RenderPassFlags::Store},
-                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store} };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::load | EI_RenderPassFlags::Clear | EI_RenderPassFlags::Store},
+                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
 
     float clearValues[] = { 1.f, 1.f, 1.f, 1.f };	// Color
     m_pShortCutDepthsAlphaRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 2, AttachmentParams, clearValues);
@@ -242,7 +242,7 @@ void TressFXShortCut::CreateDepthResolveRenderTargetSet(EI_Device* pDevice)
 {
     // For shortcut depth resolve render pass, we just need the depth buffer bound
     const EI_Resource* ResourceArray[] = { GetDevice()->GetDepthBufferResource() };
-    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store} };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
     m_pShortCutDepthResolveRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 1, AttachmentParams, nullptr);
 }
 
@@ -250,8 +250,8 @@ void TressFXShortCut::CreateHairColorRenderTargetSet(EI_Device* pDevice)
 {
     // For shortcut hair color render pass, we need the color texture bound with Depth buffer.
     const EI_Resource* ResourceArray[] = { m_pColors.get(), GetDevice()->GetDepthBufferResource() };
-    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Load | EI_RenderPassFlags::Clear | EI_RenderPassFlags::Store},
-                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store} };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::load | EI_RenderPassFlags::Clear | EI_RenderPassFlags::Store},
+                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
 
     float clearValues[] = { 0.f, 0.f, 0.f, 1.f };	// Clear Color
     m_pShortCutHairColorRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 2, AttachmentParams, clearValues);
@@ -260,8 +260,8 @@ void TressFXShortCut::CreateHairColorRenderTargetSet(EI_Device* pDevice)
 void TressFXShortCut::CreateColorResolveRenderTargetSet(EI_Device* pDevice)
 {
     const EI_Resource* ResourceArray[] = { pDevice->GetColorBufferResource(), pDevice->GetDepthBufferResource() };
-    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::Load | EI_RenderPassFlags::Store},
-                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::Load | EI_RenderPassFlags::Store} };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::load | EI_RenderPassFlags::Store},
+                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
     m_pColorResolveRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 2, AttachmentParams, nullptr);
 }
 

@@ -325,6 +325,7 @@ void InitializeAllLayouts(EI_Device* pDevice)
 
 void DestroyAllLayouts(EI_Device* pDevice)
 {
+	UNREFERENCED_PARAMETER(pDevice);
     if (g_TressFXLayouts != nullptr)
     {
         delete g_TressFXLayouts;

@@ -174,6 +174,7 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 
 std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFilename, bool useSRGB /*= false*/)
 {
+	UNREFERENCED_PARAMETER(useSRGB);
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Texture;
 	auto                 pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
@@ -187,6 +188,8 @@ std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFil
 
 std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, const int height, const int arraySize, const char* name, uint32_t ClearValue /*= 0*/)
 {
+	UNREFERENCED_PARAMETER(ClearValue);
+	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateUint32Resource");
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Buffer;
@@ -358,6 +361,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int wid
 
 std::unique_ptr<EI_Resource> EI_Device::CreateIndexBufferResource(int structSize, const int structCount, EI_StringHash name)
 {
+	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateIndexBuffer");
 	ID3D11Buffer*     g_pIndexBuffer = NULL;
 	UINT              size = structSize * structCount;
@@ -381,6 +385,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateIndexBufferResource(int structSize
 }
 std::unique_ptr<EI_Resource> EI_Device::CreateConstantBufferResource(int structSize, const int structCount, EI_StringHash name)
 {
+	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateConstantBuffer");
 	ID3D11Buffer*     g_pConstantBuffer;
 	D3D11_BUFFER_DESC cbDesc;
@@ -409,6 +414,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateConstantBufferResource(int structS
 
 std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int structSize, const int structCount, EI_StringHash name)
 {
+	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateStructuredBuffer");
 	bool              counted = true;
 	bool              uav = true;
@@ -537,7 +543,7 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 	pDevice->CreateRasterizerState(&rasterizerDesc, &rsState);
 
 	bool depthOnly = (psoParams.renderTargetSet && psoParams.renderTargetSet->m_NumResources == 1 && psoParams.renderTargetSet->m_HasDepth);
-	bool hasDepth = (psoParams.renderTargetSet && psoParams.renderTargetSet->m_HasDepth);
+	//bool hasDepth = (psoParams.renderTargetSet && psoParams.renderTargetSet->m_HasDepth);
 
 	result->VS = (ID3D11VertexShader*)vertexShader;
 	result->PS = (ID3D11PixelShader*)pixelShader;
@@ -553,6 +559,10 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 
 void EI_Device::BeginRenderPass(EI_CommandContext& commandContext, const EI_RenderTargetSet* pRenderTargetSet, const wchar_t* pPassName, uint32_t width /*= 0*/, uint32_t height /*= 0*/)
 {
+	UNREFERENCED_PARAMETER(commandContext);
+	UNREFERENCED_PARAMETER(pPassName);
+	UNREFERENCED_PARAMETER(width);
+	UNREFERENCED_PARAMETER(height);
 	logger::info("Begin render pass");
 	assert(pRenderTargetSet->m_NumResources == 1 || (pRenderTargetSet->m_NumResources == 2 && pRenderTargetSet->m_HasDepth) && "Currently only support 1 render target with (or without) depth");
 	const D3D11_CLEAR_VALUE* pDepthClearValue = nullptr;
@@ -583,6 +593,7 @@ void EI_Device::BeginRenderPass(EI_CommandContext& commandContext, const EI_Rend
 
 void EI_Device::EndRenderPass(EI_CommandContext& commandContext)
 {
+	UNREFERENCED_PARAMETER(commandContext);
 	//TODO: Do we need to unbind anything?
 }
 
@@ -607,6 +618,7 @@ void EI_Device::OnCreate()
 
 void EI_Device::GetTimeStamp(const char* name)
 {
+	UNREFERENCED_PARAMETER(name);
 	//???
 }
 
@@ -662,6 +674,7 @@ void EI_CommandContext::UpdateBuffer(EI_Resource* res, void* data)
 
 void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets)
 {
+	UNREFERENCED_PARAMETER(pso);
 	logger::info("BindSets");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	for (int i = 0; i < numBindSets; i++) {
@@ -688,6 +701,7 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 
 void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams)
 {
+	UNREFERENCED_PARAMETER(pso);
 	logger::info("DrawIndexedInstanced");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	pContext->DrawIndexedInstanced(drawParams.pIndexBuffer->m_indexBufferNumIndices, drawParams.numInstances, 0, 0, 0);
@@ -695,6 +709,7 @@ void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& 
 
 void EI_CommandContext::DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams)
 {
+	UNREFERENCED_PARAMETER(pso);
 	logger::info("DrawIndexed");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	pContext->DrawInstanced(drawParams.numVertices, drawParams.numInstances, 0, 0);
@@ -702,6 +717,8 @@ void EI_CommandContext::DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams)
 
 void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
 {
+	UNREFERENCED_PARAMETER(numBarriers);
+	UNREFERENCED_PARAMETER(barriers);
 	//do we need anything?
 	logger::info("SubmitBarriers");
 }
