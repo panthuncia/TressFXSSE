@@ -459,7 +459,7 @@ bool TressFXAsset::LoadBoneData(FILE * ioObject, int skinNumber, EI_Scene * scen
         }
 
         float weightSum = skinData.weight[0] + skinData.weight[1] + skinData.weight[2] + skinData.weight[3];
-
+		UNREFERENCED_PARAMETER(weightSum);
         assert(weightSum > 0.0f);
         assert(skinData.weight[0] != 0.0f);
 

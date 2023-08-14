@@ -193,10 +193,14 @@ void SkyrimTressFX::LoadScene()
 	// TODO Why?
 	DestroyLayouts();
 
+	logger::info("initialize layouts");
 	InitializeLayouts();
 
+	logger::info("Create PPLL");
 	m_pPPLL.reset(new TressFXPPLL);
+	logger::info("Create ShortCut");
 	m_pShortCut.reset(new TressFXShortCut);
+	logger::info("Create Simulation");
 	m_pSimulation.reset(new Simulation);
 
 	//EI_Device*         pDevice = GetDevice();
@@ -217,6 +221,7 @@ void SkyrimTressFX::LoadScene()
 			desc.objects[i].tressfxSSEData.m_initialOffsets,
 			desc.objects[i].tressfxSSEData.m_userEditorID);
 
+		logger::info("Populate DrawStrands bindset");
 		hair->GetTressFXHandle()->PopulateDrawStrandsBindSet(GetDevice(), &desc.objects[i].initialRenderingSettings);
 		m_activeScene.objects.push_back({ std::unique_ptr<HairStrands>(hair), desc.objects[i].initialSimulationSettings, desc.objects[i].initialRenderingSettings, desc.objects[i].name.c_str() });
 	}
@@ -232,6 +237,7 @@ void SkyrimTressFX::LoadScene()
 			desc.collisionMeshes[i].followBone.c_str());
 		m_activeScene.collisionMeshes.push_back(std::unique_ptr<CollisionMesh>(mesh));
 	}
+	logger::info("LoadScene done");
 }
 void SkyrimTressFX::UpdateLights() {
 	auto  accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();

@@ -12,22 +12,29 @@ void printEffectVariables(ID3DX11Effect* pEffect);
 
 HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID)
 {
+	logger::info("Hair strands constructor");
 	m_pHairAsset = new TressFXAsset();
 	FILE* fp = fopen(tfxFilePath.c_str(), "rb");
+	logger::info("Load hair data");
 	m_pHairAsset->LoadHairData(fp);
 	fclose(fp);
 
+	logger::info("Generate follow hairs");
 	m_pHairAsset->GenerateFollowHairs(numFollowHairsPerGuideHair, tipSeparationFactor, 0.012f);
+	
+	logger::info("Process asset");
 	m_pHairAsset->ProcessAsset();
 
 	// Load *.tfxbone
 	fp = fopen(tfxboneFilePath.c_str(), "rb");
+	logger::info("Load bone data");
 	m_pHairAsset->LoadBoneData(fp, skinNumber, scene);
 	fclose(fp);
 
 	EI_Device*         pDevice = GetDevice();
 	EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
 
+	logger::info("Create hair object");
 	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, name.c_str(), renderIndex);
 
 	m_pHairObject.reset(hair);

@@ -3,6 +3,7 @@
 #include "DDSTextureLoader.h"
 #include "ShaderCompiler.h"
 #include "SkyrimGPUResourceManager.h"
+#include "TressFX/AMD_TressFX.h"
 #include "Util.h"
 
 inline D3D11_BLEND_OP operator*(EI_BlendOp Enum)
@@ -121,13 +122,19 @@ EI_Device::~EI_Device()
 //public
 std::unique_ptr<EI_Resource> EI_Device::CreateBufferResource(int structSize, const int structCount, const unsigned int flags, EI_StringHash name)
 {
-	logger::info("CreateBufferResource");
-	if (flags == EI_BF_INDEXBUFFER) {
+	logger::info("CreateBufferResource: {}", name);
+	if (flags & EI_BF_INDEXBUFFER) {
+		logger::info("Index buffer");
 		return CreateIndexBufferResource(structSize, structCount, name);
-	} else if (flags == EI_BF_UNIFORMBUFFER) {
+	} else if (flags & EI_BF_UNIFORMBUFFER) {
 		return CreateConstantBufferResource(structSize, structCount, name);
-	} else if (flags == EI_BF_NEEDSUAV) {
-		return CreateStructuredBufferResource(structSize, structCount, name);
+		logger::info("Constant buffer");
+	} else if (flags & EI_BF_NEEDSUAV) {
+		logger::info("Structured buffer with UAV");
+		return CreateStructuredBufferResource(structSize, structCount, true, name);
+	} else if (flags == 0) {
+		logger::info("Structured buffer no uav");
+		return CreateStructuredBufferResource(structSize, structCount, false, name);
 	} else {
 		logger::error("Requested unimplemented EI_BufferFlags combination: {}", flags);
 		return nullptr;
@@ -360,66 +367,137 @@ std::unique_ptr<EI_Resource> EI_Device::CreateRenderTargetResource(const int wid
 }
 
 //private
+std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structSize, const int structCount, EI_StringHash name)
+{
+	logger::info("Create standard buffer");
+	EI_Resource*      res = new EI_Resource;
+	auto              pManager = SkyrimGPUResourceManager::GetInstance();
+	ID3D11Buffer*     pBuffer = NULL;
+	UINT              size = structSize * structCount;
+	D3D11_BUFFER_DESC bufferDesc;
+	DXGI_FORMAT       format = DXGI_FORMAT_R16_FLOAT;
+	if (structSize == 4) {
+		format = DXGI_FORMAT_R16_FLOAT;
+	} else if (structSize == 16) {
+		format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	} else if (structSize == 32) {
+		format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	} else {
+		logger::error("Unexpected buffer type! bytes: {}", structSize);
+	}
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = size;
+	bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateBuffer(&bufferDesc, nullptr, &pBuffer);
+	if (FAILED(hr)) {
+		logger::error("standard buffer creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	srvDesc.Format = format;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srvDesc.Buffer.FirstElement = 0;
+	//this union caused me lots of pain
+	//srvDesc.Buffer.ElementOffset = 0;
+	srvDesc.Buffer.NumElements = structCount;
+	//srvDesc.Buffer.ElementWidth = structSize;
+	//logger::info("creating srv");
+	HRESULT hr1 = pManager->m_pDevice->CreateShaderResourceView(pBuffer, &srvDesc, &res->SRView);
+	Util::printHResult(hr1);
+	if (FAILED(hr1)) {
+		logger::error("standard buffer SRV creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+	//SU_ASSERT(r.srv);
+
+	D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+	uavDesc.Format = format;
+	uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.FirstElement = 0;
+	uavDesc.Buffer.NumElements = structCount;
+	uavDesc.Buffer.Flags = 0;
+	//if (counted) {
+	//	//logger::info("adding uav counter");
+	//	uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_COUNTER;
+	//} else {
+	//	uavDesc.Buffer.Flags = 0;
+	//}
+	//logger::info("Creating UAV");
+	HRESULT hr2 = pManager->m_pDevice->CreateUnorderedAccessView(pBuffer, &uavDesc, &res->UAView);
+	Util::printHResult(hr2);
+	if (FAILED(hr2)) {
+		logger::error("standard buffer UAV creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+	logger::info("Addr. of uav: {}", Util::ptr_to_string(res->UAView));
+	res->name = name;
+	return std::unique_ptr<EI_Resource>(res);
+}
 
 std::unique_ptr<EI_Resource> EI_Device::CreateIndexBufferResource(int structSize, const int structCount, EI_StringHash name)
 {
-	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateIndexBuffer");
 	ID3D11Buffer*     g_pIndexBuffer = NULL;
 	UINT              size = structSize * structCount;
 	D3D11_BUFFER_DESC bufferDesc;
-	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	bufferDesc.ByteWidth = size;
 	bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
-	D3D11_SUBRESOURCE_DATA data;
-	data.pSysMem = nullptr;
-	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateBuffer(&bufferDesc, &data, &g_pIndexBuffer);
-	if (FAILED(hr))
+	/*D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = nullptr;*/
+	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateBuffer(&bufferDesc, nullptr, &g_pIndexBuffer);
+	if (FAILED(hr)) {
 		logger::error("index buffer creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
 	EI_Resource* res = new EI_Resource;
 	res->m_indexBufferNumIndices = structCount;
 	res->m_ResourceType = EI_ResourceType::IndexBuffer;
 	res->m_pBuffer = g_pIndexBuffer;
 	res->m_totalMemSize = size;
+	res->name = name;
 	return std::unique_ptr<EI_Resource>(res);
 }
 std::unique_ptr<EI_Resource> EI_Device::CreateConstantBufferResource(int structSize, const int structCount, EI_StringHash name)
 {
-	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateConstantBuffer");
 	ID3D11Buffer*     g_pConstantBuffer;
 	D3D11_BUFFER_DESC cbDesc;
 	cbDesc.ByteWidth = structSize * structCount;
-	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cbDesc.Usage = D3D11_USAGE_DEFAULT;
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbDesc.CPUAccessFlags = 0;
 	cbDesc.MiscFlags = 0;
 	cbDesc.StructureByteStride = 0;
 
 	// Fill in the subresource data.
-	D3D11_SUBRESOURCE_DATA InitData;
+	/*D3D11_SUBRESOURCE_DATA InitData;
 	InitData.pSysMem = nullptr;
 	InitData.SysMemPitch = 0;
-	InitData.SysMemSlicePitch = 0;
-	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateBuffer(&cbDesc, &InitData,
+	InitData.SysMemSlicePitch = 0;*/
+	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateBuffer(&cbDesc, nullptr,
 		&g_pConstantBuffer);
 
-	if (FAILED(hr))
+	if (FAILED(hr)) {
 		logger::info("Constant buffer creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::ConstantBuffer;
 	res->m_pBuffer = g_pConstantBuffer;
+	res->name = name;
+	res->m_totalMemSize = cbDesc.ByteWidth;
 	return std::unique_ptr<EI_Resource>(res);
 }
 
-std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int structSize, const int structCount, EI_StringHash name)
+std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int structSize, const int structCount, bool uav, EI_StringHash name)
 {
-	UNREFERENCED_PARAMETER(name);
 	logger::info("CreateStructuredBuffer");
 	bool              counted = true;
-	bool              uav = true;
 	auto              pManager = SkyrimGPUResourceManager::GetInstance();
 	D3D11_BUFFER_DESC nextDesc = StructuredBufferDesc(structCount, structSize, true, false);
 	//r.desc = nextDesc;
@@ -463,6 +541,9 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 		Util::printHResult(hr2);
 		logger::info("Addr. of uav: {}", Util::ptr_to_string(pResource->UAView));
 	}
+	pResource->name = name;
+	pResource->m_pBuffer = pStructuredBuffer;
+	pResource->m_totalMemSize = nextDesc.ByteWidth;
 	return std::unique_ptr<EI_Resource>(pResource);
 }
 std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName, const char* entryPoint, EI_BindLayout** layouts, int numLayouts)
@@ -470,8 +551,10 @@ std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName
 	logger::info("CreateComputeShaderPSO");
 	EI_PSO*                       PSO = new EI_PSO;
 	const auto                    path = std::filesystem::current_path() / ("data/Shaders/TressFX/" + std::string(shaderName));
-	std::vector<D3D_SHADER_MACRO> defines;
-	auto                          shader = ShaderCompiler::CompileShader(path.generic_wstring().c_str(), entryPoint, defines, "cs_5_0");
+	auto                          num_bones = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
+	auto                          group_render = std::to_string(AMD_TRESSFX_MAX_HAIR_GROUP_RENDER);
+	std::vector<D3D_SHADER_MACRO> defines = { { "AMD_TRESSFX_MAX_NUM_BONES", num_bones.c_str() }, { "AMD_TRESSFX_MAX_HAIR_GROUP_RENDER", group_render.c_str() }, { "AMD_TRESSFX_DX12", "0" }, { NULL, NULL } };
+	auto                          shader = ShaderCompiler::CompileShader(path.generic_wstring().c_str(), entryPoint, defines, "cs_5_1");
 	PSO->CS = reinterpret_cast<ID3D11ComputeShader*>(shader);
 	for (int i = 0; i < numLayouts; i++) {
 		assert(layouts[i]->description.stage == EI_CS);
@@ -485,15 +568,16 @@ std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName
 std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderName, const char* vertexEntryPoint, const char* fragmentShaderName, const char* fragmentEntryPoint, EI_PSOParams& psoParams)
 {
 	logger::info("CreateGraphicsPSO");
-	auto       pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
-	EI_PSO*    result = new EI_PSO;
-	const auto vsPath = std::filesystem::current_path() / ("data/Shaders/TressFX/" + std::string(vertexShaderName));
-	const auto psPath = std::filesystem::current_path() / ("data/Shaders/TressFX/" + std::string(fragmentShaderName));
+	auto                          pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
+	EI_PSO*                       result = new EI_PSO;
+	const auto                    vsPath = std::filesystem::current_path() / ("data/Shaders/TressFX/" + std::string(vertexShaderName));
+	const auto                    psPath = std::filesystem::current_path() / ("data/Shaders/TressFX/" + std::string(fragmentShaderName));
+	auto                          num_bones = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
+	auto                          group_render = std::to_string(AMD_TRESSFX_MAX_HAIR_GROUP_RENDER);
+	std::vector<D3D_SHADER_MACRO> strand_defines = { { "AMD_TRESSFX_MAX_NUM_BONES", num_bones.c_str() }, { "AMD_TRESSFX_MAX_HAIR_GROUP_RENDER", group_render.c_str() }, { "AMD_TRESSFX_DX12", "0" }, { NULL, NULL } };
 
-	std::vector<D3D_SHADER_MACRO> strand_defines = { { "AMD_TRESSFX_MAX_NUM_BONES", "" }, { "AMD_TRESSFX_MAX_HAIR_GROUP_RENDER", "" }, { "AMD_TRESSFX_DX12", "0" }, { NULL, NULL } };
-
-	auto vertexShader = ShaderCompiler::CompileShader(vsPath.generic_wstring().c_str(), vertexEntryPoint, strand_defines, "vs_5_0");
-	auto pixelShader = ShaderCompiler::CompileShader(psPath.generic_wstring().c_str(), fragmentEntryPoint, strand_defines, "ps_5_0");
+	auto vertexShader = ShaderCompiler::CompileShader(vsPath.generic_wstring().c_str(), vertexEntryPoint, strand_defines, "vs_5_1");
+	auto pixelShader = ShaderCompiler::CompileShader(psPath.generic_wstring().c_str(), fragmentEntryPoint, strand_defines, "ps_5_1");
 
 	D3D11_BLEND_DESC blendDesc;
 	blendDesc.AlphaToCoverageEnable = false;
@@ -557,7 +641,7 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 	result->primitiveTopology = *psoParams.primitiveTopology;
 	result->numRTVs = depthOnly ? 0 : 1;
 	result->bp = EI_BP_GRAPHICS;
-	
+
 	return std::unique_ptr<EI_PSO>(result);
 }
 
@@ -617,7 +701,7 @@ void EI_Device::DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& ps
 
 void EI_Device::OnCreate()
 {
-	logger::info("Create dullscreen index buffer");
+	logger::info("Create fullscreen index buffer");
 	m_pFullscreenIndexBuffer = CreateBufferResource(sizeof(uint32_t), 4, EI_BF_INDEXBUFFER, "FullScreenIndexBuffer");
 	// finish creating the index buffer
 	uint32_t indexArray[] = { 0, 1, 2, 3 };
@@ -665,7 +749,7 @@ void EI_RenderTargetSet::SetResources(const EI_Resource** pResourcesArray)
 	}
 	if (m_HasDepth) {
 		m_depthView = pResourcesArray[m_NumResources - 1]->DSView;
-	} else if (m_NumResources>0){
+	} else if (m_NumResources > 0) {
 		m_renderTargets[m_NumResources - 1] = pResourcesArray[m_NumResources - 1]->RTView;
 	}
 }
@@ -677,8 +761,12 @@ EI_RenderTargetSet::~EI_RenderTargetSet()
 
 void EI_CommandContext::UpdateBuffer(EI_Resource* res, void* data)
 {
-	logger::info("Updating buffer");
+	logger::info("Updating buffer: {}", res->name);
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+
+	logger::info("New data address: {}", Util::ptr_to_string(data));
+	logger::info("buffer address: {}", Util::ptr_to_string(res->m_pBuffer));
+	logger::info("total mem size: {}", res->m_totalMemSize);
 
 	pContext->UpdateSubresource(res->m_pBuffer, 0, nullptr, data, res->m_totalMemSize, res->m_totalMemSize);
 }

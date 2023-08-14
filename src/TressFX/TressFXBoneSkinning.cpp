@@ -195,9 +195,11 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
 
                 sTokens.clear();
                 int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
+				UNREFERENCED_PARAMETER(numFound);
                 assert(numFound == 15);
 
                 unsigned int vertexIndex = atoi(sTokens[0].c_str());
+				UNREFERENCED_PARAMETER(vertexIndex);
                 assert(vertexIndex == index);
 
                 AMD::float3& pos = m_pTempVertices[index];
@@ -263,9 +265,11 @@ bool TressFXBoneSkinning::LoadTressFXCollisionMeshData(
 
                 sTokens.clear();
                 int numFound = SuStringTokenizer(sLine, " ", sTokens, false);
+				UNREFERENCED_PARAMETER(numFound);
                 assert(numFound == 4);
 
                 unsigned int triangleIndex = atoi(sTokens[0].c_str());
+				UNREFERENCED_PARAMETER(triangleIndex);
                 assert(triangleIndex == index);
 
                 m_pTempIndices[index * 3 + 0] = atoi(sTokens[1].c_str());

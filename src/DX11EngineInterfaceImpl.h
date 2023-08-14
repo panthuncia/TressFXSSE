@@ -36,7 +36,7 @@ public:
 
 	//int GetHeight() const { return m_ResourceType == EI_ResourceType::Texture ? m_pTexture->GetHeight() : 0; }
 	//int GetWidth() const { return m_ResourceType == EI_ResourceType::Texture ? m_pTexture->GetWidth() : 0; }
-
+	std::string name;
 	UINT m_totalMemSize;
 	UINT m_textureWidth;
 	UINT m_textureHeight;
@@ -172,9 +172,10 @@ public:
 	void GetTimeStamp(const char* name);
 
 private:
+	std::unique_ptr<EI_Resource> CreateStandardBufferResource(int structSize, const int structCount, EI_StringHash name);
 	std::unique_ptr<EI_Resource> CreateIndexBufferResource(int structSize, const int structCount, EI_StringHash name);
 	std::unique_ptr<EI_Resource> CreateConstantBufferResource(int structSize, const int structCount, EI_StringHash name);
-	std::unique_ptr<EI_Resource> CreateStructuredBufferResource(int structSize, const int structCount, EI_StringHash name);
+	std::unique_ptr<EI_Resource> CreateStructuredBufferResource(int structSize, const int structCount, bool uav, EI_StringHash name);
 
 	std::unique_ptr<EI_Resource>  m_depthBuffer;
 	std::unique_ptr<EI_Resource> m_colorBuffer;

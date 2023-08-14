@@ -42,7 +42,7 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 	SDKVersion;
 	Software;
 	DriverType;*/
-	//Flags |= D3D11_CREATE_DEVICE_DEBUG; 
+	Flags |= D3D11_CREATE_DEVICE_DEBUG; 
 	logger::info("Calling original D3D11CreateDeviceAndSwapChain");
 	HRESULT hr = (*ptrD3D11CreateDeviceAndSwapChain)(pAdapter,
 		DriverType,

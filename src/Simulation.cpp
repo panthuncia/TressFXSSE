@@ -42,7 +42,9 @@ Simulation::Simulation() :
 	EI_Device* pDevice = GetDevice();
 
 	// mSimulation = new TressFXSimulation();
+	logger::info("initialize simulaton");
 	mSimulation.Initialize(pDevice);
+	logger::info("Initialize SDF collision system");
 	mSDFCollisionSystem.Initialize(pDevice);
 }
 
