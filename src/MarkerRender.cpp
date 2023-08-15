@@ -39,7 +39,7 @@ void MarkerRender::ClearMarkers() {
 }
 void MarkerRender::DrawAllMarkers(DirectX::XMMATRIX viewXMMatrix, DirectX::XMMATRIX projXMMatrix)
 {
-	logger::info("Drawing {} markers", m_markerPositions.size());
+	//logger::info("Drawing {} markers", m_markerPositions.size());
 	MarkerRender::GetSingleton()->DrawMarkers(m_markerPositions, viewXMMatrix, projXMMatrix);
 	m_markerPositions.clear();
 }

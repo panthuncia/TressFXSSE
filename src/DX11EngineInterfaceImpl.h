@@ -37,10 +37,10 @@ public:
 	//int GetHeight() const { return m_ResourceType == EI_ResourceType::Texture ? m_pTexture->GetHeight() : 0; }
 	//int GetWidth() const { return m_ResourceType == EI_ResourceType::Texture ? m_pTexture->GetWidth() : 0; }
 	std::string name;
-	UINT m_totalMemSize;
-	UINT m_textureWidth;
-	UINT m_textureHeight;
-	UINT m_indexBufferNumIndices;
+	UINT        m_totalMemSize;
+	UINT        m_textureWidth;
+	UINT        m_textureHeight;
+	UINT        m_indexBufferNumIndices;
 
 	EI_ResourceType m_ResourceType = EI_ResourceType::Undefined;
 
@@ -94,33 +94,33 @@ struct EI_RenderTargetSet
 class EI_PSO
 {
 public:
-	EI_BindPoint               bp;
-	ID3D11VertexShader*        VS = nullptr;
-	ID3D11ClassInstance**      VSClassInstances;
-	UINT                       numVSClassInstances = 0;
-	ID3D11PixelShader*         PS = nullptr;
-	ID3D11ClassInstance**      PSClassInstances;
-	UINT                       numPSClassInstances = 0;
-	ID3D11ComputeShader*       CS = nullptr;
-	ID3D11ClassInstance**      CSClassInstances;
-	UINT                       numCSClassInstances = 0;
-	ID3D11BlendState*          blendState = nullptr;
-	FLOAT                      blendFactor[4] = { 0 };
-	UINT                       sampleMask = 0;
-	ID3D11RasterizerState*     rasterizerState = nullptr;
-	ID3D11DepthStencilState*   depthStencilState = nullptr;
-	UINT                       stencilRef = 0;
-	ID3D11InputLayout*         inputLayout = nullptr;
-	D3D11_PRIMITIVE_TOPOLOGY   primitiveTopology;
-	ID3D11Buffer*              indexBuffer = nullptr;
-	DXGI_FORMAT                indexBufferFormat;
-	UINT                       indexBufferOffset = 0;
-	UINT                       numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-	ID3D11Buffer*              vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-	UINT                       vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-	UINT                       vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-	UINT                       numRTVs = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
-	ID3D11DepthStencilView*    DSV;
+	EI_BindPoint             bp;
+	ID3D11VertexShader*      VS = nullptr;
+	ID3D11ClassInstance**    VSClassInstances;
+	UINT                     numVSClassInstances = 0;
+	ID3D11PixelShader*       PS = nullptr;
+	ID3D11ClassInstance**    PSClassInstances;
+	UINT                     numPSClassInstances = 0;
+	ID3D11ComputeShader*     CS = nullptr;
+	ID3D11ClassInstance**    CSClassInstances;
+	UINT                     numCSClassInstances = 0;
+	ID3D11BlendState*        blendState = nullptr;
+	FLOAT                    blendFactor[4] = { 0 };
+	UINT                     sampleMask = 0;
+	ID3D11RasterizerState*   rasterizerState = nullptr;
+	ID3D11DepthStencilState* depthStencilState = nullptr;
+	UINT                     stencilRef = 0;
+	ID3D11InputLayout*       inputLayout = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY primitiveTopology;
+	ID3D11Buffer*            indexBuffer = nullptr;
+	DXGI_FORMAT              indexBufferFormat;
+	UINT                     indexBufferOffset = 0;
+	UINT                     numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+	ID3D11Buffer*            vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     numRTVs = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
+	ID3D11DepthStencilView*  DSV;
 };
 
 class EI_CommandContext
@@ -149,16 +149,19 @@ public:
 	EI_CommandContext&                  GetCurrentCommandContext() { return m_currentCommandContext; }
 	EI_Resource*                        GetColorBufferResource() { return m_colorBuffer.get(); }
 	EI_Resource*                        GetDepthBufferResource() { return m_depthBuffer.get(); }
+	EI_Resource*                        GetShadowBufferResource() {return m_shadowBuffer.get();}
 	EI_ResourceFormat                   GetDepthBufferFormat() { return DXGI_FORMAT_R24G8_TYPELESS; }
 	EI_ResourceFormat                   GetColorBufferFormat() { return DXGI_FORMAT_R8G8B8A8_UNORM; }
 	EI_BindSet*                         GetSamplerBindSet() { return m_pSamplerBindSet.get(); }
 	EI_Resource*                        GetDefaultWhiteTexture() { return m_DefaultWhiteTexture.get(); }
 	void                                OnCreate();
 	std::unique_ptr<EI_Resource>        CreateBufferResource(int structSize, const int structCount, const unsigned int flags, EI_StringHash name);
+	std::unique_ptr<EI_Resource>        CreateSampler(EI_Filter MinFilter, EI_Filter MaxFilter, EI_Filter MipFilter, EI_AddressMode AddressMode);
 	std::unique_ptr<EI_BindLayout>      CreateLayout(const EI_LayoutDescription& description);
 	std::unique_ptr<EI_BindSet>         CreateBindSet(EI_BindLayout* layout, EI_BindSetDescription& bindSet);
 	std::unique_ptr<EI_Resource>        CreateResourceFromFile(const char* szFilename, bool useSRGB /*= false*/);
 	std::unique_ptr<EI_Resource>        CreateUint32Resource(const int width, const int height, const int arraySize, const char* name, uint32_t ClearValue /*= 0*/);
+	std::unique_ptr<EI_Resource>        CreateDepthResource(const int width, const int height, const char* name);
 	std::unique_ptr<EI_RenderTargetSet> CreateRenderTargetSet(const EI_ResourceFormat* pResourceFormats, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues);
 	std::unique_ptr<EI_RenderTargetSet> CreateRenderTargetSet(const EI_Resource** pResourcesArray, const uint32_t numResources, const EI_AttachmentParams* AttachmentParams, float* clearValues);
 	std::unique_ptr<EI_Resource>        CreateRenderTargetResource(const int width, const int height, const size_t channels, const size_t channelSize, const char* name, AMD::float4* ClearValues /*= nullptr*/);
@@ -166,7 +169,7 @@ public:
 	std::unique_ptr<EI_PSO>             CreateGraphicsPSO(const char* vertexShaderName, const char* vertexEntryPoint, const char* fragmentShaderName, const char* fragmentEntryPoint, EI_PSOParams& psoParams);
 	void                                BeginRenderPass(EI_CommandContext& commandContext, const EI_RenderTargetSet* pRenderTargetSet, const wchar_t* pPassName, uint32_t width = 0, uint32_t height = 0);
 	void                                EndRenderPass(EI_CommandContext& commandContext);
-	
+
 	//why is this in EI_Device?
 	void DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& pso, EI_BindSet** bindSets, uint32_t numBindSets);
 	void GetTimeStamp(const char* name);
@@ -180,10 +183,12 @@ private:
 	std::unique_ptr<EI_Resource> CreateConstantBufferResource(int structSize, const int structCount, EI_StringHash name);
 	std::unique_ptr<EI_Resource> CreateStructuredBufferResource(int structSize, const int structCount, bool uav, EI_StringHash name);
 
-	std::unique_ptr<EI_Resource>  m_depthBuffer;
+	std::unique_ptr<EI_Resource> m_depthBuffer;
 	std::unique_ptr<EI_Resource> m_colorBuffer;
 	std::unique_ptr<EI_Resource> m_shadowBuffer;
-	std::unique_ptr<EI_BindSet>   m_pSamplerBindSet = nullptr;
+
+	std::unique_ptr<EI_Resource> m_LinearWrapSampler;
+	std::unique_ptr<EI_BindSet>  m_pSamplerBindSet = nullptr;
 
 	std::unique_ptr<EI_Resource> m_pFullscreenIndexBuffer;
 	EI_CommandContext            m_currentCommandContext;

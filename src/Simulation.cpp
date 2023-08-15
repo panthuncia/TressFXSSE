@@ -119,5 +119,7 @@ void Simulation::RunSimulation(EI_CommandContext& simContext, SimulationContext&
 		hairObjects[i] = ctx.hairStrands[i]->GetTressFXHandle();
 	}
 	// Run simulation
+	logger::info("Running simulation");
 	mSimulation.Simulate(simContext, hairObjects);
+	logger::info("Simulate done");
 }

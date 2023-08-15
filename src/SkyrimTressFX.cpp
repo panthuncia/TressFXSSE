@@ -18,7 +18,20 @@ void SkyrimTressFX::OnCreate(int width, int height)
 	m_nScreenWidth = width;
 	m_nPPLLNodes = m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL;
 
+	// TODO Why?
+	DestroyLayouts();
+
+	logger::info("initialize layouts");
+	InitializeLayouts();
+
 	GetDevice()->OnCreate();
+
+	logger::info("Create PPLL");
+	m_pPPLL.reset(new TressFXPPLL);
+	logger::info("Create ShortCut");
+	m_pShortCut.reset(new TressFXShortCut);
+	logger::info("Create Simulation");
+	m_pSimulation.reset(new Simulation);
 	m_activeScene.scene.reset(new EI_Scene);
 
 	const EI_ResourceFormat FormatArray[] = { GetDevice()->GetColorBufferFormat(), GetDevice()->GetDepthBufferFormat() };
@@ -208,19 +221,6 @@ void SkyrimTressFX::UpdateRenderingParameters()
 void SkyrimTressFX::LoadScene()
 {
 	TressFXSceneDescription desc = LoadTFXUserFiles();
-
-	// TODO Why?
-	DestroyLayouts();
-
-	logger::info("initialize layouts");
-	InitializeLayouts();
-
-	logger::info("Create PPLL");
-	m_pPPLL.reset(new TressFXPPLL);
-	logger::info("Create ShortCut");
-	m_pShortCut.reset(new TressFXShortCut);
-	logger::info("Create Simulation");
-	m_pSimulation.reset(new Simulation);
 
 	//EI_Device*         pDevice = GetDevice();
 	//EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
@@ -439,11 +439,11 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 
 	//m_activeScene.scene->OnResize(m_nScreenWidth, m_nScreenHeight);
 
-	//// Needs to be created in OnResize in case we have debug buffers bound which vary by screen width/height
-	//EI_BindSetDescription lightSet = {
-	//	{ m_activeScene.lightConstantBuffer.GetBufferResource(), GetDevice()->GetShadowBufferResource() }
-	//};
-	//m_activeScene.lightBindSet = GetDevice()->CreateBindSet(GetLightLayout(), lightSet);
+	// Needs to be created in OnResize in case we have debug buffers bound which vary by screen width/height
+	EI_BindSetDescription lightSet = {
+		{ m_activeScene.lightConstantBuffer.GetBufferResource(), GetDevice()->GetShadowBufferResource() }
+	};
+	m_activeScene.lightBindSet = GetDevice()->CreateBindSet(GetLightLayout(), lightSet);
 
 	// TressFX Usage
 	switch (m_eOITMethod) {

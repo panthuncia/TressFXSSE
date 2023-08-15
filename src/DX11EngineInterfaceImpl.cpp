@@ -5,6 +5,7 @@
 #include "SkyrimGPUResourceManager.h"
 #include "TressFX/AMD_TressFX.h"
 #include "Util.h"
+#include "TressFX/TressFXLayouts.h"
 
 inline D3D11_BLEND_OP operator*(EI_BlendOp Enum)
 {
@@ -151,6 +152,7 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 {
 	logger::info("CreateBindSet");
 	EI_BindSet* set = new EI_BindSet;
+	logger::info("BindSet address: {}", Util::ptr_to_string(set));
 	set->stage = layout->description.stage;
 	int i = 0;
 	for (EI_ResourceDescription resourceDescription : layout->description.resources) {
@@ -158,21 +160,27 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 		logger::info("resource name: {}", resource->name);
 		switch (resourceDescription.type) {
 		case EI_RESOURCETYPE_BUFFER_RO:
+			logger::info("Resource: {} type: SRV", resource->name);
 			set->srvs.push_back(resource->SRView);
 			break;
 		case EI_RESOURCETYPE_IMAGE_RO:
+			logger::info("Resource: {} type: SRV", resource->name);
 			set->srvs.push_back(resource->SRView);
 			break;
 		case EI_RESOURCETYPE_BUFFER_RW:
+			logger::info("Resource: {} type: UAV", resource->name);
 			set->uavs.push_back(resource->UAView);
 			break;
 		case EI_RESOURCETYPE_IMAGE_RW:
+			logger::info("Resource: {} type: UAV", resource->name);
 			set->uavs.push_back(resource->UAView);
 			break;
 		case EI_RESOURCETYPE_SAMPLER:
+			logger::info("Resource: {} type: sampler", resource->name);
 			set->samplers.push_back(resource->m_pSampler);
 			break;
 		case EI_RESOURCETYPE_UNIFORM:
+			logger::info("Resource: {} type: CBuffer", resource->name);
 			set->cbuffers.push_back(resource->m_pBuffer);
 			break;
 		}
@@ -200,6 +208,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, co
 {
 	UNREFERENCED_PARAMETER(ClearValue);
 	logger::info("CreateUint32Resource");
+	auto         pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Buffer;
 
@@ -212,7 +221,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, co
 	desc.Height = height;
 	desc.Format = DXGI_FORMAT_R32_UINT;
 	desc.ArraySize = arraySize;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 	desc.MipLevels = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -221,12 +230,45 @@ std::unique_ptr<EI_Resource> EI_Device::CreateUint32Resource(const int width, co
 	res->m_textureWidth = width;
 	res->m_textureHeight = height;
 	res->name = name;
-	HRESULT hr = SkyrimGPUResourceManager::GetInstance()->m_pDevice->CreateTexture2D(&desc, nullptr, &res->m_pTexture);
+	auto hr = pDevice->CreateTexture2D(&desc, nullptr, &res->m_pTexture);
 	if (FAILED(hr)) {
 		logger::info("UInt32 texture creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
+
+	//create SRV
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	srvDesc.Format = DXGI_FORMAT_R32_UINT;
+	/*srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.MostDetailedMip = 0;
+		srvDesc.Texture2DArray.MipLevels = 1;
+		srvDesc.Texture2DArray.FirstArraySlice = 0;
+		srvDesc.Texture2DArray.ArraySize = (UINT)arraySize;*/
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	//logger::info("Creating SRV");
+	hr = pDevice->CreateShaderResourceView(res->m_pTexture, &srvDesc, &res->SRView);
+	if (FAILED(hr)) {
+		logger::info("UInt32 texture creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+	//create UAV
+	D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+	uavDesc.Format = DXGI_FORMAT_R32_UINT;
+	/*uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Texture2DArray.ArraySize = (UINT)arraySize;
+		uavDesc.Texture2DArray.FirstArraySlice = 0;
+		uavDesc.Texture2DArray.MipSlice = 0;*/
+	uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice = 0;
+	//logger::info("Creating UAV");
+	hr = pDevice->CreateUnorderedAccessView(res->m_pTexture, &uavDesc, &res->UAView);
+	if (FAILED(hr)) {
+		logger::info("UInt32 texture creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+
 	return std::unique_ptr<EI_Resource>(res);
 }
 
@@ -406,7 +448,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr)) {
 		logger::error("standard buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Format = format;
@@ -422,7 +463,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr1)) {
 		logger::error("standard buffer SRV creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	//SU_ASSERT(r.srv);
 
@@ -444,7 +484,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStandardBufferResource(int structS
 	if (FAILED(hr2)) {
 		logger::error("standard buffer UAV creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	logger::info("Addr. of uav: {}", Util::ptr_to_string(res->UAView));
 	res->name = name;
@@ -468,7 +507,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateIndexBufferResource(int structSize
 	if (FAILED(hr)) {
 		logger::error("index buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	EI_Resource* res = new EI_Resource;
 	res->m_indexBufferNumIndices = structCount;
@@ -501,7 +539,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateConstantBufferResource(int structS
 	if (FAILED(hr)) {
 		logger::info("Constant buffer creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::ConstantBuffer;
@@ -542,7 +579,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 	if (FAILED(hr)) {
 		logger::info("Structured buffer SRV creation failed");
 		Util::PrintAllD3D11DebugMessages();
-		exit(1);
 	}
 	//SU_ASSERT(r.srv);
 
@@ -564,7 +600,6 @@ std::unique_ptr<EI_Resource> EI_Device::CreateStructuredBufferResource(int struc
 		if (FAILED(hr2)) {
 			logger::info("Structured buffer UAV creation failed");
 			Util::PrintAllD3D11DebugMessages();
-			exit(1);
 		}
 		logger::info("Addr. of uav: {}", Util::ptr_to_string(pResource->UAView));
 	}
@@ -726,6 +761,112 @@ void EI_Device::DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& ps
 	commandContext.DrawIndexedInstanced(pso, drawParams);
 }
 
+std::unique_ptr<EI_Resource> EI_Device::CreateSampler(EI_Filter MinFilter, EI_Filter MaxFilter, EI_Filter MipFilter, EI_AddressMode AddressMode)
+{
+	logger::info("CreateSampler");
+	EI_Resource* res = new EI_Resource;
+	res->m_ResourceType = EI_ResourceType::Sampler;
+
+	D3D11_FILTER Filter;
+
+	if (MinFilter == EI_Filter::Linear) {
+		if (MaxFilter == EI_Filter::Linear) {
+			if (MipFilter == EI_Filter::Linear)
+				Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+			else
+				Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+		} else {
+			if (MipFilter == EI_Filter::Linear)
+				Filter = D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			else
+				Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+		}
+	} else {
+		if (MaxFilter == EI_Filter::Linear) {
+			if (MipFilter == EI_Filter::Linear)
+				Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+			else
+				Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+		} else {
+			if (MipFilter == EI_Filter::Linear)
+				Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+			else
+				Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		}
+	}
+
+	D3D11_SAMPLER_DESC SamplerDesc = {};
+	SamplerDesc.Filter = Filter;
+	SamplerDesc.AddressU = (AddressMode == EI_AddressMode::Wrap) ? D3D11_TEXTURE_ADDRESS_WRAP : D3D11_TEXTURE_ADDRESS_CLAMP;
+	SamplerDesc.AddressV = (AddressMode == EI_AddressMode::Wrap) ? D3D11_TEXTURE_ADDRESS_WRAP : D3D11_TEXTURE_ADDRESS_CLAMP;
+	SamplerDesc.AddressW = (AddressMode == EI_AddressMode::Wrap) ? D3D11_TEXTURE_ADDRESS_WRAP : D3D11_TEXTURE_ADDRESS_CLAMP;
+	SamplerDesc.MipLODBias = 0;
+	SamplerDesc.MaxAnisotropy = 1;
+	SamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	SamplerDesc.BorderColor[0] = 0.f;
+	SamplerDesc.BorderColor[1] = 0.f;
+	SamplerDesc.BorderColor[2] = 0.f;
+	SamplerDesc.BorderColor[3] = 0.f;
+	SamplerDesc.MinLOD = 0.f;
+	SamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	logger::info("Creating sampler");
+	auto pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
+	pDevice->CreateSamplerState(&SamplerDesc, &res->m_pSampler);
+	res->samplerDesc = SamplerDesc;
+	res->name = "sampler";
+	return std::unique_ptr<EI_Resource>(res);
+}
+
+std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, const int height, const char* name) {
+	EI_Resource* res = new EI_Resource;
+	res->m_ResourceType = EI_ResourceType::Texture;
+	res->name = name;
+	auto pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
+
+	D3D11_TEXTURE2D_DESC desc;
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R32_TYPELESS;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+	HRESULT hr = pDevice->CreateTexture2D(&desc, NULL, &res->m_pTexture);
+	if (FAILED(hr)) {
+		logger::error("depth texture creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
+	viewDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	viewDesc.Texture2D.MipLevels = 1;
+	viewDesc.Texture2D.MostDetailedMip = 0;
+	hr = pDevice->CreateShaderResourceView(res->m_pTexture, &viewDesc, &res->SRView);
+	if (FAILED(hr)) {
+		logger::error("Depth SRV creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC stencilDesc;
+	stencilDesc.Flags = 0;
+	stencilDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	stencilDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	stencilDesc.Texture2D.MipSlice = 0;
+
+	hr = pDevice->CreateDepthStencilView(res->m_pTexture, &stencilDesc, &res->DSView);
+	if (FAILED(hr)) {
+		logger::error("DSV creation failed");
+		Util::PrintAllD3D11DebugMessages();
+	}
+	return std::unique_ptr<EI_Resource>(res);
+}
+
 void EI_Device::OnCreate()
 {
 	logger::info("Create fullscreen index buffer");
@@ -736,6 +877,14 @@ void EI_Device::OnCreate()
 
 	logger::info("Create default texture");
 	m_DefaultWhiteTexture = CreateResourceFromFile("DefaultWhite.png", true);
+	m_LinearWrapSampler = CreateSampler(EI_Filter::Linear, EI_Filter::Linear, EI_Filter::Linear, EI_AddressMode::Wrap);
+	EI_BindSetDescription bindSetDesc = { {
+		m_LinearWrapSampler.get(),
+	} };
+	logger::info("Creating sampler bindset");
+	m_pSamplerBindSet = CreateBindSet(GetSamplerLayout(), bindSetDesc);
+	// Create shadow buffer. Because GLTF only allows us 1 buffer, we are going to create a HUGE one and divy it up as needed.
+	m_shadowBuffer = CreateDepthResource(4096, 4096, "Shadow Buffer");
 }
 
 void EI_Device::GetTimeStamp(const char* name)
@@ -744,7 +893,8 @@ void EI_Device::GetTimeStamp(const char* name)
 	//???
 }
 
-void EI_Device::CreateColorAndDepthResources(ID3D11RenderTargetView* pColorTextureView, ID3D11DepthStencilView* pDepthStencilView) {
+void EI_Device::CreateColorAndDepthResources(ID3D11RenderTargetView* pColorTextureView, ID3D11DepthStencilView* pDepthStencilView)
+{
 	EI_Resource* pColorResource = new EI_Resource;
 	EI_Resource* pDepthResource = new EI_Resource;
 
@@ -818,31 +968,98 @@ void EI_CommandContext::UpdateBuffer(EI_Resource* res, void* data)
 	pContext->UpdateSubresource(res->m_pBuffer, 0, nullptr, data, res->m_totalMemSize, res->m_totalMemSize);
 }
 
+UINT zeros[8] = {0,0,0,0,0,0,0,0};
 void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets)
 {
 	UNREFERENCED_PARAMETER(pso);
 	logger::info("BindSets");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+
+	std::vector<ID3D11Buffer*>             vsCbuffers;
+	std::vector<ID3D11ShaderResourceView*> vsSRVs;
+
+	std::vector<ID3D11Buffer*>              psCbuffers;
+	std::vector<ID3D11ShaderResourceView*>  psSRVs;
+	std::vector<ID3D11UnorderedAccessView*> psUAVs;
+
+	std::vector<ID3D11SamplerState*> samplers;
+
+	std::vector<ID3D11Buffer*> csCbuffers;
+	std::vector<ID3D11UnorderedAccessView*> csUAVs;
+
+	bool isCS = false;
+
+	logger::info("assembling resource lists");
+	logger::info("{} BindSets", numBindSets);
 	for (int i = 0; i < numBindSets; i++) {
 		auto bindSet = bindSets[i];
+		logger::info("BindSet address: {}", Util::ptr_to_string(bindSet));
+		logger::info("Inserting {} samplers", bindSet->samplers.size());
+		samplers.insert(samplers.end(), bindSet->samplers.begin(), bindSet->samplers.end());
 		switch (bindSet->stage) {
 		case EI_VS:
-			pContext->VSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->VSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->VSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
+			logger::info("inserting VS");
+			vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+			vsSRVs.insert(vsSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
 			break;
 		case EI_PS:
-			pContext->PSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->PSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->PSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
+			logger::info("inserting PS");
+			psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+			psSRVs.insert(psSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+			psUAVs.insert(psUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
+			break;
+		case EI_ALL:
+			logger::info("Inserting ALL");
+			if (bindSet->cbuffers.size() > 0) {
+				vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+				psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+			}
+			if (bindSet->srvs.size() > 0) {
+				vsSRVs.insert(vsSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+				psSRVs.insert(psSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+			}
 			break;
 		case EI_CS:
-			pContext->CSSetConstantBuffers(0, (UINT)bindSet->cbuffers.size(), bindSet->cbuffers.data());
-			pContext->CSSetShaderResources(0, (UINT)bindSet->srvs.size(), bindSet->srvs.data());
-			pContext->CSSetSamplers(0, (UINT)bindSet->samplers.size(), bindSet->samplers.data());
+			logger::info("Inserting CS");
+			isCS = true;
+			csCbuffers.insert(csCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+			csUAVs.insert(csUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
 			break;
 		}
+		logger::info("Done with BindSet {}", i+1);
 	}
+	logger::info("Done building lists");
+	if (isCS) {
+		logger::info("Binding CS resources");
+		pContext->CSSetConstantBuffers(0, (UINT)csCbuffers.size(), csCbuffers.data());
+		pContext->CSSetSamplers(0, (UINT)samplers.size(), samplers.data());
+		return;
+	}
+
+	if (samplers.size() > 0) {
+		logger::info("Binding samplers");
+		pContext->VSSetSamplers(0, (UINT)samplers.size(), samplers.data());
+		pContext->PSSetSamplers(0, (UINT)samplers.size(), samplers.data());
+	}
+
+	logger::info("Binding VS resources");
+	if (vsCbuffers.size()>0)
+		pContext->VSSetConstantBuffers(0, (UINT)vsCbuffers.size(), vsCbuffers.data());
+	if (vsSRVs.size() > 0)
+		pContext->VSSetShaderResources(0, (UINT)vsSRVs.size(), vsSRVs.data());
+
+	logger::info("Binding PS resources");
+	if (psCbuffers.size()>0)
+		pContext->PSSetConstantBuffers(0, (UINT)psCbuffers.size(), psCbuffers.data());
+	if (psSRVs.size()>0)
+		pContext->PSSetShaderResources(0, (UINT)psSRVs.size(), psSRVs.data());
+	
+	logger::info("Setting UAVs");
+	if (psUAVs.size() >= 0)
+		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (UINT)psUAVs.size(), psUAVs.data(), zeros);
+
+
+	logger::info("Done binding");
 }
 
 void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams)
@@ -880,6 +1097,7 @@ void EI_CommandContext::ClearUint32Image(EI_Resource* res, uint32_t value)
 	logger::info("texture address: {}", Util::ptr_to_string(res->m_pTexture));
 	logger::info("dimensions: {}, {}", res->m_textureWidth, res->m_textureHeight);
 	pContext->ClearUnorderedAccessViewUint(res->UAView, values);
+	logger::info("After clear");
 }
 
 void EI_CommandContext::BindPSO(EI_PSO* pso)

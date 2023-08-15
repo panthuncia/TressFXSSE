@@ -258,13 +258,14 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 	//auto& children = playerSkeleton->skeleton->GetChildren();
 	//ListChildren(children);
 	logger::info("num bones: {}", m_numBones);
-	
+	m_boneMatricesXMMATRIX.clear();
+	m_boneMatrices.clear();
 	for (uint16_t i = 0; i < m_numBones; i++) {
 		auto bonePos = Util::ToRenderScale(glm::vec3(m_boneTransforms[i].translate.x, m_boneTransforms[i].translate.y, m_boneTransforms[i].translate.z));
 
 		auto boneRot = m_boneTransforms[i].rotate.Transpose();
 		//Menu::GetSingleton()->DrawMatrix(boneRot, "bone");
-		
+		logger::info("1");
 		AMD::float4x4 mat = { boneRot.entry[0][0],
 			boneRot.entry[0][1],
 			boneRot.entry[0][2],
@@ -281,14 +282,32 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 			bonePos.y,
 			bonePos.z,
 			0.0 };
-		m_boneMatrices[i]=mat;
-		DirectX::XMFLOAT4X4 matFloats = DirectX::XMFLOAT4X4(mat.m);
-		m_boneMatricesXMMATRIX[i] = DirectX::XMLoadFloat4x4(&matFloats);
+		logger::info("2");
+		m_boneMatrices.push_back(mat);
+		m_boneMatricesXMMATRIX.push_back(XMMatrixSet(boneRot.entry[0][0],
+			boneRot.entry[0][1],
+			boneRot.entry[0][2],
+			0.0,
+			boneRot.entry[1][0],
+			boneRot.entry[1][1],
+			boneRot.entry[1][2],
+			0.0,
+			boneRot.entry[2][0],
+			boneRot.entry[2][1],
+			boneRot.entry[2][2],
+			0.0,
+			bonePos.x,
+			bonePos.y,
+			bonePos.z,
+			0.0));
+		logger::info("3");
 	}
 
 	//logger::info("assembled matrices");
+	logger::info("About to update bones");
 	m_pHairObject->UpdateBoneMatrices(&(m_boneMatrices.front()), (int)m_numBones);
 	SkyrimTressFX::GetSingleton()->m_activeScene.scene.get()->skinIDBoneTransformsMap[m_skinNumber] = m_boneMatricesXMMATRIX;
+	logger::info("Updated bones");
 	return true;
 }
 void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
