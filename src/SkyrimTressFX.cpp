@@ -158,7 +158,7 @@ void SkyrimTressFX::Update(){
 	amdViewMatrix.m[15] = viewMatrix[3][3];
 	m_activeScene.scene.get()->m_viewMatrix = amdViewMatrix;
 	
-	auto viewProjMatrix = projMatrix * viewMatrix;
+	auto          viewProjMatrix = glm::transpose(viewMatrix * projMatrix);
 	AMD::float4x4 amdViewProjMatrix;
 	amdViewProjMatrix.m[0] = viewProjMatrix[0][0];
 	amdViewProjMatrix.m[1] = viewProjMatrix[0][1];
@@ -177,6 +177,26 @@ void SkyrimTressFX::Update(){
 	amdViewProjMatrix.m[14] = viewProjMatrix[3][2];
 	amdViewProjMatrix.m[15] = viewProjMatrix[3][3];
 	m_activeScene.scene.get()->m_viewProjMatrix = amdViewProjMatrix;
+
+	auto viewProjMatrixInverse = glm::inverse(viewProjMatrix);
+	AMD::float4x4 amdViewProjMatrixInverse;
+	amdViewProjMatrixInverse.m[0] = viewProjMatrixInverse[0][0];
+	amdViewProjMatrixInverse.m[1] = viewProjMatrixInverse[0][1];
+	amdViewProjMatrixInverse.m[2] = viewProjMatrixInverse[0][2];
+	amdViewProjMatrixInverse.m[3] = viewProjMatrixInverse[0][3];
+	amdViewProjMatrixInverse.m[4] = viewProjMatrixInverse[1][0];
+	amdViewProjMatrixInverse.m[5] = viewProjMatrixInverse[1][1];
+	amdViewProjMatrixInverse.m[6] = viewProjMatrixInverse[1][2];
+	amdViewProjMatrixInverse.m[7] = viewProjMatrixInverse[1][3];
+	amdViewProjMatrixInverse.m[8] = viewProjMatrixInverse[2][0];
+	amdViewProjMatrixInverse.m[9] = viewProjMatrixInverse[2][1];
+	amdViewProjMatrixInverse.m[10] = viewProjMatrixInverse[2][2];
+	amdViewProjMatrixInverse.m[11] = viewProjMatrixInverse[2][3];
+	amdViewProjMatrixInverse.m[12] = viewProjMatrixInverse[3][0];
+	amdViewProjMatrixInverse.m[13] = viewProjMatrixInverse[3][1];
+	amdViewProjMatrixInverse.m[14] = viewProjMatrixInverse[3][2];
+	amdViewProjMatrixInverse.m[15] = viewProjMatrixInverse[3][3];
+	m_activeScene.scene.get()->m_invViewProjMatrix = amdViewProjMatrixInverse;
 
 	AMD::float4 amdCameraPos;
 	amdCameraPos.x = cameraPos.x;
@@ -198,6 +218,13 @@ void SkyrimTressFX::UpdateSimulationParameters()
 void SkyrimTressFX::UpdateRenderingParameters()
 {
 	std::vector<const TressFXRenderingSettings*> RenderSettings;
+
+	m_activeScene.viewConstantBuffer->vEye = m_activeScene.scene->GetCameraPos();
+	m_activeScene.viewConstantBuffer->mVP = m_activeScene.scene->GetMVP();
+	m_activeScene.viewConstantBuffer->mInvViewProj = m_activeScene.scene->GetInvViewProjMatrix();
+	m_activeScene.viewConstantBuffer->vViewport = { 0, 0, (float)m_nScreenWidth, (float)m_nScreenHeight };
+	m_activeScene.viewConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
+
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		// For now, just using distance of camera to 0, 0, 0, but should be passing in a root position for the hair object we want to LOD
 		float Distance = sqrtf(m_activeScene.scene->GetCameraPos().x * m_activeScene.scene->GetCameraPos().x + m_activeScene.scene->GetCameraPos().y * m_activeScene.scene->GetCameraPos().y + m_activeScene.scene->GetCameraPos().z * m_activeScene.scene->GetCameraPos().z);

@@ -84,7 +84,7 @@ struct Hooks
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				if (Menu::GetSingleton()->drawHairCheckbox) {
 					//tfx->Update();
-					//tfx->Draw();
+					tfx->Draw();
 					tfx->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
@@ -306,8 +306,8 @@ void hookGameLoop() {
 	stl::write_thunk_call<Main_Update>(update.address()+ RELOCATION_OFFSET(0x11F, NULL));
 }
 void hookMainDraw() {
-	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(100424, 82084).address() + REL::Relocate(0x2B4, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
-	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(99939, 82084).address() + REL::Relocate(0x616, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
+	stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(100424, 82084).address() + REL::Relocate(0x2B4, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
+	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw>(REL::RelocationID(99939, 82084).address() + REL::Relocate(0x616, 0x17A));  // EBF510 (EBF67F), F05BF0 (F05D6A) //TODO AE
 	
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(79947, 82084).address() + REL::Relocate(0x7E, 0x17A)); //TODO AE
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow light draws
