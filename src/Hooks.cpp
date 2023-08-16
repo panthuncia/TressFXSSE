@@ -84,12 +84,11 @@ struct Hooks
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				if (Menu::GetSingleton()->drawHairCheckbox) {
 					//tfx->Update();
-					//ppll->Simulate();
-					tfx->Draw();
+					//tfx->Draw();
 					tfx->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
-				auto hbao = HBAOPlus::GetSingleton();
+				/*auto hbao = HBAOPlus::GetSingleton();
 				if (!hbao->gotRTV) {
 					ID3D11RenderTargetView* pRTV;
 					RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context->OMGetRenderTargets(1, &pRTV, nullptr);
@@ -106,7 +105,9 @@ struct Hooks
 					logger::info("Rendering AO");
 					hbao->SetAOParameters();
 					hbao->RenderAO();
-				}
+				}*/
+			} else {
+				//logger::info("Skipping frame");
 			}
 			return val;
 		}
@@ -133,7 +134,6 @@ void DrawShadows() {
 	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:")
 	auto camera = RE::PlayerCamera::GetSingleton();
 	auto tfx = SkyrimTressFX::GetSingleton();
-	tfx->m_currentState = state::draw_shadows;
 	if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 		//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
 		/*if (skipFrame) {
@@ -177,9 +177,11 @@ struct BSShadowLight_DrawShadows
 	static void thunk(RE::BSShadowLight* a1, INT64* a2, DWORD* a3, int a4)
 	{
 		func(a1, a2, a3, a4);
-		if (Menu::GetSingleton()->drawShadowsCheckbox) {
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = state::draw_shadows;
+		/*if (Menu::GetSingleton()->drawShadowsCheckbox) {
 			DrawShadows();
-		}
+		}*/
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
@@ -193,81 +195,83 @@ struct Sub_DrawShadows
 {
 	static INT64 thunk(INT64 a1, UINT64* a2)
 	{
-		auto                    pManager = RE::BSGraphics::Renderer::GetSingleton();
-		auto                    pContext = pManager->GetRuntimeData().context;
-		ID3D11DepthStencilView* pOriginalDSV;
-		pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV,0, 0, nullptr);
-		pOriginalDSV->GetResource(&pOriginalDepthTexture);
-		//create texture for copy
-		if (pCurrentDepthStencilResourceNoHair == nullptr) {
-			auto pDevice = pManager->GetRuntimeData().forwarder;
-			auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
-			DXGI_SWAP_CHAIN_DESC swapDesc;
-			pSwapChain->GetDesc(&swapDesc);
-			D3D11_TEXTURE2D_DESC desc;
-			desc.Width = swapDesc.BufferDesc.Width;
-			desc.Height = swapDesc.BufferDesc.Height;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-			desc.SampleDesc.Count = 1;
-			desc.SampleDesc.Quality = 0;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			desc.CPUAccessFlags = 0;
-			desc.MiscFlags = 0;
-			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
-		}
-		if (pCurrentDepthStencilResourceWithHair == nullptr) {
-			auto                 pDevice = pManager->GetRuntimeData().forwarder;
-			auto                 pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
-			DXGI_SWAP_CHAIN_DESC swapDesc;
-			pSwapChain->GetDesc(&swapDesc);
-			D3D11_TEXTURE2D_DESC desc;
-			desc.Width = swapDesc.BufferDesc.Width;
-			desc.Height = swapDesc.BufferDesc.Height;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-			desc.SampleDesc.Count = 1;
-			desc.SampleDesc.Quality = 0;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-			desc.CPUAccessFlags = 0;
-			desc.MiscFlags = 0;
-			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
-		}
-		if (pHairDepthSRV == nullptr) {
-			auto pDevice = pManager->GetRuntimeData().forwarder;
-			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
-			viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-			viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			viewDesc.Texture2D.MipLevels = 1;
-			viewDesc.Texture2D.MostDetailedMip = 0;
-			logger::info("Creating Community Shaders depth SRV");
-			HRESULT hr2 = pDevice->CreateShaderResourceView(pCurrentDepthStencilResourceWithHair, &viewDesc, &pHairDepthSRV);
-			Util::printHResult(hr2);
-			if (pHairDepthSRV == nullptr) {
-				//Util::PrintAllD3D11DebugMessages(pDevice);
-				logger::info("Depth SRV creation failed!");
-			}
-		}
-		logger::info("Copying depth stencil");
-		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
-		DrawShadows();
-		//copy new depth with hair
-		pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
-		if (Menu::GetSingleton()->communityShadersScreenSpaceShadowsCheckbox && pHairDepthSRV != nullptr) {
-			Util::OverrideCommunityShadersScreenSpaceShadowsDepthTexture(pHairDepthSRV);
-		}
-		//hack to enable AO even if we don't want shadows
-		if (!Menu::GetSingleton()->drawShadowsCheckbox) {
-			logger::info("Restoring original depth to disable shadows");
-			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
-		}
-		//catch next copy to stop hair depth from being used elsewhere
-		catchNextResourceCopy = true;
-		overrideResource = pCurrentDepthStencilResourceNoHair;
+		//auto                    pManager = RE::BSGraphics::Renderer::GetSingleton();
+		//auto                    pContext = pManager->GetRuntimeData().context;
+		//ID3D11DepthStencilView* pOriginalDSV;
+		//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV,0, 0, nullptr);
+		//pOriginalDSV->GetResource(&pOriginalDepthTexture);
+		////create texture for copy
+		//if (pCurrentDepthStencilResourceNoHair == nullptr) {
+		//	auto pDevice = pManager->GetRuntimeData().forwarder;
+		//	auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+		//	DXGI_SWAP_CHAIN_DESC swapDesc;
+		//	pSwapChain->GetDesc(&swapDesc);
+		//	D3D11_TEXTURE2D_DESC desc;
+		//	desc.Width = swapDesc.BufferDesc.Width;
+		//	desc.Height = swapDesc.BufferDesc.Height;
+		//	desc.MipLevels = 1;
+		//	desc.ArraySize = 1;
+		//	desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+		//	desc.SampleDesc.Count = 1;
+		//	desc.SampleDesc.Quality = 0;
+		//	desc.Usage = D3D11_USAGE_DEFAULT;
+		//	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		//	desc.CPUAccessFlags = 0;
+		//	desc.MiscFlags = 0;
+		//	pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
+		//}
+		//if (pCurrentDepthStencilResourceWithHair == nullptr) {
+		//	auto                 pDevice = pManager->GetRuntimeData().forwarder;
+		//	auto                 pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+		//	DXGI_SWAP_CHAIN_DESC swapDesc;
+		//	pSwapChain->GetDesc(&swapDesc);
+		//	D3D11_TEXTURE2D_DESC desc;
+		//	desc.Width = swapDesc.BufferDesc.Width;
+		//	desc.Height = swapDesc.BufferDesc.Height;
+		//	desc.MipLevels = 1;
+		//	desc.ArraySize = 1;
+		//	desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+		//	desc.SampleDesc.Count = 1;
+		//	desc.SampleDesc.Quality = 0;
+		//	desc.Usage = D3D11_USAGE_DEFAULT;
+		//	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		//	desc.CPUAccessFlags = 0;
+		//	desc.MiscFlags = 0;
+		//	pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
+		//}
+		//if (pHairDepthSRV == nullptr) {
+		//	auto pDevice = pManager->GetRuntimeData().forwarder;
+		//	D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
+		//	viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+		//	viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		//	viewDesc.Texture2D.MipLevels = 1;
+		//	viewDesc.Texture2D.MostDetailedMip = 0;
+		//	logger::info("Creating Community Shaders depth SRV");
+		//	HRESULT hr2 = pDevice->CreateShaderResourceView(pCurrentDepthStencilResourceWithHair, &viewDesc, &pHairDepthSRV);
+		//	Util::printHResult(hr2);
+		//	if (pHairDepthSRV == nullptr) {
+		//		//Util::PrintAllD3D11DebugMessages(pDevice);
+		//		logger::info("Depth SRV creation failed!");
+		//	}
+		//}
+		//logger::info("Copying depth stencil");
+		//pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
+		//DrawShadows();
+		////copy new depth with hair
+		//pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
+		//if (Menu::GetSingleton()->communityShadersScreenSpaceShadowsCheckbox && pHairDepthSRV != nullptr) {
+		//	Util::OverrideCommunityShadersScreenSpaceShadowsDepthTexture(pHairDepthSRV);
+		//}
+		////hack to enable AO even if we don't want shadows
+		//if (!Menu::GetSingleton()->drawShadowsCheckbox) {
+		//	logger::info("Restoring original depth to disable shadows");
+		//	pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		//}
+		////catch next copy to stop hair depth from being used elsewhere
+		//catchNextResourceCopy = true;
+		//overrideResource = pCurrentDepthStencilResourceNoHair;
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = draw_shadows;
 		return func(a1, a2);
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
@@ -278,22 +282,20 @@ struct Sub_ShadowMap
 	static INT64 thunk(INT64 a1)
 	{
 		auto                    val = func(a1);
-		auto                    pContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
-		//ID3D11DepthStencilView* pOriginalDSV;
-		//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV, 0, 0, nullptr);
-		//ID3D11Resource* pOriginalDepthTexture;
-		//pOriginalDSV->GetResource(&pOriginalDepthTexture);
-		if (pCurrentDepthStencilResourceNoHair == nullptr) {
-			logger::warn("Copied depth texture is null!");
-		} else if(pOriginalDepthTexture == nullptr){
-			logger::warn("Original depth texture is null!");
-		}
-		else {
-			//TODO: Can I intercept the RTV used for shadows instead of copying again?
-			logger::info("Copying depth stencil for HBAO");
-			HBAOPlus::GetSingleton()->CopyDSVTexture(pCurrentDepthStencilResourceWithHair);
-			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
-		}
+		//auto                    pContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
+		//if (pCurrentDepthStencilResourceNoHair == nullptr) {
+		//	logger::warn("Copied depth texture is null!");
+		//} else if(pOriginalDepthTexture == nullptr){
+		//	logger::warn("Original depth texture is null!");
+		//}
+		//else {
+		//	//TODO: Can I intercept the RTV used for shadows instead of copying again?
+		//	logger::info("Copying depth stencil for HBAO");
+		//	HBAOPlus::GetSingleton()->CopyDSVTexture(pCurrentDepthStencilResourceWithHair);
+		//	pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		//}
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = draw_shadows;
 		return val;
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
@@ -311,16 +313,16 @@ void hookMainDraw() {
 	//stl::write_thunk_call<Hooks::Main_DrawWorld_MainDraw_2>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow light draws
 	
 	//2nd depth pass
-	//stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0xC6, 0x17A));  //TODO AE //shadow light draws
+	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0xC6, 0x17A));  //TODO AE //shadow light draws
 	
 	//3rd depth pass
-	//stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0x12B, 0x17A));  //TODO AE //shadow light draws
+	stl::write_thunk_call<BSShadowLight_DrawShadows>(REL::RelocationID(101495, 82084).address() + REL::Relocate(0x12B, 0x17A));  //TODO AE //shadow light draws
 
 	//4th depth pass, copy depth
-	//stl::write_thunk_call<Sub_DrawShadows>(REL::RelocationID(100421, 82084).address() + REL::Relocate(0x4F9, 0x17A));            //TODO AE //shadow light draws
+	stl::write_thunk_call<Sub_DrawShadows>(REL::RelocationID(100421, 82084).address() + REL::Relocate(0x4F9, 0x17A));            //TODO AE //shadow light draws
 
 	//shadow map, replace depth
-	//stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
+	stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
 	
 	//stl::write_vfunc<0x0A, BSShadowLight_DrawShadows>(RE::VTABLE_BSShadowDirectionalLight[0]);
 
@@ -350,6 +352,7 @@ namespace LightHooks{
 			uint64_t ms = duration_cast<milliseconds>(
 				system_clock::now().time_since_epoch()).count();
 			double time = (double)ms / 1000;
+			time;
 			tfx->Update();
 			tfx->Simulate(time, false, false);
 		}

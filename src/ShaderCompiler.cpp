@@ -29,29 +29,54 @@ namespace ShaderCompiler
 			logger::warn("Shader compilation failed:\n\n{}", shaderErrors ? (const char*)shaderErrors->GetBufferPointer() : "Unknown error");
 			return nullptr;
 		}
-
+		logger::info("Creating shader");
 		if (!_stricmp(ProgramType, "ps_5_0")) {
 			ID3D11PixelShader* regShader;
-			device->CreatePixelShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			HRESULT hr = device->CreatePixelShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			if (FAILED(hr)) {
+				logger::error("Pixel shader creation failed");
+				Util::PrintAllD3D11DebugMessages();
+				return nullptr;
+			}
 			return regShader;
 		} else if (!_stricmp(ProgramType, "vs_5_0")){
 			ID3D11VertexShader* regShader;
-			device->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			HRESULT hr = device->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			if (FAILED(hr)) {
+				logger::error("Vertex shader creation failed");
+				Util::PrintAllD3D11DebugMessages();
+				return nullptr;
+			}
 			return regShader;
 		} else if (!_stricmp(ProgramType, "hs_5_0")){
 			ID3D11HullShader* regShader;
-			device->CreateHullShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			HRESULT hr = device->CreateHullShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			if (FAILED(hr)) {
+				logger::error("Hull shader creation failed");
+				Util::PrintAllD3D11DebugMessages();
+				return nullptr;
+			}
 			return regShader;
 		} else if (!_stricmp(ProgramType, "ds_5_0")) {
 			ID3D11DomainShader* regShader;
-			device->CreateDomainShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			HRESULT hr = device->CreateDomainShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			if (FAILED(hr)) {
+				logger::error("Domain shader creation failed");
+				Util::PrintAllD3D11DebugMessages();
+				return nullptr;
+			}
 			return regShader;
 		} else if (!_stricmp(ProgramType, "cs_5_0")) {
 			ID3D11ComputeShader* regShader;
-			DX::ThrowIfFailed(device->CreateComputeShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader));
+			HRESULT hr = device->CreateComputeShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr, &regShader);
+			if (FAILED(hr)) {
+				logger::error("Compute shader creation failed");
+				Util::PrintAllD3D11DebugMessages();
+				return nullptr;
+			}
 			return regShader;
 		}
-
+		logger::error("Shader creation failed, unknown type");
 		return nullptr;
 	}
 	ID3DX11Effect* CompileAndRegisterEffectShader(const std::wstring a_filePath, ID3D11Device* device, std::vector<D3D_SHADER_MACRO> defines)

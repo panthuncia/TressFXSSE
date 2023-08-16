@@ -59,6 +59,7 @@ void DispatchComputeShader(EI_CommandContext& ctx, EI_PSO * pso, DispatchLevel l
             numGroups = (int)(((float)(hairObjects[i]->GetNumTotalHairStrands()) / (float)TRESSFX_SIM_THREAD_GROUP_SIZE));
         }
         EI_BindSet* bindSets[] = { hairObjects[i]->GetSimBindSet(), &hairObjects[i]->GetDynamicState().GetSimBindSet() };
+		logger::info("Binding sim bindsets");
         ctx.BindSets(pso, 2, bindSets);
 
         int iterations = 1;
@@ -87,22 +88,22 @@ void TressFXSimulation::Simulate(EI_CommandContext& commandContext, std::vector<
     GetDevice()->GetTimeStamp("IntegrationAndGlobalShapeContraints");
 
     // Calculate Strand Level Data
-    DispatchComputeShader(commandContext, mCalculateStrandLevelDataPSO.get(), DISPATCHLEVEL_STRAND, hairObjects);
+    //DispatchComputeShader(commandContext, mCalculateStrandLevelDataPSO.get(), DISPATCHLEVEL_STRAND, hairObjects);
     GetDevice()->GetTimeStamp("CalculateStrandLevelData");
 
     // VelocityShockPropagation
-    DispatchComputeShader(commandContext, mVelocityShockPropagationPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    //DispatchComputeShader(commandContext, mVelocityShockPropagationPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
     GetDevice()->GetTimeStamp("VelocityShockPropagation");
 
-    DispatchComputeShader(commandContext, mLocalShapeConstraintsPSO.get(), DISPATCHLEVEL_STRAND, hairObjects, true);
+    //DispatchComputeShader(commandContext, mLocalShapeConstraintsPSO.get(), DISPATCHLEVEL_STRAND, hairObjects, true);
     GetDevice()->GetTimeStamp("LocalShapeConstraints");
 
     // LengthConstriantsWindAndCollision
-    DispatchComputeShader(commandContext, mLengthConstriantsWindAndCollisionPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    //DispatchComputeShader(commandContext, mLengthConstriantsWindAndCollisionPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
     GetDevice()->GetTimeStamp("LengthConstriantsWindAndCollision");
 
     // UpdateFollowHairVertices
-    DispatchComputeShader(commandContext, mUpdateFollowHairVerticesPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
+    //DispatchComputeShader(commandContext, mUpdateFollowHairVerticesPSO.get(), DISPATCHLEVEL_VERTEX, hairObjects);
     GetDevice()->GetTimeStamp("UpdateFollowHairVertices");
 
     for (int i = 0; i < hairObjects.size(); ++i)

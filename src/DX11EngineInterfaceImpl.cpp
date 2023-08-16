@@ -616,7 +616,9 @@ std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName
 	auto                          num_bones = std::to_string(AMD_TRESSFX_MAX_NUM_BONES);
 	auto                          group_render = std::to_string(AMD_TRESSFX_MAX_HAIR_GROUP_RENDER);
 	std::vector<D3D_SHADER_MACRO> defines = { { "AMD_TRESSFX_MAX_NUM_BONES", num_bones.c_str() }, { "AMD_TRESSFX_MAX_HAIR_GROUP_RENDER", group_render.c_str() }, { "AMD_TRESSFX_DX12", "0" }, { NULL, NULL } };
-	auto                          shader = ShaderCompiler::CompileShader(path.generic_wstring().c_str(), entryPoint, defines, "cs_5_1");
+	auto                          shader = ShaderCompiler::CompileShader(path.generic_wstring().c_str(), entryPoint, defines, "cs_5_0");
+	logger::info("Compute shader address: {}", Util::ptr_to_string(shader));
+
 	PSO->CS = reinterpret_cast<ID3D11ComputeShader*>(shader);
 	for (int i = 0; i < numLayouts; i++) {
 		assert(layouts[i]->description.stage == EI_CS);
@@ -624,6 +626,7 @@ std::unique_ptr<EI_PSO> EI_Device::CreateComputeShaderPSO(const char* shaderName
 			logger::info("CS resource type: {}", resource.type);
 		}
 	}
+	PSO->bp = EI_BP_COMPUTE;
 	return std::unique_ptr<EI_PSO>(PSO);
 }
 
@@ -638,8 +641,11 @@ std::unique_ptr<EI_PSO> EI_Device::CreateGraphicsPSO(const char* vertexShaderNam
 	auto                          group_render = std::to_string(AMD_TRESSFX_MAX_HAIR_GROUP_RENDER);
 	std::vector<D3D_SHADER_MACRO> strand_defines = { { "AMD_TRESSFX_MAX_NUM_BONES", num_bones.c_str() }, { "AMD_TRESSFX_MAX_HAIR_GROUP_RENDER", group_render.c_str() }, { "AMD_TRESSFX_DX12", "0" }, { NULL, NULL } };
 
-	auto vertexShader = ShaderCompiler::CompileShader(vsPath.generic_wstring().c_str(), vertexEntryPoint, strand_defines, "vs_5_1");
-	auto pixelShader = ShaderCompiler::CompileShader(psPath.generic_wstring().c_str(), fragmentEntryPoint, strand_defines, "ps_5_1");
+	auto vertexShader = ShaderCompiler::CompileShader(vsPath.generic_wstring().c_str(), vertexEntryPoint, strand_defines, "vs_5_0");
+	auto pixelShader = ShaderCompiler::CompileShader(psPath.generic_wstring().c_str(), fragmentEntryPoint, strand_defines, "ps_5_0");
+
+	logger::info("Vertex shader address: {}", Util::ptr_to_string(vertexShader));
+	logger::info("Pixel shader address: {}", Util::ptr_to_string(pixelShader));
 
 	D3D11_BLEND_DESC blendDesc;
 	blendDesc.AlphaToCoverageEnable = false;
@@ -937,7 +943,7 @@ EI_Resource::~EI_Resource()
 
 void EI_RenderTargetSet::SetResources(const EI_Resource** pResourcesArray)
 {
-	logger::info("Setting resources");
+	//logger::info("Setting resources");
 	for (uint32_t i = 0; i < m_NumResources; ++i) {
 		m_RenderResources[i] = pResourcesArray[i];
 	}
@@ -958,12 +964,12 @@ EI_RenderTargetSet::~EI_RenderTargetSet()
 
 void EI_CommandContext::UpdateBuffer(EI_Resource* res, void* data)
 {
-	logger::info("Updating buffer: {}", res->name);
+	//logger::info("Updating buffer: {}", res->name);
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 
-	logger::info("New data address: {}", Util::ptr_to_string(data));
-	logger::info("buffer address: {}", Util::ptr_to_string(res->m_pBuffer));
-	logger::info("total mem size: {}", res->m_totalMemSize);
+	//logger::info("New data address: {}", Util::ptr_to_string(data));
+	//logger::info("buffer address: {}", Util::ptr_to_string(res->m_pBuffer));
+	//logger::info("total mem size: {}", res->m_totalMemSize);
 
 	pContext->UpdateSubresource(res->m_pBuffer, 0, nullptr, data, res->m_totalMemSize, res->m_totalMemSize);
 }
@@ -972,7 +978,7 @@ UINT zeros[8] = {0,0,0,0,0,0,0,0};
 void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets)
 {
 	UNREFERENCED_PARAMETER(pso);
-	logger::info("BindSets");
+	//logger::info("BindSets");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 
 	std::vector<ID3D11Buffer*>             vsCbuffers;
@@ -986,30 +992,33 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 
 	std::vector<ID3D11Buffer*> csCbuffers;
 	std::vector<ID3D11UnorderedAccessView*> csUAVs;
+	std::vector<ID3D11ShaderResourceView*> csSRVs;
 
 	bool isCS = false;
+	if (pso->bp == EI_BP_COMPUTE)
+		isCS = true;
 
-	logger::info("assembling resource lists");
-	logger::info("{} BindSets", numBindSets);
+	//logger::info("assembling resource lists");
+	//logger::info("{} BindSets", numBindSets);
 	for (int i = 0; i < numBindSets; i++) {
 		auto bindSet = bindSets[i];
-		logger::info("BindSet address: {}", Util::ptr_to_string(bindSet));
-		logger::info("Inserting {} samplers", bindSet->samplers.size());
+		//logger::info("BindSet address: {}", Util::ptr_to_string(bindSet));
+		//logger::info("Inserting {} samplers", bindSet->samplers.size());
 		samplers.insert(samplers.end(), bindSet->samplers.begin(), bindSet->samplers.end());
 		switch (bindSet->stage) {
 		case EI_VS:
-			logger::info("inserting VS");
+			//logger::info("inserting VS");
 			vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
 			vsSRVs.insert(vsSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
 			break;
 		case EI_PS:
-			logger::info("inserting PS");
+			//logger::info("inserting PS");
 			psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
 			psSRVs.insert(psSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
 			psUAVs.insert(psUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
 			break;
 		case EI_ALL:
-			logger::info("Inserting ALL");
+			//logger::info("Inserting ALL");
 			if (bindSet->cbuffers.size() > 0) {
 				vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
 				psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
@@ -1020,46 +1029,50 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 			}
 			break;
 		case EI_CS:
-			logger::info("Inserting CS");
+			//logger::info("Inserting CS");
 			isCS = true;
 			csCbuffers.insert(csCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
 			csUAVs.insert(csUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
+			csSRVs.insert(csSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
 			break;
 		}
-		logger::info("Done with BindSet {}", i+1);
+		//logger::info("Done with BindSet {}", i+1);
 	}
-	logger::info("Done building lists");
+	//logger::info("Done building lists");
 	if (isCS) {
-		logger::info("Binding CS resources");
+		logger::info("Binding CS resources: {} UAVs, {} SRVs, {} constant buffers, {} samplers",csUAVs.size(), csSRVs.size(), csCbuffers.size(), samplers.size());
+		pContext->CSSetShaderResources(0, (UINT)csSRVs.size(), csSRVs.data());
+		pContext->CSSetUnorderedAccessViews(0, (UINT)csUAVs.size(), csUAVs.data(), zeros);
 		pContext->CSSetConstantBuffers(0, (UINT)csCbuffers.size(), csCbuffers.data());
 		pContext->CSSetSamplers(0, (UINT)samplers.size(), samplers.data());
 		return;
+	} else {
+		BindPSO(pso);
 	}
 
 	if (samplers.size() > 0) {
-		logger::info("Binding samplers");
+		//logger::info("Binding samplers");
 		pContext->VSSetSamplers(0, (UINT)samplers.size(), samplers.data());
 		pContext->PSSetSamplers(0, (UINT)samplers.size(), samplers.data());
 	}
 
-	logger::info("Binding VS resources");
+	//logger::info("Binding VS resources");
 	if (vsCbuffers.size()>0)
 		pContext->VSSetConstantBuffers(0, (UINT)vsCbuffers.size(), vsCbuffers.data());
 	if (vsSRVs.size() > 0)
 		pContext->VSSetShaderResources(0, (UINT)vsSRVs.size(), vsSRVs.data());
 
-	logger::info("Binding PS resources");
+	//logger::info("Binding PS resources");
 	if (psCbuffers.size()>0)
 		pContext->PSSetConstantBuffers(0, (UINT)psCbuffers.size(), psCbuffers.data());
 	if (psSRVs.size()>0)
 		pContext->PSSetShaderResources(0, (UINT)psSRVs.size(), psSRVs.data());
 	
-	logger::info("Setting UAVs");
+	//logger::info("Setting UAVs");
 	if (psUAVs.size() >= 0)
 		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (UINT)psUAVs.size(), psUAVs.data(), zeros);
 
-
-	logger::info("Done binding");
+	//logger::info("Done binding");
 }
 
 void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams)
@@ -1067,6 +1080,7 @@ void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& 
 	UNREFERENCED_PARAMETER(pso);
 	logger::info("DrawIndexedInstanced");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+	pContext->IASetIndexBuffer(drawParams.pIndexBuffer->m_pBuffer, DXGI_FORMAT_R32_UINT, 0);
 	pContext->DrawIndexedInstanced(drawParams.pIndexBuffer->m_indexBufferNumIndices, drawParams.numInstances, 0, 0, 0);
 }
 
@@ -1083,27 +1097,28 @@ void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
 	UNREFERENCED_PARAMETER(numBarriers);
 	UNREFERENCED_PARAMETER(barriers);
 	//do we need anything?
-	logger::info("SubmitBarriers");
+	//logger::info("SubmitBarriers");
 }
 
 void EI_CommandContext::ClearUint32Image(EI_Resource* res, uint32_t value)
 {
-	logger::info("Resource address: {}", Util::ptr_to_string(res));
-	logger::info("ClearUint32: {}", res->name);
+	//logger::info("Resource address: {}", Util::ptr_to_string(res));
+	//logger::info("ClearUint32: {}", res->name);
 	assert(res->m_ResourceType == EI_ResourceType::Buffer && "Trying to clear a non-UAV resource");
 	auto   pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	UINT32 values[4] = { value, value, value, value };
-	logger::info("clear value: {}", value);
-	logger::info("texture address: {}", Util::ptr_to_string(res->m_pTexture));
-	logger::info("dimensions: {}, {}", res->m_textureWidth, res->m_textureHeight);
+	//logger::info("clear value: {}", value);
+	//logger::info("texture address: {}", Util::ptr_to_string(res->m_pTexture));
+	//logger::info("dimensions: {}, {}", res->m_textureWidth, res->m_textureHeight);
 	pContext->ClearUnorderedAccessViewUint(res->UAView, values);
-	logger::info("After clear");
+	//logger::info("After clear");
 }
 
 void EI_CommandContext::BindPSO(EI_PSO* pso)
 {
-	logger::info("Bind PSO");
-	//anything else?
+	//logger::info("Bind PSO");
+	//TFX never calls this method directly for graphics for some reason, only for compute?
+	//will put it in BindSets() I guess...
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	if (pso->bp == EI_BP_GRAPHICS) {
 		pContext->IASetPrimitiveTopology(pso->primitiveTopology);
@@ -1112,6 +1127,14 @@ void EI_CommandContext::BindPSO(EI_PSO* pso)
 		pContext->OMSetBlendState(pso->blendState, nullptr, pso->sampleMask);
 		//need different stencil ref?
 		pContext->OMSetDepthStencilState(pso->depthStencilState, 0);
+		logger::info("Setting vertex and pixel shaders");
+		logger::info("VS address: {}", Util::ptr_to_string(pso->VS));
+		logger::info("PS address: {}", Util::ptr_to_string(pso->PS));
+		pContext->VSSetShader(pso->VS, nullptr, 0);
+		pContext->PSSetShader(pso->PS, nullptr, 0);
+	} else {
+		logger::info("Setting compute shader");
+		pContext->CSSetShader(pso->CS, nullptr, 0);
 	}
 }
 
