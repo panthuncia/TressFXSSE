@@ -4,8 +4,8 @@
 #include "ShaderCompiler.h"
 #include "SkyrimGPUResourceManager.h"
 #include "TressFX/AMD_TressFX.h"
-#include "Util.h"
 #include "TressFX/TressFXLayouts.h"
+#include "Util.h"
 
 inline D3D11_BLEND_OP operator*(EI_BlendOp Enum)
 {
@@ -161,27 +161,27 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 		switch (resourceDescription.type) {
 		case EI_RESOURCETYPE_BUFFER_RO:
 			logger::info("Resource: {} type: SRV", resource->name);
-			set->srvs.push_back(resource->SRView);
+			set->srvs.push_back(std::make_pair(resource->SRView, resourceDescription.binding));
 			break;
 		case EI_RESOURCETYPE_IMAGE_RO:
 			logger::info("Resource: {} type: SRV", resource->name);
-			set->srvs.push_back(resource->SRView);
+			set->srvs.push_back(std::make_pair(resource->SRView, resourceDescription.binding));
 			break;
 		case EI_RESOURCETYPE_BUFFER_RW:
 			logger::info("Resource: {} type: UAV", resource->name);
-			set->uavs.push_back(resource->UAView);
+			set->uavs.push_back(std::make_pair(resource->UAView, resourceDescription.binding));
 			break;
 		case EI_RESOURCETYPE_IMAGE_RW:
 			logger::info("Resource: {} type: UAV", resource->name);
-			set->uavs.push_back(resource->UAView);
+			set->uavs.push_back(std::make_pair(resource->UAView, resourceDescription.binding));
 			break;
 		case EI_RESOURCETYPE_SAMPLER:
 			logger::info("Resource: {} type: sampler", resource->name);
-			set->samplers.push_back(resource->m_pSampler);
+			set->samplers.push_back(std::make_pair(resource->m_pSampler, resourceDescription.binding));
 			break;
 		case EI_RESOURCETYPE_UNIFORM:
 			logger::info("Resource: {} type: CBuffer", resource->name);
-			set->cbuffers.push_back(resource->m_pBuffer);
+			set->cbuffers.push_back(std::make_pair(resource->m_pBuffer, resourceDescription.binding));
 			break;
 		}
 		i += 1;
@@ -824,7 +824,8 @@ std::unique_ptr<EI_Resource> EI_Device::CreateSampler(EI_Filter MinFilter, EI_Fi
 	return std::unique_ptr<EI_Resource>(res);
 }
 
-std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, const int height, const char* name) {
+std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, const int height, const char* name)
+{
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Texture;
 	res->name = name;
@@ -974,25 +975,36 @@ void EI_CommandContext::UpdateBuffer(EI_Resource* res, void* data)
 	pContext->UpdateSubresource(res->m_pBuffer, 0, nullptr, data, res->m_totalMemSize, res->m_totalMemSize);
 }
 
-UINT zeros[8] = {0,0,0,0,0,0,0,0};
+UINT zeros[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
 void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bindSets)
 {
 	UNREFERENCED_PARAMETER(pso);
 	//logger::info("BindSets");
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 
+	//most slots will not be used
 	std::vector<ID3D11Buffer*>             vsCbuffers;
+	UINT                                   minVsCbuffer = UINT_MAX;
 	std::vector<ID3D11ShaderResourceView*> vsSRVs;
+	UINT                                   minVsSRV = UINT_MAX;
 
 	std::vector<ID3D11Buffer*>              psCbuffers;
+	UINT                                    minPsCbuffer = UINT_MAX;
 	std::vector<ID3D11ShaderResourceView*>  psSRVs;
+	UINT                                    minPsSRV = UINT_MAX;
 	std::vector<ID3D11UnorderedAccessView*> psUAVs;
+	UINT                                    minPsUAV = UINT_MAX;
 
 	std::vector<ID3D11SamplerState*> samplers;
+	UINT                             minSampler = UINT_MAX;
 
-	std::vector<ID3D11Buffer*> csCbuffers;
+	std::vector<ID3D11Buffer*>              csCbuffers;
+	UINT                                    minCsCbuffer = UINT_MAX;
+	std::vector<ID3D11ShaderResourceView*>  csSRVs;
+	UINT                                    minCsSRV = UINT_MAX;
 	std::vector<ID3D11UnorderedAccessView*> csUAVs;
-	std::vector<ID3D11ShaderResourceView*> csSRVs;
+	UINT                                    minCsUAV = UINT_MAX;
 
 	bool isCS = false;
 	if (pso->bp == EI_BP_COMPUTE)
@@ -1000,51 +1012,133 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 
 	//logger::info("assembling resource lists");
 	//logger::info("{} BindSets", numBindSets);
+	logger::info("1");
 	for (int i = 0; i < numBindSets; i++) {
 		auto bindSet = bindSets[i];
-		//logger::info("BindSet address: {}", Util::ptr_to_string(bindSet));
-		//logger::info("Inserting {} samplers", bindSet->samplers.size());
-		samplers.insert(samplers.end(), bindSet->samplers.begin(), bindSet->samplers.end());
+		logger::info("BindSet address: {}", Util::ptr_to_string(bindSet));
+		logger::info("Inserting {} samplers", bindSet->samplers.size());
+		for (auto samplerPair : bindSet->samplers) {
+			while (samplers.size() <= samplerPair.second) {
+				samplers.push_back(nullptr);
+			}
+			samplers[samplerPair.second] = samplerPair.first;
+			minSampler = std::min(minSampler, samplerPair.second);
+		}
 		switch (bindSet->stage) {
 		case EI_VS:
-			//logger::info("inserting VS");
-			vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
-			vsSRVs.insert(vsSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+			logger::info("inserting VS");
+			for (auto cbufferPair : bindSet->cbuffers) {
+				while (vsCbuffers.size() <= cbufferPair.second) {
+					vsCbuffers.push_back(nullptr);
+				}
+				vsCbuffers[cbufferPair.second] = cbufferPair.first;
+				minVsCbuffer = std::min(minVsCbuffer, cbufferPair.second);
+			}
+			for (auto srvPair : bindSet->srvs) {
+				while (vsSRVs.size() <= srvPair.second) {
+					vsSRVs.push_back(nullptr);
+				}
+				vsSRVs[srvPair.second] = srvPair.first;
+				minVsSRV = std::min(minVsSRV, srvPair.second);
+			}
 			break;
 		case EI_PS:
-			//logger::info("inserting PS");
-			psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
-			psSRVs.insert(psSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
-			psUAVs.insert(psUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
+			logger::info("inserting PS");
+			for (auto cbufferPair : bindSet->cbuffers) {
+				while (psCbuffers.size() <= cbufferPair.second) {
+					psCbuffers.push_back(nullptr);
+				}
+				psCbuffers[cbufferPair.second] = cbufferPair.first;
+				minPsCbuffer = std::min(minPsCbuffer, cbufferPair.second);
+			}
+			for (auto srvPair : bindSet->srvs) {
+				while (psSRVs.size() <= srvPair.second) {
+					psSRVs.push_back(nullptr);
+				}
+				psSRVs[srvPair.second] = srvPair.first;
+				minPsSRV = std::min(minPsSRV, srvPair.second);
+			}
+			for (auto uavPair : bindSet->uavs) {
+				while (psUAVs.size() <= uavPair.second) {
+					psUAVs.push_back(nullptr);
+				}
+				psUAVs[uavPair.second] = uavPair.first;
+				minPsUAV = std::min(minPsUAV, uavPair.second);
+			}
 			break;
 		case EI_ALL:
-			//logger::info("Inserting ALL");
+			logger::info("Inserting ALL");
 			if (bindSet->cbuffers.size() > 0) {
-				vsCbuffers.insert(vsCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
-				psCbuffers.insert(psCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
+				for (auto cbufferPair : bindSet->cbuffers) {
+					while (psCbuffers.size() <= cbufferPair.second) {
+						psCbuffers.push_back(nullptr);
+					}
+					psCbuffers[cbufferPair.second] = cbufferPair.first;
+					minPsCbuffer = std::min(minPsCbuffer, cbufferPair.second);
+					while (vsCbuffers.size() <= cbufferPair.second) {
+						vsCbuffers.push_back(nullptr);
+					}
+					vsCbuffers[cbufferPair.second] = cbufferPair.first;
+					minVsCbuffer = std::min(minVsCbuffer, cbufferPair.second);
+				}
 			}
 			if (bindSet->srvs.size() > 0) {
-				vsSRVs.insert(vsSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
-				psSRVs.insert(psSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+				for (auto srvPair : bindSet->srvs) {
+					while (psSRVs.size() <= srvPair.second) {
+						psSRVs.push_back(nullptr);
+					}
+					psSRVs[srvPair.second] = srvPair.first;
+					minPsSRV = std::min(minPsSRV, srvPair.second);
+					while (vsSRVs.size() <= srvPair.second) {
+						vsSRVs.push_back(nullptr);
+					}
+					vsSRVs[srvPair.second] = srvPair.first;
+					minVsSRV = std::min(minVsSRV, srvPair.second);
+				}
 			}
 			break;
 		case EI_CS:
-			//logger::info("Inserting CS");
+			logger::info("Inserting CS");
 			isCS = true;
-			csCbuffers.insert(csCbuffers.end(), bindSet->cbuffers.begin(), bindSet->cbuffers.end());
-			csUAVs.insert(csUAVs.end(), bindSet->uavs.begin(), bindSet->uavs.end());
-			csSRVs.insert(csSRVs.end(), bindSet->srvs.begin(), bindSet->srvs.end());
+			for (auto cbufferPair : bindSet->cbuffers) {
+				while (csCbuffers.size() <= cbufferPair.second) {
+					csCbuffers.push_back(nullptr);
+				}
+				logger::info("1.1");
+				csCbuffers[cbufferPair.second] = cbufferPair.first;
+				minCsCbuffer = std::min(minCsCbuffer, cbufferPair.second);
+			}
+			for (auto srvPair : bindSet->srvs) {
+				while (csSRVs.size() <= srvPair.second) {
+					csSRVs.push_back(nullptr);
+				}
+				logger::info("1.2");
+				csSRVs[srvPair.second] = srvPair.first;
+				minCsSRV = std::min(minCsSRV, srvPair.second);
+			}
+			for (auto uavPair : bindSet->uavs) {
+				while (csUAVs.size() <= uavPair.second) {
+					csUAVs.push_back(nullptr);
+				}
+				logger::info("1.3");
+				csUAVs[uavPair.second] = uavPair.first;
+				minCsUAV = std::min(minCsUAV, uavPair.second);
+			}
 			break;
 		}
-		//logger::info("Done with BindSet {}", i+1);
+		logger::info("Done with BindSet {}", i+1);
 	}
+	logger::info("2");
 	//logger::info("Done building lists");
 	if (isCS) {
-		logger::info("Binding CS resources: {} UAVs, {} SRVs, {} constant buffers, {} samplers",csUAVs.size(), csSRVs.size(), csCbuffers.size(), samplers.size());
-		pContext->CSSetShaderResources(0, (UINT)csSRVs.size(), csSRVs.data());
-		pContext->CSSetUnorderedAccessViews(0, (UINT)csUAVs.size(), csUAVs.data(), zeros);
-		pContext->CSSetConstantBuffers(0, (UINT)csCbuffers.size(), csCbuffers.data());
-		pContext->CSSetSamplers(0, (UINT)samplers.size(), samplers.data());
+		if (csSRVs.size()>0)
+			pContext->CSSetShaderResources(minCsSRV, (UINT)csSRVs.size() - minCsSRV, &csSRVs.data()[minCsSRV]);
+		if (csUAVs.size() > 0)
+			pContext->CSSetUnorderedAccessViews(minCsUAV, (UINT)csUAVs.size() - minCsUAV, &csUAVs.data()[minCsUAV], zeros);
+		if (csCbuffers.size() > 0)
+			pContext->CSSetConstantBuffers(minCsCbuffer, (UINT)csCbuffers.size() - minCsCbuffer, &csCbuffers.data()[minCsCbuffer]);
+		if (samplers.size() > 0)
+			pContext->CSSetSamplers(minSampler, (UINT)samplers.size() - minSampler, &samplers.data()[minSampler]);
 		return;
 	} else {
 		BindPSO(pso);
@@ -1052,25 +1146,25 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 
 	if (samplers.size() > 0) {
 		//logger::info("Binding samplers");
-		pContext->VSSetSamplers(0, (UINT)samplers.size(), samplers.data());
-		pContext->PSSetSamplers(0, (UINT)samplers.size(), samplers.data());
+		pContext->VSSetSamplers(minSampler, (UINT)samplers.size() - minSampler, &samplers.data()[minSampler]);
+		pContext->PSSetSamplers(minSampler, (UINT)samplers.size() - minSampler, &samplers.data()[minSampler]);
 	}
 
 	//logger::info("Binding VS resources");
-	if (vsCbuffers.size()>0)
-		pContext->VSSetConstantBuffers(0, (UINT)vsCbuffers.size(), vsCbuffers.data());
+	if (vsCbuffers.size() > 0)
+		pContext->VSSetConstantBuffers(minVsCbuffer, (UINT)vsCbuffers.size() - minVsCbuffer, &vsCbuffers.data()[minVsCbuffer]);
 	if (vsSRVs.size() > 0)
-		pContext->VSSetShaderResources(0, (UINT)vsSRVs.size(), vsSRVs.data());
+		pContext->VSSetShaderResources(minVsSRV, (UINT)vsSRVs.size() - minVsSRV, &vsSRVs.data()[minVsSRV]);
 
 	//logger::info("Binding PS resources");
-	if (psCbuffers.size()>0)
-		pContext->PSSetConstantBuffers(0, (UINT)psCbuffers.size(), psCbuffers.data());
-	if (psSRVs.size()>0)
-		pContext->PSSetShaderResources(0, (UINT)psSRVs.size(), psSRVs.data());
-	
+	if (psCbuffers.size() > 0)
+		pContext->PSSetConstantBuffers(minPsCbuffer, (UINT)psCbuffers.size()-minPsCbuffer, &psCbuffers.data()[minPsCbuffer]);
+	if (psSRVs.size() > 0)
+		pContext->PSSetShaderResources(minPsSRV, (UINT)psSRVs.size() - minPsSRV, &psSRVs.data()[minPsSRV]);
+
 	//logger::info("Setting UAVs");
 	if (psUAVs.size() >= 0)
-		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, 0, (UINT)psUAVs.size(), psUAVs.data(), zeros);
+		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, minPsUAV, (UINT)psUAVs.size() - minPsUAV, &psUAVs.data()[minPsUAV], zeros);
 
 	//logger::info("Done binding");
 }

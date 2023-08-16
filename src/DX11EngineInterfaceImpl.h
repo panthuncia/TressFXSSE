@@ -20,10 +20,11 @@ struct EI_BindLayout
 class EI_BindSet
 {
 public:
-	std::vector<EI_SRV*>             srvs;
-	std::vector<EI_UAV*>             uavs;
-	std::vector<ID3D11Buffer*>       cbuffers;
-	std::vector<ID3D11SamplerState*> samplers;
+	//pairs of (resource, binding)
+	std::vector<std::pair<EI_SRV*, UINT>>             srvs;
+	std::vector<std::pair<EI_UAV*, UINT>>             uavs;
+	std::vector<std::pair<ID3D11Buffer*, UINT>>       cbuffers;
+	std::vector<std::pair<ID3D11SamplerState*, UINT>> samplers;
 	EI_ShaderStage                   stage;
 };
 
