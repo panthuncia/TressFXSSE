@@ -198,8 +198,9 @@ std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFil
 	ID3D11DeviceContext* pContext;
 	pDevice->GetImmediateContext(&pContext);
 	std::filesystem::path name = szFilename;
-	logger::info("Creating texture from file");
+	logger::info("Creating texture {} from file", szFilename);
 	DirectX::CreateDDSTextureFromFile(pDevice, pContext, name.generic_wstring().c_str(), (ID3D11Resource**)&res->m_pTexture, &res->SRView);
+	logger::info("created texture address: {}", Util::ptr_to_string(res->m_pTexture));
 	res->name = szFilename;
 	return std::unique_ptr<EI_Resource>(res);
 }
@@ -761,6 +762,7 @@ void EI_Device::DrawFullScreenQuad(EI_CommandContext& commandContext, EI_PSO& ps
 
 	EI_IndexedDrawParams drawParams;
 	drawParams.pIndexBuffer = m_pFullscreenIndexBuffer.get();
+	logger::info("Index buffer address: {}", Util::ptr_to_string(drawParams.pIndexBuffer));
 	drawParams.numIndices = 4;
 	drawParams.numInstances = 1;
 
@@ -883,7 +885,8 @@ void EI_Device::OnCreate()
 	m_currentCommandContext.UpdateBuffer(m_pFullscreenIndexBuffer.get(), indexArray);
 
 	logger::info("Create default texture");
-	m_DefaultWhiteTexture = CreateResourceFromFile("DefaultWhite.png", true);
+	const auto texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX\\DefaultWhite.dds";
+	m_DefaultWhiteTexture = CreateResourceFromFile(texturePath.generic_string().c_str(), true);
 	m_LinearWrapSampler = CreateSampler(EI_Filter::Linear, EI_Filter::Linear, EI_Filter::Linear, EI_AddressMode::Wrap);
 	EI_BindSetDescription bindSetDesc = { {
 		m_LinearWrapSampler.get(),
@@ -1145,28 +1148,30 @@ void EI_CommandContext::BindSets(EI_PSO* pso, int numBindSets, EI_BindSet** bind
 	}
 
 	if (samplers.size() > 0) {
-		//logger::info("Binding samplers");
+		logger::info("Binding samplers");
 		pContext->VSSetSamplers(minSampler, (UINT)samplers.size() - minSampler, &samplers.data()[minSampler]);
 		pContext->PSSetSamplers(minSampler, (UINT)samplers.size() - minSampler, &samplers.data()[minSampler]);
 	}
 
-	//logger::info("Binding VS resources");
+	logger::info("Binding VS resources");
 	if (vsCbuffers.size() > 0)
 		pContext->VSSetConstantBuffers(minVsCbuffer, (UINT)vsCbuffers.size() - minVsCbuffer, &vsCbuffers.data()[minVsCbuffer]);
 	if (vsSRVs.size() > 0)
 		pContext->VSSetShaderResources(minVsSRV, (UINT)vsSRVs.size() - minVsSRV, &vsSRVs.data()[minVsSRV]);
 
-	//logger::info("Binding PS resources");
+	logger::info("Binding PS resources");
 	if (psCbuffers.size() > 0)
 		pContext->PSSetConstantBuffers(minPsCbuffer, (UINT)psCbuffers.size()-minPsCbuffer, &psCbuffers.data()[minPsCbuffer]);
 	if (psSRVs.size() > 0)
 		pContext->PSSetShaderResources(minPsSRV, (UINT)psSRVs.size() - minPsSRV, &psSRVs.data()[minPsSRV]);
 
-	//logger::info("Setting UAVs");
-	if (psUAVs.size() >= 0)
+	logger::info("Setting UAVs");
+	if (psUAVs.size() > 0) {
+		logger::info("min uav: {} array size: {}", minPsUAV, psUAVs.size());
 		pContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, minPsUAV, (UINT)psUAVs.size() - minPsUAV, &psUAVs.data()[minPsUAV], zeros);
+	}
 
-	//logger::info("Done binding");
+	logger::info("Done binding");
 }
 
 void EI_CommandContext::DrawIndexedInstanced(EI_PSO& pso, EI_IndexedDrawParams& drawParams)

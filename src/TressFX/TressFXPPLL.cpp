@@ -299,7 +299,7 @@ void TressFXPPLL::Draw(EI_CommandContext& commandContext, int numHairStrands, Ha
     {
         EI_BindSet* BindSets[] = { m_pPPLLResolveBindSet.get(), m_ShadeParamsBindSet.get(), viewBindSet, lightBindSet, GetDevice()->GetSamplerBindSet() };
 		logger::info("Draw fullscreen quad");
-		//GetDevice()->DrawFullScreenQuad(commandContext, *m_PPLLResolvePSO, BindSets, 5);
+		GetDevice()->DrawFullScreenQuad(commandContext, *m_PPLLResolvePSO, BindSets, 5);
     }
 	logger::info("End resolve");
     EndResolve(commandContext);

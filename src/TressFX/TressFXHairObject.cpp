@@ -255,6 +255,7 @@ void TressFXHairObject::DrawStrands(EI_CommandContext& commandContext,
     for (uint32_t i = 0; i < numExtraBindSets; ++i)
         sets[2+i] = extraBindSets[i];
 
+	logger::info("Binding render sets");
     commandContext.BindSets(&pso, 2 + numExtraBindSets, sets);
     AMD::uint32 nStrandCopies = 1;
     

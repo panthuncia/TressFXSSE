@@ -65,9 +65,9 @@ void CreateRenderLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"g_HairThicknessCoeffs", 0, EI_RESOURCETYPE_BUFFER_RO },
-            {"g_HairStrandTexCd", 1, EI_RESOURCETYPE_BUFFER_RO },
-            {"BaseAlbedoTexture", 2, EI_RESOURCETYPE_IMAGE_RO },
+            {"g_HairThicknessCoeffs", 2, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_HairStrandTexCd", 3, EI_RESOURCETYPE_BUFFER_RO },
+            {"BaseAlbedoTexture", 4, EI_RESOURCETYPE_IMAGE_RO },
             {"TressFXParameters", 3, EI_RESOURCETYPE_UNIFORM },
             {"TressFXStrandParameters", 4, EI_RESOURCETYPE_UNIFORM },
             {"StrandAlbedoTexture", 5, EI_RESOURCETYPE_IMAGE_RO },
@@ -187,7 +187,7 @@ void CreatePPLLResolveLayout(EI_Device* pDevice)
     EI_LayoutDescription desc = {
         {
             {"FragmentListHead", 0, EI_RESOURCETYPE_IMAGE_RO },
-            {"LinkedListNodes", 1, EI_RESOURCETYPE_BUFFER_RO },
+            {"LinkedListNodes", 2, EI_RESOURCETYPE_BUFFER_RO },
         },
         EI_PS
     };
@@ -199,7 +199,7 @@ void CreatePPLLShadeParamLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"TressFXShadeParams", 0, EI_RESOURCETYPE_UNIFORM },
+            {"TressFXShadeParams", 3, EI_RESOURCETYPE_UNIFORM },
         },
         EI_PS
     };
