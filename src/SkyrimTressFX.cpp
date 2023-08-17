@@ -228,9 +228,13 @@ void SkyrimTressFX::UpdateRenderingParameters()
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		// For now, just using distance of camera to 0, 0, 0, but should be passing in a root position for the hair object we want to LOD
 		float Distance = 0;  //sqrtf(m_activeScene.scene->GetCameraPos().x * m_activeScene.scene->GetCameraPos().x + m_activeScene.scene->GetCameraPos().y * m_activeScene.scene->GetCameraPos().y + m_activeScene.scene->GetCameraPos().z * m_activeScene.scene->GetCameraPos().z);
-		logger::info("Fiber radius: {}", m_activeScene.objects[i].renderingSettings.m_FiberRadius);
 		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateRenderingParameters(&m_activeScene.objects[i].renderingSettings, m_nPPLLNodes, m_deltaTime, Distance);
 		RenderSettings.push_back(&m_activeScene.objects[i].renderingSettings);
+	}
+
+	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
+		if (m_activeScene.objects[i].hairStrands->GetTressFXHandle())
+			m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdatePerObjectRenderParams(GetDevice()->GetCurrentCommandContext());
 	}
 
 	// Update shade parameters for correct implementation
