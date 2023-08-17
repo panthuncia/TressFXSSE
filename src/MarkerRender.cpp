@@ -90,7 +90,7 @@ void MarkerRender::DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX
 
 		//set position
 		CBMatrix          cbMatrix;
-		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(4, 4, 4);
+		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(2, 2, 2);
 
 		DirectX::XMFLOAT4X4 camWorldFloats;
 		DirectX::XMStoreFloat4x4(&camWorldFloats, cameraWorldTransform);
@@ -201,7 +201,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	pDeviceContext->OMSetDepthStencilState(m_pDepthStencilState, 0);
 
 	//draw markers
-	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(2*Util::RenderScale, 2*Util::RenderScale, 2*Util::RenderScale);
+	DirectX::XMMATRIX cubeScale = DirectX::XMMatrixScaling(Util::RenderScale, Util::RenderScale, Util::RenderScale);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;
@@ -240,7 +240,7 @@ void MarkerRender::DrawMarkers(std::vector<DirectX::XMMATRIX> worldTransforms, D
 	auto partInputLayout = part->inputLayout.Get();
 	pDeviceContext->IASetInputLayout(partInputLayout);
 	//draw cube arrows
-	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(4 * Util::RenderScale, 4 * Util::RenderScale, 4 * Util::RenderScale);
+	DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(2 * Util::RenderScale, 2 * Util::RenderScale, 2 * Util::RenderScale);
 	for (const DirectX::XMMATRIX& worldTransform : worldTransforms) {
 		// Set the constant buffer data
 		CBMatrix cbMatrix;

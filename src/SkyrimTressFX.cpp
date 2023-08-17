@@ -2,6 +2,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "Util.h"
 #include "SkyrimGPUResourceManager.h"
+#include "Menu.h"
 using json = nlohmann::json;
 // This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
@@ -86,6 +87,16 @@ void SkyrimTressFX::CreateRenderResources() {
 }
 
 void SkyrimTressFX::Update(){
+
+	auto menu = Menu::GetSingleton();
+	if (menu->offsetSlidersUpdated) {
+		float x = menu->xSliderValue;
+		float y = menu->ySliderValue;
+		float z = menu->zSliderValue;
+		float scale = menu->sSliderValue;
+		logger::info("Updating offsets: {}, X: {}, Y: {}, Z: {} Scale: {}", menu->activeHairs[menu->selectedHair], x, y, z, scale);
+		GetHairByName(menu->activeHairs[menu->selectedHair])->UpdateOffsets(x, y, z, scale);
+	}
 
 	RE::NiCamera* playerCam = Util::GetPlayerNiCamera().get();
 	auto          wtc = playerCam->worldToCam;
@@ -335,8 +346,50 @@ void SkyrimTressFX::ReloadAllHairs()
 	logger::info("Done reloading");
 }
 
+HairStrands* SkyrimTressFX::GetHairByName(std::string name) {
+	int numHairStrands = (int)m_activeScene.objects.size();
+	for (int i = 0; i < numHairStrands; ++i) {
+		auto hair = m_activeScene.objects[i].hairStrands.get();
+		if (hair->m_hairName == name) {
+			return hair;
+		}
+	}
+	logger::warn("Could not find hair with name {}", name);
+	return nullptr;
+}
+
 void SkyrimTressFX::Draw()
 {
+
+	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+	//store variable states
+	float             originalBlendFactor;
+	UINT              originalSampleMask;
+	ID3D11BlendState* originalBlendState;
+	pContext->OMGetBlendState(&originalBlendState, &originalBlendFactor, &originalSampleMask);
+	ID3D11DepthStencilState* originalDepthStencilState;
+	UINT                     originalStencilRef;
+	pContext->OMGetDepthStencilState(&originalDepthStencilState, &originalStencilRef);
+	ID3D11RasterizerState* originalRSState;
+	pContext->RSGetState(&originalRSState);
+	ID3D11DepthStencilView*  originalDepthStencil;
+	ID3D11RenderTargetView*  originalRenderTarget;
+	ID3D11Buffer*            indexBuffer = nullptr;
+	DXGI_FORMAT              indexBufferFormat;
+	UINT                     indexBufferOffset = 0;
+	UINT                     numVertexBuffers = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+	ID3D11Buffer*            vertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     vertexBufferStrides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	UINT                     vertexBufferOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	ID3D11InputLayout*       inputLayout = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY primitiveTopology;
+
+	pContext->OMGetRenderTargets(1, &originalRenderTarget, &originalDepthStencil);
+	pContext->IAGetIndexBuffer(&indexBuffer, &indexBufferFormat, &indexBufferOffset);
+	pContext->IAGetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
+	pContext->IAGetPrimitiveTopology(&primitiveTopology);
+	pContext->IAGetInputLayout(&inputLayout);
+
 	// Do hair draw - will pick correct render approach
 	if (m_drawHair) {
 		logger::info("Draw hair");
@@ -364,6 +417,17 @@ void SkyrimTressFX::Draw()
 		logger::info("End render pass");
 		GetDevice()->EndRenderPass(GetDevice()->GetCurrentCommandContext());
 	}
+
+	//reset states
+	pContext->OMSetBlendState(originalBlendState, &originalBlendFactor, originalSampleMask);
+	pContext->OMSetDepthStencilState(originalDepthStencilState, originalStencilRef);
+	pContext->RSSetState(originalRSState);
+	pContext->OMSetRenderTargets(1, &originalRenderTarget, originalDepthStencil);
+	pContext->IASetIndexBuffer(indexBuffer, indexBufferFormat, indexBufferOffset);
+	pContext->IASetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
+	pContext->IASetPrimitiveTopology(primitiveTopology);
+	pContext->IASetInputLayout(inputLayout);
+
 }
 
 void SkyrimTressFX::DrawHair()
@@ -372,6 +436,9 @@ void SkyrimTressFX::DrawHair()
 	std::vector<HairStrands*> hairStrands(numHairStrands);
 	for (int i = 0; i < numHairStrands; ++i) {
 		hairStrands[i] = m_activeScene.objects[i].hairStrands.get();
+		if (Menu::GetSingleton()->drawDebugMarkersCheckbox) {
+		hairStrands[i]->DrawDebugMarkers();
+		}
 	}
 
 	EI_CommandContext& pRenderCommandList = GetDevice()->GetCurrentCommandContext();

@@ -493,6 +493,49 @@ void TressFXHairObject::UpdateRenderingParameters(const TressFXRenderingSettings
     m_StrandCB->EnableStrandTangent = parameters->m_EnableStrandTangent;
 }
 
+void TressFXHairObject::UpdateStrandOffsets(TressFXAsset* asset, EI_CommandContext commandContext, float x, float y, float z, float scale)
+{
+	uint32_t              data_size = sizeof(float4) * m_NumTotalVertices;
+	float4* updatedVertices = (float4*)malloc(data_size);
+	if (!updatedVertices) {
+		logger::error("malloc failed!");
+		return;
+	}
+	memcpy(updatedVertices, asset->m_positions.data(), data_size);
+	for (int i = 0; i < m_NumTotalVertices; i++) {
+		updatedVertices[i].x *= scale;
+		updatedVertices[i].y *= scale;
+		updatedVertices[i].z *= scale;
+		updatedVertices[i].x += x;
+		updatedVertices[i].y += y;
+		updatedVertices[i].z += z;
+	}
+	commandContext.UpdateBuffer(m_InitialHairPositionsBuffer.get(), updatedVertices);
+	free(updatedVertices);
+	//destroy and recreate bind set
+	/*EI_DestroyBindSet(pDevice, m_pSimBindSet);
+	TressFXBindSet bindSet;
+
+	EI_SRV SRVs[7];
+
+	SRVs[0] = EI_GetSRV(mInitialHairPositionsBuffer);
+	SRVs[1] = EI_GetSRV(mGlobalRotationsBuffer);
+	SRVs[2] = EI_GetSRV(mHairRestLengthSRVBuffer);
+	SRVs[3] = EI_GetSRV(mHairStrandTypeBuffer);
+	SRVs[4] = EI_GetSRV(mHairRefVecsInLocalFrameBuffer);
+	SRVs[5] = EI_GetSRV(mFollowHairRootOffsetBuffer);
+	SRVs[6] = EI_GetSRV(mBoneSkinningDataBuffer);
+
+	bindSet.nSRVs = AMD_ARRAY_SIZE(SRVs);
+	bindSet.nUAVs = 0;
+	bindSet.uavs = nullptr;
+	bindSet.srvs = SRVs;
+	bindSet.values = &(mSimCB);
+	bindSet.nBytes = sizeof(TressFXSimulationConstantBuffer);
+
+	m_pSimBindSet = EI_CreateBindSet(pDevice, bindSet);*/
+}
+
 // Positions and tangents are handled in the following order, from the point of view of each
 // buffer.
 //

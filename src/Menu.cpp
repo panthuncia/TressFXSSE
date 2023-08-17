@@ -364,18 +364,14 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Max depth", &aoDepthThresholdMaxViewDepthSlider, 0.0f, 10000.0f);
 	ImGui::SliderFloat("Depth threshold sharpness", &aoDepthThresholdSharpnessSlider, 0.0f, 100.0f);
 	if (ImGui::Button("Export parameters")) {
-		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects) {
-			if (hair.name == activeHairs[selectedHair]) {
-				hair.hairStrands.get()->ExportParameters();
-			}
-		}
-		//PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
+		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters();
 	}
 	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
 	ImGui::SliderFloat("Point lighting diffuse amount", &pointLightDiffuseAmount, 0.0f, 1.0f);
 	ImGui::SliderFloat("Point lighting specular amount", &pointLightSpecularAmount, 0.0f, 1.0f);
 	ImGui::SliderFloat("Sun lighting diffuse amount", &sunLightDiffuseAmount, 0.0f, 2.0f);
 	ImGui::SliderFloat("Sun lighting specular amount", &sunLightSpecularAmount, 0.0f, 2.0f);
+	ImGui::Checkbox("Draw debug markers", &drawDebugMarkersCheckbox);
 
 }
 void Menu::DrawHairSelector()

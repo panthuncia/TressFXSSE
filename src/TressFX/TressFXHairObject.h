@@ -129,6 +129,8 @@ public:
     void IncreaseSimulationFrame() { m_SimCB[m_SimulationFrame%2]->g_ResetPositions = 0.0f; m_SimulationFrame++; }
 
     void PopulateDrawStrandsBindSet(EI_Device* pDevice, TressFXRenderingSettings* pRenderSettings=nullptr);
+	void UpdateStrandOffsets(TressFXAsset* asset, EI_CommandContext commandContext, float x, float y, float z, float scale);
+
 private:
     // Turn raw data into GPU resources for rendering.
     void CreateRenderingGPUResources(EI_Device*   pDevice,

@@ -36,7 +36,6 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 
 	logger::info("Create hair object");
 	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, name.c_str(), renderIndex);
-
 	m_pHairObject.reset(hair);
 	m_pScene = scene;
 	m_skinNumber = skinNumber;
@@ -56,6 +55,8 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	m_currentOffsets[2] = initialOffsets[2];
 	m_currentOffsets[3] = initialOffsets[3];
 	m_userEditorID = userEditorID;
+
+	m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), initialOffsets[0], initialOffsets[1], initialOffsets[2], initialOffsets[3]);
 }
 
 HairStrands::~HairStrands()
@@ -244,7 +245,7 @@ void HairStrands::UpdateBones()
 			m_boneTransforms[i] = RE::NiTransform();
 			continue;
 		}
-		m_boneTransforms[i] = m_pBones[i]->world;
+		m_boneTransforms[i] = RE::NiTransform(m_pBones[i]->world);
 	}
 }
 bool HairStrands::GetUpdatedBones(EI_CommandContext context)
@@ -307,13 +308,11 @@ bool HairStrands::GetUpdatedBones(EI_CommandContext context)
 }
 void HairStrands::UpdateOffsets(float x, float y, float z, float scale)
 {
-	//ID3D11Device*        pDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
-	//ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
 	m_currentOffsets[0] = x;
 	m_currentOffsets[1] = y;
 	m_currentOffsets[2] = z;
 	m_currentOffsets[3] = scale;
-	//m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pDevice, (EI_CommandContextRef)pDeviceContext, x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
+	m_pHairObject->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), x * Util::RenderScale, y * Util::RenderScale, z * Util::RenderScale, scale);
 }
 void HairStrands::ExportOffsets(float x, float y, float z, float scale)
 {
@@ -352,29 +351,7 @@ void HairStrands::ExportParameters()
 	std::ofstream file(m_configPath);
 	file << m_config;
 }
+
 void HairStrands::initialize(std::filesystem::path texturePath)
 {
-	//create texture and SRV (empty for now)
-	//ID3D11DeviceContext* pContext;
-	//pManager->GetInstance()->m_pDevice->GetImmediateContext(&pContext);
-	//DirectX::CreateDDSTextureFromFile(pManager->GetInstance()->m_pDevice, pContext, texturePath.generic_wstring().c_str(), &m_hairTexture, &m_hairSRV);
-	//logger::info("loaded hair texture");
-	/*D3D11_TEXTURE2D_DESC desc;
-	desc.Width = 256;
-	desc.Height = 256;
-	desc.MipLevels = desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	desc.MiscFlags = 0;
-	pManager = pManager;
-	pManager->m_pDevice->CreateTexture2D(&desc, NULL, &m_hairTexture);
-	pManager->m_pDevice->CreateShaderResourceView(m_hairTexture, nullptr, &m_hairSRV);*/
-	//create input layout for rendering
-	//D3D11_INPUT_ELEMENT_DESC inputDesc;
-	//pManager->m_pDevice->CreateInputLayout();
-	//compile effects
 }

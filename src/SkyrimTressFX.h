@@ -109,6 +109,7 @@ public:
 	void Draw();
 	void RecreateSizeDependentResources();
 
+	HairStrands* GetHairByName(std::string name);
 	TressFXScene m_activeScene;
 
 	std::unique_ptr<TressFXPPLL>     m_pPPLL;

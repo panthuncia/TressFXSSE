@@ -83,6 +83,7 @@ public:
 	bool                     HBAOCheckbox = true;
 	bool                     clearBeforeHBAOCheckbox = false;
 	float                    gravityMagnitudeSlider = 0.09f;
+	bool                     drawDebugMarkersCheckbox = true;
 	//ao
 	float aoLargeScaleAOSlider = 0.0f;
 	float aoSmallScaleAOSlider = 1.0f;
