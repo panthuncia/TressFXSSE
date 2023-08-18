@@ -1,8 +1,8 @@
 #include "SkyrimTressFX.h"
-#include "glm/gtc/matrix_transform.hpp"
-#include "Util.h"
-#include "SkyrimGPUResourceManager.h"
 #include "Menu.h"
+#include "SkyrimGPUResourceManager.h"
+#include "Util.h"
+#include "glm/gtc/matrix_transform.hpp"
 using json = nlohmann::json;
 // This could instead be retrieved as a variable from the
 // script manager, or passed as an argument.
@@ -72,7 +72,8 @@ void SkyrimTressFX::Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollis
 }
 
 //this function has to be executed once at a specific location in render loop
-void SkyrimTressFX::CreateRenderResources() {
+void SkyrimTressFX::CreateRenderResources()
+{
 	m_gameLoaded = true;
 	//get current render target and depth stencil
 	ID3D11RenderTargetView* pRTV;
@@ -86,8 +87,8 @@ void SkyrimTressFX::CreateRenderResources() {
 	RecreateSizeDependentResources();
 }
 
-void SkyrimTressFX::Update(){
-
+void SkyrimTressFX::Update()
+{
 	auto menu = Menu::GetSingleton();
 	if (menu->offsetSlidersUpdated) {
 		float x = menu->xSliderValue;
@@ -168,7 +169,7 @@ void SkyrimTressFX::Update(){
 	amdViewMatrix.m[14] = viewMatrix[3][2];
 	amdViewMatrix.m[15] = viewMatrix[3][3];
 	m_activeScene.scene.get()->m_viewMatrix = amdViewMatrix;
-	
+
 	auto          viewProjMatrix = glm::transpose(viewMatrix * projMatrix);
 	AMD::float4x4 amdViewProjMatrix;
 	amdViewProjMatrix.m[0] = viewProjMatrix[0][0];
@@ -189,7 +190,7 @@ void SkyrimTressFX::Update(){
 	amdViewProjMatrix.m[15] = viewProjMatrix[3][3];
 	m_activeScene.scene.get()->m_viewProjMatrix = amdViewProjMatrix;
 
-	auto viewProjMatrixInverse = glm::inverse(viewProjMatrix);
+	auto          viewProjMatrixInverse = glm::inverse(viewProjMatrix);
 	AMD::float4x4 amdViewProjMatrixInverse;
 	amdViewProjMatrixInverse.m[0] = viewProjMatrixInverse[0][0];
 	amdViewProjMatrixInverse.m[1] = viewProjMatrixInverse[0][1];
@@ -221,6 +222,10 @@ void SkyrimTressFX::Update(){
 
 void SkyrimTressFX::UpdateSimulationParameters()
 {
+	//update from menu
+	auto menu = Menu::GetSingleton();
+	m_activeScene.objects[menu->selectedHair].simulationSettings = menu->GetSelectedSimulationSettings(m_activeScene.objects[menu->selectedHair].simulationSettings);
+	
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateSimulationParameters(&m_activeScene.objects[i].simulationSettings, m_deltaTime);
 	}
@@ -235,6 +240,10 @@ void SkyrimTressFX::UpdateRenderingParameters()
 	m_activeScene.viewConstantBuffer->mInvViewProj = m_activeScene.scene->GetInvViewProjMatrix();
 	m_activeScene.viewConstantBuffer->vViewport = { 0, 0, (float)m_nScreenWidth, (float)m_nScreenHeight };
 	m_activeScene.viewConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
+
+	//update from menu
+	auto menu = Menu::GetSingleton();
+	m_activeScene.objects[menu->selectedHair].renderingSettings = menu->GetSelectedRenderingSettings(m_activeScene.objects[menu->selectedHair].renderingSettings);
 
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		// For now, just using distance of camera to 0, 0, 0, but should be passing in a root position for the hair object we want to LOD
@@ -301,9 +310,10 @@ void SkyrimTressFX::LoadScene()
 	}
 	logger::info("LoadScene done");
 }
-void SkyrimTressFX::UpdateLights() {
+void SkyrimTressFX::UpdateLights()
+{
 	auto  accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
-	auto shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
+	auto  shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
 	int   i = 0;
 	for (auto& e : runtimeData.activePointLights) {
@@ -326,8 +336,8 @@ void SkyrimTressFX::UpdateLights() {
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = bsLight->luminance;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].LightOuterConeCos = lightInfo.outerConeCos;
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightPositionWS = { niLight->world.translate.x, niLight->world.translate.x, niLight->world.translate.x };
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 1000;//???
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;//???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 1000;  //???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;      //???
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapIndex = lightInfo.shadowMapIndex;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowProjection = *(AMD::float4x4*)&lightInfo.mLightViewProj;  // ugh .. need a proper math library
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowParams = { lightInfo.depthBias, .1f, 100.0f, 0.f };       // Near and Far are currently hard-coded because we are hard-coding them elsewhere
@@ -346,7 +356,8 @@ void SkyrimTressFX::ReloadAllHairs()
 	logger::info("Done reloading");
 }
 
-HairStrands* SkyrimTressFX::GetHairByName(std::string name) {
+HairStrands* SkyrimTressFX::GetHairByName(std::string name)
+{
 	int numHairStrands = (int)m_activeScene.objects.size();
 	for (int i = 0; i < numHairStrands; ++i) {
 		auto hair = m_activeScene.objects[i].hairStrands.get();
@@ -360,7 +371,6 @@ HairStrands* SkyrimTressFX::GetHairByName(std::string name) {
 
 void SkyrimTressFX::Draw()
 {
-
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 	//store variable states
 	float             originalBlendFactor;
@@ -427,7 +437,6 @@ void SkyrimTressFX::Draw()
 	pContext->IASetVertexBuffers(0, numVertexBuffers, vertexBuffers, vertexBufferStrides, vertexBufferOffsets);
 	pContext->IASetPrimitiveTopology(primitiveTopology);
 	pContext->IASetInputLayout(inputLayout);
-
 }
 
 void SkyrimTressFX::DrawHair()
@@ -437,7 +446,7 @@ void SkyrimTressFX::DrawHair()
 	for (int i = 0; i < numHairStrands; ++i) {
 		hairStrands[i] = m_activeScene.objects[i].hairStrands.get();
 		if (Menu::GetSingleton()->drawDebugMarkersCheckbox) {
-		hairStrands[i]->DrawDebugMarkers();
+			hairStrands[i]->DrawDebugMarkers();
 		}
 	}
 
@@ -551,6 +560,7 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 		m_nPPLLNodes = m_nScreenWidth * m_nScreenHeight * AVE_FRAGS_PER_PIXEL;
 		m_pPPLL.reset(new TressFXPPLL);
 		m_pPPLL->Initialize(m_nScreenWidth, m_nScreenHeight, m_nPPLLNodes, PPLL_NODE_SIZE);
+		logger::info("PPLL initialized");
 		break;
 	case OIT_METHOD_SHORTCUT:
 		logger::info("Setting OIT method to ShortCut");
@@ -562,199 +572,215 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 
 TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 {
-	TressFXSceneDescription  sd;
+	TressFXSceneDescription sd;
 	//FILE*                    fp;
-	const auto               configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
-	const auto               assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
-	const auto               texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX";
-	std::vector<std::string> usedNames;
-	for (const auto& entry : std::filesystem::directory_iterator(configPath)) {
-		std::string configFile = entry.path().generic_string();
-		logger::info("config file: {}", configFile);
-		std::ifstream f(configFile);
-		json          data;
+	const auto                          configPath = std::filesystem::current_path() / "data\\TressFX\\HairConfig";
+	const auto                          assetPath = std::filesystem::current_path() / "data\\TressFX\\HairAssets";
+	const auto                          texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX";
+	std::vector<std::string>            usedNames;
+	std::filesystem::directory_iterator fsIterator;
+	try {
+		fsIterator = std::filesystem::directory_iterator(configPath);
+	} catch (std::filesystem::filesystem_error e) {
+		logger::critical("{}", e.what());
+	}
+	logger::info("1");
+	for (const auto& entry : fsIterator) {
 		try {
-			data = json::parse(f);
-		} catch (json::parse_error e) {
-			logger::error("Error parsing hair config at {}: {}", configFile, e.what());
-		}
-		std::string baseAssetName = data["asset"].get<std::string>();
-		const auto  assetTexturePath = texturePath / (baseAssetName + ".dds");
-		std::string assetName = baseAssetName;
-		uint32_t    i = 1;
-		while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {
-			i += 1;
-			assetName = baseAssetName + "#" + std::to_string(i);
-		}
-		logger::info("Asset name: {}", assetName);
-		std::string assetFileName = baseAssetName + ".tfx";
-		std::string boneFileName = baseAssetName + ".tfxbone";
-		const auto  thisAssetPath = assetPath / assetFileName;
-		const auto  thisBonePath = assetPath / boneFileName;
+			logger::info("1.1");
+			std::string configFile = entry.path().generic_string();
+			logger::info("1.2");
+			logger::info("config file: {}", configFile);
+			std::ifstream f(configFile);
+			json          data;
+			try {
+				data = json::parse(f);
+			} catch (json::parse_error e) {
+				logger::error("Error parsing hair config at {}: {}", configFile, e.what());
+			}
+			logger::info("2");
+			std::string baseAssetName = data["asset"].get<std::string>();
+			const auto  assetTexturePath = texturePath / (baseAssetName + ".dds");
+			std::string assetName = baseAssetName;
+			uint32_t    i = 1;
+			while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {
+				i += 1;
+				assetName = baseAssetName + "#" + std::to_string(i);
+			}
+			logger::info("3");
+			logger::info("Asset name: {}", assetName);
+			std::string assetFileName = baseAssetName + ".tfx";
+			std::string boneFileName = baseAssetName + ".tfxbone";
+			const auto  thisAssetPath = assetPath / assetFileName;
+			const auto  thisBonePath = assetPath / boneFileName;
 
-		const auto bones = data["bones"].get<std::vector<std::string>>();
-		for (auto bone : bones) {
-			logger::info("bone: {}", bone);
-		}
-
-		if (!data.contains("editorids")) {
-			logger::warn("Hair config {} has no editor IDs, discarding.", configFile);
-		}
-		const auto editorIDs = data["editorids"].get<std::vector<std::string>>();
-
-		if (data.contains("offsets")) {
-			logger::info("loading offsets");
-			auto  offsets = data["offsets"];
-			float x = 0.0;
-			if (offsets.contains("x")) {
-				x = offsets["x"].get<float>();
-			}
-			float y = 0.0;
-			if (offsets.contains("y")) {
-				y = offsets["y"].get<float>();
-			}
-			float z = 0.0;
-			if (offsets.contains("z")) {
-				z = offsets["z"].get<float>();
-			}
-			float scale = 0.0;
-			if (offsets.contains("scale")) {
-				scale = offsets["scale"].get<float>();
-			}
-		}
-		float fiberRadius = 0.002f;
-		float fiberSpacing = 0.1f;
-		float fiberRatio = 0.5f;
-		float kd = 0.07f;
-		float ks1 = 0.17f;
-		float ex1 = 14.4f;
-		float ks2 = 0.72f;
-		float ex2 = 11.8f;
-		float hairOpacity = 0.63f;
-		float hairShadowAlpha = 0.35f;
-		bool  thinTip = true;
-		int   localConstraintsIterations = 3;
-		int   lengthConstraintsIterations = 3;
-		float localConstraintsStiffness = 0.9f;
-		float globalConstraintsStiffness = 0.9f;
-		float globalConstraintsRange = 0.9f;
-		float damping = 0.06f;
-		float vspAmount = 0.75f;
-		float vspAccelThreshold = 1.2f;
-		float gravityMagnitude = 0.09f;
-		if (data.contains("parameters")) {
-			logger::info("params");
-			auto params = data["parameters"];
-			if (params.contains("fiberRadius")) {
-				fiberRadius = params["fiberRadius"].get<float>();
-			}
-			if (params.contains("fiberSpacing")) {
-				fiberSpacing = params["fiberSpacing"].get<float>();
-			}
-			if (params.contains("fiberRatio")) {
-				fiberRatio = params["fiberRatio"].get<float>();
-			}
-			if (params.contains("kd")) {
-				kd = params["kd"].get<float>();
-			}
-			if (params.contains("ks1")) {
-				ks1 = params["ks1"].get<float>();
-			}
-			if (params.contains("ex1")) {
-				ex1 = params["ex1"].get<float>();
-			}
-			if (params.contains("ks2")) {
-				ks2 = params["ks2"].get<float>();
-			}
-			if (params.contains("ex2")) {
-				ex2 = params["ex2"].get<float>();
-			}
-			if (params.contains("hairOpacity")) {
-				hairOpacity = params["hairOpacity"].get<float>();
-			}
-			if (params.contains("hairShadowAlpha")) {
-				hairShadowAlpha = params["hairShadowAlpha"].get<float>();
-			}
-			if (params.contains("thinTip")) {
-				thinTip = params["thinTip"].get<bool>();
-			}
-			if (params.contains("localConstraintsIterations")) {
-				localConstraintsIterations = params["localConstraintsIterations"].get<int>();
-			}
-			if (params.contains("lengthConstraintsIterations")) {
-				localConstraintsIterations = params["lengthConstraintsIterations"].get<int>();
-			}
-			if (params.contains("localConstraintsStiffness")) {
-				localConstraintsStiffness = params["localConstraintsStiffness"].get<float>();
-			}
-			if (params.contains("globalConstraintsStiffness")) {
-				globalConstraintsStiffness = params["globalConstraintsStiffness"].get<float>();
-			}
-			if (params.contains("globalConstraintsRange")) {
-				globalConstraintsRange = params["globalConstraintsRange"].get<float>();
-			}
-			if (params.contains("damping")) {
-				damping = params["damping"].get<float>();
-			}
-			if (params.contains("vspAmount")) {
-				vspAmount = params["vspAmount"].get<float>();
-			}
-			if (params.contains("vspAccelThreshold")) {
-				vspAccelThreshold = params["vspAccelThreshold"].get<float>();
-			}
-			if (params.contains("gravityMagnitude")) {
-				vspAccelThreshold = params["gravityMagnitude"].get<float>();
+			const auto bones = data["bones"].get<std::vector<std::string>>();
+			for (auto bone : bones) {
+				logger::info("bone: {}", bone);
 			}
 
-			for (auto editorID : editorIDs) {
-				logger::info("adding hair for editor id: {}", editorID);
-				auto hairName = editorID + ":" + assetName;
-
-				//ppll->m_hairs[hairName]->SetRenderingAndSimParameters(fiberRadius, fiberSpacing, fiberRatio, kd, ks1, ex1, ks2, ex2, localConstraintsIterations, lengthConstraintsIterations, localConstraintsStiffness, globalConstraintsStiffness, globalConstraintsRange, damping, vspAmount, vspAccelThreshold, hairOpacity, hairShadowAlpha, thinTip);
-				TressFXSSEData tfxData;
-				tfxData.m_configData = data;
-				tfxData.m_configPath = configPath;
-				tfxData.m_userEditorID = editorID;
-				tfxData.boneNames = bones;
-
-				TressFXSimulationSettings simSettings;
-				simSettings.m_vspCoeff = vspAmount;
-				simSettings.m_vspAccelThreshold = vspAccelThreshold;
-				simSettings.m_localConstraintStiffness = localConstraintsStiffness;
-				simSettings.m_localConstraintsIterations = localConstraintsIterations;
-				simSettings.m_globalConstraintStiffness = globalConstraintsStiffness;
-				simSettings.m_globalConstraintsRange = globalConstraintsRange;
-				simSettings.m_lengthConstraintsIterations = lengthConstraintsIterations;
-				simSettings.m_damping = damping;
-				simSettings.m_gravityMagnitude = gravityMagnitude;
-
-				TressFXRenderingSettings renderSettings;
-				renderSettings.m_BaseAlbedoName = assetTexturePath.generic_string();
-				logger::info("albedo texture path: {}", renderSettings.m_BaseAlbedoName);
-				renderSettings.m_EnableThinTip = thinTip;
-				renderSettings.m_FiberRadius = fiberRadius;
-				renderSettings.m_FiberRatio = fiberRatio;
-				renderSettings.m_HairKDiffuse = kd;
-				renderSettings.m_HairKSpec1 = ks1;
-				renderSettings.m_HairSpecExp1 = ex1;
-				renderSettings.m_HairKSpec2 = ks2;
-				renderSettings.m_HairSpecExp2 = ex2;
-
-				TressFXObjectDescription hairDesc;
-				hairDesc.hairObjectName = hairName;
-				hairDesc.name = hairName;
-				hairDesc.tfxFilePath = thisAssetPath.generic_string();
-				hairDesc.tfxBoneFilePath = thisBonePath.generic_string();
-				hairDesc.initialSimulationSettings = simSettings;
-				hairDesc.initialRenderingSettings = renderSettings;
-				hairDesc.tressfxSSEData = tfxData;
-				hairDesc.numFollowHairs = 0;          //TODO
-				hairDesc.mesh = (int)m_activeScene.scene.get()->skinIDBoneNamesMap.size();
-				hairDesc.tipSeparationFactor = 1.0f;  //???
-				sd.objects.push_back(hairDesc);
-				//TODO collision mesh
+			if (!data.contains("editorids")) {
+				logger::warn("Hair config {} has no editor IDs, discarding.", configFile);
+				continue;
 			}
-			m_activeScene.scene.get()->skinIDBoneNamesMap[(int)m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
+			const auto editorIDs = data["editorids"].get<std::vector<std::string>>();
+			logger::info("4");
+			if (data.contains("offsets")) {
+				logger::info("loading offsets");
+				auto  offsets = data["offsets"];
+				float x = 0.0;
+				if (offsets.contains("x")) {
+					x = offsets["x"].get<float>();
+				}
+				float y = 0.0;
+				if (offsets.contains("y")) {
+					y = offsets["y"].get<float>();
+				}
+				float z = 0.0;
+				if (offsets.contains("z")) {
+					z = offsets["z"].get<float>();
+				}
+				float scale = 0.0;
+				if (offsets.contains("scale")) {
+					scale = offsets["scale"].get<float>();
+				}
+			}
+			float fiberRadius = 0.002f;
+			float fiberSpacing = 0.1f;
+			float fiberRatio = 0.5f;
+			float kd = 0.07f;
+			float ks1 = 0.17f;
+			float ex1 = 14.4f;
+			float ks2 = 0.72f;
+			float ex2 = 11.8f;
+			float hairOpacity = 0.63f;
+			float hairShadowAlpha = 0.35f;
+			bool  thinTip = true;
+			int   localConstraintsIterations = 3;
+			int   lengthConstraintsIterations = 3;
+			float localConstraintsStiffness = 0.9f;
+			float globalConstraintsStiffness = 0.9f;
+			float globalConstraintsRange = 0.9f;
+			float damping = 0.06f;
+			float vspAmount = 0.75f;
+			float vspAccelThreshold = 1.2f;
+			float gravityMagnitude = 0.09f;
+			if (data.contains("parameters")) {
+				logger::info("params");
+				auto params = data["parameters"];
+				if (params.contains("fiberRadius")) {
+					fiberRadius = params["fiberRadius"].get<float>();
+				}
+				if (params.contains("fiberSpacing")) {
+					fiberSpacing = params["fiberSpacing"].get<float>();
+				}
+				if (params.contains("fiberRatio")) {
+					fiberRatio = params["fiberRatio"].get<float>();
+				}
+				if (params.contains("kd")) {
+					kd = params["kd"].get<float>();
+				}
+				if (params.contains("ks1")) {
+					ks1 = params["ks1"].get<float>();
+				}
+				if (params.contains("ex1")) {
+					ex1 = params["ex1"].get<float>();
+				}
+				if (params.contains("ks2")) {
+					ks2 = params["ks2"].get<float>();
+				}
+				if (params.contains("ex2")) {
+					ex2 = params["ex2"].get<float>();
+				}
+				if (params.contains("hairOpacity")) {
+					hairOpacity = params["hairOpacity"].get<float>();
+				}
+				if (params.contains("hairShadowAlpha")) {
+					hairShadowAlpha = params["hairShadowAlpha"].get<float>();
+				}
+				if (params.contains("thinTip")) {
+					thinTip = params["thinTip"].get<bool>();
+				}
+				if (params.contains("localConstraintsIterations")) {
+					localConstraintsIterations = params["localConstraintsIterations"].get<int>();
+				}
+				if (params.contains("lengthConstraintsIterations")) {
+					localConstraintsIterations = params["lengthConstraintsIterations"].get<int>();
+				}
+				if (params.contains("localConstraintsStiffness")) {
+					localConstraintsStiffness = params["localConstraintsStiffness"].get<float>();
+				}
+				if (params.contains("globalConstraintsStiffness")) {
+					globalConstraintsStiffness = params["globalConstraintsStiffness"].get<float>();
+				}
+				if (params.contains("globalConstraintsRange")) {
+					globalConstraintsRange = params["globalConstraintsRange"].get<float>();
+				}
+				if (params.contains("damping")) {
+					damping = params["damping"].get<float>();
+				}
+				if (params.contains("vspAmount")) {
+					vspAmount = params["vspAmount"].get<float>();
+				}
+				if (params.contains("vspAccelThreshold")) {
+					vspAccelThreshold = params["vspAccelThreshold"].get<float>();
+				}
+				if (params.contains("gravityMagnitude")) {
+					vspAccelThreshold = params["gravityMagnitude"].get<float>();
+				}
+
+				for (auto editorID : editorIDs) {
+					logger::info("adding hair for editor id: {}", editorID);
+					auto hairName = editorID + ":" + assetName;
+
+					//ppll->m_hairs[hairName]->SetRenderingAndSimParameters(fiberRadius, fiberSpacing, fiberRatio, kd, ks1, ex1, ks2, ex2, localConstraintsIterations, lengthConstraintsIterations, localConstraintsStiffness, globalConstraintsStiffness, globalConstraintsRange, damping, vspAmount, vspAccelThreshold, hairOpacity, hairShadowAlpha, thinTip);
+					TressFXSSEData tfxData;
+					tfxData.m_configData = data;
+					tfxData.m_configPath = configPath;
+					tfxData.m_userEditorID = editorID;
+					tfxData.boneNames = bones;
+
+					TressFXSimulationSettings simSettings;
+					simSettings.m_vspCoeff = vspAmount;
+					simSettings.m_vspAccelThreshold = vspAccelThreshold;
+					simSettings.m_localConstraintStiffness = localConstraintsStiffness;
+					simSettings.m_localConstraintsIterations = localConstraintsIterations;
+					simSettings.m_globalConstraintStiffness = globalConstraintsStiffness;
+					simSettings.m_globalConstraintsRange = globalConstraintsRange;
+					simSettings.m_lengthConstraintsIterations = lengthConstraintsIterations;
+					simSettings.m_damping = damping;
+					simSettings.m_gravityMagnitude = gravityMagnitude;
+
+					TressFXRenderingSettings renderSettings;
+					renderSettings.m_BaseAlbedoName = assetTexturePath.generic_string();
+					logger::info("albedo texture path: {}", renderSettings.m_BaseAlbedoName);
+					renderSettings.m_EnableThinTip = thinTip;
+					renderSettings.m_FiberRadius = fiberRadius;
+					renderSettings.m_FiberRatio = fiberRatio;
+					renderSettings.m_HairKDiffuse = kd;
+					renderSettings.m_HairKSpec1 = ks1;
+					renderSettings.m_HairSpecExp1 = ex1;
+					renderSettings.m_HairKSpec2 = ks2;
+					renderSettings.m_HairSpecExp2 = ex2;
+
+					TressFXObjectDescription hairDesc;
+					hairDesc.hairObjectName = hairName;
+					hairDesc.name = hairName;
+					hairDesc.tfxFilePath = thisAssetPath.generic_string();
+					hairDesc.tfxBoneFilePath = thisBonePath.generic_string();
+					hairDesc.initialSimulationSettings = simSettings;
+					hairDesc.initialRenderingSettings = renderSettings;
+					hairDesc.tressfxSSEData = tfxData;
+					hairDesc.numFollowHairs = 0;  //TODO
+					hairDesc.mesh = (int)m_activeScene.scene.get()->skinIDBoneNamesMap.size();
+					hairDesc.tipSeparationFactor = 1.0f;  //???
+					sd.objects.push_back(hairDesc);
+					//TODO collision mesh
+				}
+				m_activeScene.scene.get()->skinIDBoneNamesMap[(int)m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
+			}
+		} catch (nlohmann::json::type_error e) {
+			logger::error(" loading config file failed, {}", e.what());
 		}
 	}
 	return sd;

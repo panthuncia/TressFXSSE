@@ -66,6 +66,7 @@ struct Main_Update
 	static inline REL::Relocation<decltype(thunk)> func;
 };
 //uint8_t skipFrame = 10;
+using namespace std::chrono;
 struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
@@ -82,8 +83,15 @@ struct Hooks
 			}
 			if (tfx->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				//tfx->Update();
+				uint64_t ms = duration_cast<milliseconds>(
+					system_clock::now().time_since_epoch())
+				                  .count();
+				double time = (double)ms / 1000;
+				time;
+				tfx->Update();
+				tfx->Simulate(time, false, false);
 				if (Menu::GetSingleton()->drawHairCheckbox) {
-					//tfx->Update();
 					tfx->Draw();
 					tfx->m_currentState = state::done_drawing;
 				}
@@ -113,7 +121,6 @@ struct Hooks
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
-
 	struct Main_PostDrawWorld_MainDraw
 	{
 		static void thunk(INT64 BSGraphics_Renderer, int unk)
@@ -346,15 +353,9 @@ namespace LightHooks{
 			hair.hairStrands->UpdateBones();
 		}
 		//simulate before render pass
-		auto tfx = SkyrimTressFX::GetSingleton();
+		//auto tfx = SkyrimTressFX::GetSingleton();
 		auto camera = RE::PlayerCamera::GetSingleton();
 		if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-			uint64_t ms = duration_cast<milliseconds>(
-				system_clock::now().time_since_epoch()).count();
-			double time = (double)ms / 1000;
-			time;
-			tfx->Update();
-			//tfx->Simulate(time, false, false);
 		}
 		_Nullsub();
 	}

@@ -635,6 +635,61 @@ void Menu::DrawMatrix(DirectX::XMMATRIX mat, std::string name)
 		{ temp._41, temp._42, temp._43, temp._44 });
 	DrawMatrix(glmmat, name);
 }
+TressFXRenderingSettings Menu::GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings)
+{
+	TressFXRenderingSettings settings;
+	settings.m_BaseAlbedoName = previousSettings.m_BaseAlbedoName;
+	settings.m_EnableHairLOD = previousSettings.m_EnableHairLOD;
+	settings.m_EnableShadowLOD = previousSettings.m_EnableShadowLOD;
+	settings.m_EnableStrandTangent = previousSettings.m_EnableStrandTangent;
+	settings.m_EnableStrandUV = previousSettings.m_EnableStrandUV;
+	settings.m_EnableThinTip = thinTipCheckbox;
+	settings.m_FiberRadius = fiberRadiusSliderValue;
+	settings.m_FiberRatio = fiberRatioSliderValue;
+	settings.m_HairFiberSpacing = previousSettings.m_HairFiberSpacing;
+	settings.m_HairKDiffuse = kdSliderValue;
+	settings.m_HairKSpec1 = ks1SliderValue;
+	settings.m_HairKSpec2 = ks2SliderValue;
+	settings.m_HairMatBaseColor = previousSettings.m_HairMatBaseColor;
+	settings.m_HairMatTipColor = previousSettings.m_HairMatTipColor;
+	settings.m_HairMaxShadowFibers = previousSettings.m_HairMaxShadowFibers;
+	settings.m_HairShadowAlpha = hairShadowAlphaSlider;
+	settings.m_HairSpecExp1 = ex1SliderValue;
+	settings.m_HairSpecExp2 = ex2SliderValue;
+	settings.m_LODEndDistance = previousSettings.m_LODEndDistance;
+	settings.m_LODPercent = previousSettings.m_LODPercent;
+	settings.m_LODStartDistance = previousSettings.m_LODStartDistance;
+	settings.m_LODWidthMultiplier = previousSettings.m_LODWidthMultiplier;
+	settings.m_ShadowLODEndDistance = previousSettings.m_ShadowLODEndDistance;
+	settings.m_ShadowLODPercent = previousSettings.m_ShadowLODPercent;
+	settings.m_ShadowLODStartDistance = previousSettings.m_ShadowLODStartDistance;
+	settings.m_ShadowLODWidthMultiplier = previousSettings.m_ShadowLODWidthMultiplier;
+	settings.m_StrandAlbedoName = previousSettings.m_StrandAlbedoName;
+	settings.m_StrandUVTilingFactor = previousSettings.m_StrandUVTilingFactor;
+	settings.m_TipPercentage = previousSettings.m_TipPercentage;
+	return settings;
+}
+
+TressFXSimulationSettings Menu::GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings) {
+	TressFXSimulationSettings settings;
+	settings.m_clampPositionDelta = previousSettings.m_clampPositionDelta;
+	settings.m_damping = dampingSlider;
+	settings.m_globalConstraintsRange = globalConstraintsRangeSlider;
+	settings.m_globalConstraintStiffness = globalConstraintsStiffnessSlider;
+	settings.m_gravityMagnitude = gravityMagnitudeSlider;
+	settings.m_lengthConstraintsIterations = lengthConstraintsIterationsSlider;
+	settings.m_localConstraintsIterations = localConstraintsIterationsSlider;
+	settings.m_localConstraintStiffness = localConstraintsStiffnessSlider;
+	settings.m_tipSeparation = previousSettings.m_tipSeparation;
+	settings.m_vspAccelThreshold = vspAccelThresholdSlider;
+	settings.m_vspCoeff = vspAmountSlider;
+	settings.m_windAngleRadians = previousSettings.m_windAngleRadians;
+	settings.m_windDirection[0] = previousSettings.m_windDirection[0];
+	settings.m_windDirection[1] = previousSettings.m_windDirection[1];
+	settings.m_windDirection[2] = previousSettings.m_windDirection[2];
+	settings.m_windMagnitude = previousSettings.m_windMagnitude;
+	return settings;
+}
 	const char* Menu::KeyIdToString(uint32_t key)
 {
 	if (key >= 256)

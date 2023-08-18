@@ -1191,10 +1191,17 @@ void EI_CommandContext::DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams)
 	pContext->DrawInstanced(drawParams.numVertices, drawParams.numInstances, 0, 0);
 }
 
+ID3D11UnorderedAccessView* pNullUAVs[4] = { nullptr };
 void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
 {
 	UNREFERENCED_PARAMETER(numBarriers);
 	UNREFERENCED_PARAMETER(barriers);
+
+	if (barriers->from == EI_STATE_UAV && barriers->to == EI_STATE_SRV) {
+		logger::info("transitioning UAVs");
+		auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+		pContext->CSSetUnorderedAccessViews(0, 4, pNullUAVs, zeros);
+	}
 	//do we need anything?
 	//logger::info("SubmitBarriers");
 }

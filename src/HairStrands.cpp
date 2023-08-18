@@ -56,7 +56,7 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	m_currentOffsets[3] = initialOffsets[3];
 	m_userEditorID = userEditorID;
 
-	m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), initialOffsets[0], initialOffsets[1], initialOffsets[2], initialOffsets[3]);
+	//m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), initialOffsets[0] * Util::RenderScale, initialOffsets[1] * Util::RenderScale, initialOffsets[2] * Util::RenderScale, initialOffsets[3] * Util::RenderScale);
 }
 
 HairStrands::~HairStrands()
@@ -76,7 +76,7 @@ void HairStrands::Reload()
 	m_pHairObject.release();
 	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, m_hairName.c_str(), m_renderIndex);
 	m_pHairObject.reset(hair);
-	//m_pHairObject->UpdateStrandOffsets(m_hairAsset, (EI_Device*)pManager->m_pDevice, (EI_CommandContextRef)pContext, m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
+	m_pHairObject->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
 }
 
 void HairStrands::DrawDebugMarkers()

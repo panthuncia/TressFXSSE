@@ -8,6 +8,8 @@
 #include <string>
 #include <glm/glm.hpp>
 using json = nlohmann::json;
+class TressFXRenderingSettings;
+class TressFXSimulationSettings;
 class Menu : public RE::BSTEventSink<RE::InputEvent*>
 {
 public:
@@ -39,6 +41,8 @@ public:
 	void DrawInt(uint16_t integer, std::string name);
 	void DrawNiTransform(RE::NiTransform transform, std::string name);
 	void UpdateActiveHairs(std::vector<std::string> actors);
+	TressFXRenderingSettings GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings);
+	TressFXSimulationSettings GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings);
 	
 	float ambientLightingAmount = 1.0f;
 	float pointLightDiffuseAmount = 1.0f;
