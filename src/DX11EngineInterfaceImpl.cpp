@@ -842,7 +842,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, con
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 	HRESULT hr = pDevice->CreateTexture2D(&desc, NULL, &res->m_pTexture);

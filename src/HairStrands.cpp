@@ -55,7 +55,7 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	m_currentOffsets[2] = initialOffsets[2];
 	m_currentOffsets[3] = initialOffsets[3];
 	m_userEditorID = userEditorID;
-
+	logger::info("Initial offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
 	//m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), initialOffsets[0] * Util::RenderScale, initialOffsets[1] * Util::RenderScale, initialOffsets[2] * Util::RenderScale, initialOffsets[3] * Util::RenderScale);
 }
 
@@ -76,6 +76,8 @@ void HairStrands::Reload()
 	m_pHairObject.release();
 	auto hair = new TressFXHairObject(m_pHairAsset, pDevice, uploadCommandContext, m_hairName.c_str(), m_renderIndex);
 	m_pHairObject.reset(hair);
+	
+	logger::info("Offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
 	m_pHairObject->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
 }
 
@@ -232,6 +234,9 @@ void HairStrands::RegisterBones()
 	}
 	logger::info("Got all bones");
 	m_gotSkeleton = true;
+
+	logger::info("Offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
+	m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3] * Util::RenderScale);
 }
 void HairStrands::UpdateBones()
 {
@@ -322,8 +327,10 @@ void HairStrands::ExportOffsets(float x, float y, float z, float scale)
 	offsets["z"] = z;
 	offsets["scale"] = scale;
 	m_config["offsets"] = offsets;
+	logger::info("Exporting offsets: {}, {}, {}, {}, path: {}", x, y, z, scale, m_configPath);
+	std::remove(m_configPath.c_str());
 	std::ofstream file(m_configPath);
-	file << m_config;
+	file << std::setw(4) << m_config <<std::endl;
 }
 void HairStrands::ExportParameters()
 {

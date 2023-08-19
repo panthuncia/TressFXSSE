@@ -218,6 +218,7 @@ void SkyrimTressFX::Update()
 	m_activeScene.scene.get()->m_cameraPos = amdCameraPos;
 	UpdateSimulationParameters();
 	UpdateRenderingParameters();
+	UpdateLights();
 }
 
 void SkyrimTressFX::UpdateSimulationParameters()
@@ -326,24 +327,38 @@ void SkyrimTressFX::UpdateLights()
 			continue;
 		}
 		i += 1;
+		if (i >= AMD_TRESSFX_MAX_LIGHTS) {
+			break;
+		}
 		float x;
 		float y;
 		float z;
 		niLight->world.rotate.ToEulerAnglesXYZ(z, y, x);
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { niLight->diffuse.red, niLight->diffuse.blue, niLight->diffuse.green };
+		auto dimmer = niLight->GetLightRuntimeData().fade * bsLight->lodDimmer;
+		auto color = niLight->GetLightRuntimeData().diffuse*dimmer;
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { color.red, color.blue, color.green };
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightDirWS = { x, y, z };
 		//m_activeScene.lightConstantBuffer->LightInfo[i].LightInnerConeCos = lightInfo.innerConeCos;
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = bsLight->luminance;
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = (color.red+color.green+color.blue)/3;
+		logger::info("Luminance: {}", bsLight->luminance);
 		//m_activeScene.lightConstantBuffer->LightInfo[i].LightOuterConeCos = lightInfo.outerConeCos;
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightPositionWS = { niLight->world.translate.x, niLight->world.translate.x, niLight->world.translate.x };
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 1000;  //???
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;      //???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightPositionWS = { niLight->world.translate.x, niLight->world.translate.y, niLight->world.translate.z };
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 10000;  //???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 1;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapIndex = lightInfo.shadowMapIndex;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowProjection = *(AMD::float4x4*)&lightInfo.mLightViewProj;  // ugh .. need a proper math library
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowParams = { lightInfo.depthBias, .1f, 100.0f, 0.f };       // Near and Far are currently hard-coded because we are hard-coding them elsewhere
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapSize = GetDevice()->GetShadowBufferResource()->GetWidth() / 2;
-		m_activeScene.lightConstantBuffer->UseDepthApproximation = m_useDepthApproximation;
+
+		auto lightPos = Util::ToRenderScale(glm::vec3(niLight->world.translate.x, niLight->world.translate.y, niLight->world.translate.z));
+		auto lightRot = niLight->world.rotate;
+
+		auto translation = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(lightPos.x, lightPos.y, lightPos.z));
+		auto rotation = DirectX::XMMATRIX(lightRot.entry[0][0], lightRot.entry[0][1], lightRot.entry[0][2], 0, lightRot.entry[1][0], lightRot.entry[1][1], lightRot.entry[1][2], 0, lightRot.entry[2][0], lightRot.entry[2][1], lightRot.entry[2][2], 0, 0, 0, 0, 1);
+		auto transform = translation * rotation;
+		MarkerRender::GetSingleton()->m_markerPositions.push_back(transform);
 	}
+	m_activeScene.lightConstantBuffer->UseDepthApproximation = m_useDepthApproximation;
 	m_activeScene.lightConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
 	m_activeScene.lightConstantBuffer->NumLights = i;
 }
@@ -552,7 +567,7 @@ void SkyrimTressFX::RecreateSizeDependentResources()
 		{ m_activeScene.lightConstantBuffer.GetBufferResource(), GetDevice()->GetShadowBufferResource() }
 	};
 	m_activeScene.lightBindSet = GetDevice()->CreateBindSet(GetLightLayout(), lightSet);
-
+	logger::info("Created light BindSet");
 	// TressFX Usage
 	switch (m_eOITMethod) {
 	case OIT_METHOD_PPLL:
@@ -625,22 +640,22 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 			}
 			const auto editorIDs = data["editorids"].get<std::vector<std::string>>();
 			logger::info("4");
+			float x = 0.0;
+			float y = 0.0;
+			float z = 0.0;
+			float scale = 1.0;
 			if (data.contains("offsets")) {
 				logger::info("loading offsets");
 				auto  offsets = data["offsets"];
-				float x = 0.0;
 				if (offsets.contains("x")) {
 					x = offsets["x"].get<float>();
 				}
-				float y = 0.0;
 				if (offsets.contains("y")) {
 					y = offsets["y"].get<float>();
 				}
-				float z = 0.0;
 				if (offsets.contains("z")) {
 					z = offsets["z"].get<float>();
 				}
-				float scale = 0.0;
 				if (offsets.contains("scale")) {
 					scale = offsets["scale"].get<float>();
 				}
@@ -736,8 +751,12 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 					//ppll->m_hairs[hairName]->SetRenderingAndSimParameters(fiberRadius, fiberSpacing, fiberRatio, kd, ks1, ex1, ks2, ex2, localConstraintsIterations, lengthConstraintsIterations, localConstraintsStiffness, globalConstraintsStiffness, globalConstraintsRange, damping, vspAmount, vspAccelThreshold, hairOpacity, hairShadowAlpha, thinTip);
 					TressFXSSEData tfxData;
 					tfxData.m_configData = data;
-					tfxData.m_configPath = configPath;
+					tfxData.m_configPath = configFile;
 					tfxData.m_userEditorID = editorID;
+					tfxData.m_initialOffsets[0] = x;
+					tfxData.m_initialOffsets[1] = y;
+					tfxData.m_initialOffsets[2] = z;
+					tfxData.m_initialOffsets[3] = scale;
 					tfxData.boneNames = bones;
 
 					TressFXSimulationSettings simSettings;

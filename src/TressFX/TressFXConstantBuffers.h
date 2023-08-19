@@ -165,9 +165,9 @@ struct ShadeParams
     float       HairEx2 = 11.80f;
     AMD::float4 MatKValue = { 0.f, 0.07f, 0.0017f, 14.40f };   // KAmbient, KDiffuse, KSpec1, Exp1
     float       HairKs2 = 0.072f;
-    float		fPadding0;
-    float		fPadding1;
-    float		fPadding2;
+    float		fPadding0 = -1.0f;
+    float		fPadding1 = -2.0f;
+    float		fPadding2 = -3.0f;
 };
 
 struct TressFXShadeParams

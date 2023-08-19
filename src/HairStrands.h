@@ -56,7 +56,7 @@ private:
 	EI_Scene*                          m_pScene = nullptr;
 	int                                m_skinNumber;
 	int                                m_renderIndex;
-	float                     m_currentOffsets[4];
+	float                              m_currentOffsets[4] = {0, 0, 0, 1};
 
 	//rendering and sim parameters
 	float m_fiberRadius = 0.002f;

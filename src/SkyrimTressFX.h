@@ -30,7 +30,7 @@ struct TressFXSSEData
 	std::string              m_userEditorID;
 	std::filesystem::path    m_configPath;
 	nlohmann::json           m_configData;
-	float                    m_initialOffsets[4];
+	float                    m_initialOffsets[4] = {0, 0, 0, 1};
 	std::vector<std::string> boneNames;
 };
 

@@ -58,7 +58,8 @@ void TressFXPPLL::Initialize(int width, int height, int nNodes, int nodeSize)
     // Create constant buffer and bind set
     m_ShadeParamsConstantBuffer.CreateBufferResource("TressFXShadeParams");
     EI_BindSetDescription set = { { m_ShadeParamsConstantBuffer.GetBufferResource() } };
-    m_ShadeParamsBindSet = GetDevice()->CreateBindSet(GetShortCutShadeParamLayout(), set);
+    //m_ShadeParamsBindSet = GetDevice()->CreateBindSet(GetShortCutShadeParamLayout(), set); This isn't ShortCut REEEEEEEEEEEEEE
+	m_ShadeParamsBindSet = GetDevice()->CreateBindSet(GetPPLLShadeParamLayout(), set);
 
     // Setup PSOs
 
@@ -322,7 +323,7 @@ void TressFXPPLL::UpdateShadeParameters(std::vector<const TressFXRenderingSettin
         m_ShadeParamsConstantBuffer->HairShadeParams[i].HairEx2 = renderSettings[i]->m_HairSpecExp2;
         m_ShadeParamsConstantBuffer->HairShadeParams[i].HairKs2 = renderSettings[i]->m_HairKSpec2;
         m_ShadeParamsConstantBuffer->HairShadeParams[i].MatKValue = { 0.f, renderSettings[i]->m_HairKDiffuse, renderSettings[i]->m_HairKSpec1, renderSettings[i]->m_HairSpecExp1 }; // no ambient
-    }
+	}
 
     m_ShadeParamsConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
 }

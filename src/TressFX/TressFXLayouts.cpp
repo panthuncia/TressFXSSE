@@ -199,7 +199,7 @@ void CreatePPLLShadeParamLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"TressFXShadeParams", 3, EI_RESOURCETYPE_UNIFORM },
+            {"TressFXShadeParams", 2, EI_RESOURCETYPE_UNIFORM },
         },
         EI_PS
     };
@@ -282,7 +282,7 @@ void CreateLightLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"LightConstants", 0, EI_RESOURCETYPE_UNIFORM },
+            {"LightConstants", 1, EI_RESOURCETYPE_UNIFORM },
             {"ShadowTexture", 1, EI_RESOURCETYPE_IMAGE_RO },
         },
         EI_PS
