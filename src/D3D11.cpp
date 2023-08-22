@@ -14,7 +14,6 @@
 #include "Menu.h"
 #include <iostream>
 #include <filesystem>
-#include "HBAOPlus.h"
 #include "MarkerRender.h"
 #include "SkyrimTressFX.h"
 decltype(&IDXGISwapChain::Present) ptrPresent;
@@ -81,8 +80,6 @@ HRESULT WINAPI hk_D3D11CreateDeviceAndSwapChain(
 		hairNames.push_back(hair.hairStrands.get()->m_hairName);
 	}
 	Menu::GetSingleton()->UpdateActiveHairs(hairNames);
-
-	HBAOPlus::GetSingleton()->Initialize(device);
 
 	return hr;
 }

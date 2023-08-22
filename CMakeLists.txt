@@ -36,7 +36,6 @@ add_git_submodule(extern/DirectXMesh)
 target_include_directories(${PROJECT_NAME} 
 	PUBLIC
 		"extern/DirectXMesh/Utilities"
-		"extern/HBAOPlus/include"
 )
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
@@ -50,7 +49,6 @@ target_link_libraries(${PROJECT_NAME}
 		Microsoft::DirectXTK
 		imgui::imgui
 		nlohmann_json::nlohmann_json
-		D:/Modding/Dev/TressFXSSE/extern/HBAOPlus/lib/GFSDK_SSAO_D3D11.win64.lib
 		#D:/Modding/dev/TressFXSSE/build/vcpkg_installed/x64-windows-static-md/lib/Effects11.lib
 )
 

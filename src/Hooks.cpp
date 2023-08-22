@@ -7,7 +7,6 @@
 #include <chrono>
 #include "Util.h"
 #include "Menu.h"
-#include "HBAOPlus.h"
 #include "SkyrimTressFX.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
