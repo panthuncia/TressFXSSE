@@ -301,12 +301,26 @@ void Menu::DrawSettings()
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	if (ImGui::Button("Reload hairs")) {
-		
 		SkyrimTressFX::GetSingleton()->m_doReload = true;
 	}
+	const char* drawingControl[] = { "ShortCut", "PPLL" };
+	static int  drawingControlSelected = 0;
+	int         oldDrawingControlSelected = drawingControlSelected;
+	ImGui::Combo("Drawing Method", &drawingControlSelected, drawingControl, _countof(drawingControl));
+	if (drawingControlSelected != oldDrawingControlSelected) {
+		SkyrimTressFX::GetSingleton()->ToggleShortCut();
+	}
 	DrawHairSelector();
-	DrawOffsetSliders();
-	DrawHairParams();
+	if (ImGui::CollapsingHeader("Offsets")) {
+		DrawOffsetSliders();
+	}
+	if (ImGui::CollapsingHeader("Hair params")) {
+		DrawHairParams();
+	}
+	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
+	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
+	ImGui::Checkbox("Community shaders shadows", &communityShadersScreenSpaceShadowsCheckbox);
+	ImGui::Checkbox("Draw debug markers", &drawDebugMarkersCheckbox);
 	DrawQueues();
 
 
@@ -338,42 +352,11 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
 	ImGui::Checkbox("Thin tip", &thinTipCheckbox);
-	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
-	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
-	ImGui::Checkbox("Community shaders shadows", &communityShadersScreenSpaceShadowsCheckbox);
-	ImGui::Checkbox("Ambient occlusion", &HBAOCheckbox);
-	ImGui::Checkbox("AO Debug", &clearBeforeHBAOCheckbox);
-	/*float aoLargeScaleAOSlider = 1.0;
-	float aoSmallScaleAOSlider = 1.0;
-	float aoBiasSlider = 0.1;
-	bool  aoBlurEnableCheckbox = true;
-	float aoBlurSharpnessSlider = 16.0;
-	float aoPowerExponentSlider = 2.0;
-	float aoRadiusSlider = 0.1;
-	bool  aoDepthThresholdEnableCheckbox = false;
-	float aoDepthThresholdMaxViewDepthSlider = 0;
-	float aoDepthThresholdSharpnessSlider = 100;*/
-	ImGui::SliderFloat("AO power exponent", &aoPowerExponentSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO large scale", &aoLargeScaleAOSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO small scale", &aoSmallScaleAOSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO bias", &aoBiasSlider, 0.0f, 1.0f);
-	ImGui::SliderFloat("AO radius", &aoRadiusSlider, 0.0f, 10.0f);
-	ImGui::Checkbox("AO blur", &aoBlurEnableCheckbox);
-	ImGui::SliderFloat("Blur sharpness", &aoBlurSharpnessSlider, 0.0f, 100.0f);
-	ImGui::Checkbox("AO depth threshold", &aoDepthThresholdEnableCheckbox);
-	ImGui::SliderFloat("Max depth", &aoDepthThresholdMaxViewDepthSlider, 0.0f, 10000.0f);
-	ImGui::SliderFloat("Depth threshold sharpness", &aoDepthThresholdSharpnessSlider, 0.0f, 100.0f);
 	if (ImGui::Button("Export parameters")) {
 		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters();
 	}
-	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
-	ImGui::SliderFloat("Point lighting diffuse amount", &pointLightDiffuseAmount, 0.0f, 1.0f);
-	ImGui::SliderFloat("Point lighting specular amount", &pointLightSpecularAmount, 0.0f, 1.0f);
-	ImGui::SliderFloat("Sun lighting diffuse amount", &sunLightDiffuseAmount, 0.0f, 2.0f);
-	ImGui::SliderFloat("Sun lighting specular amount", &sunLightSpecularAmount, 0.0f, 2.0f);
-	ImGui::Checkbox("Draw debug markers", &drawDebugMarkersCheckbox);
-
 }
+
 void Menu::DrawHairSelector()
 {
 	if (ImGui::BeginCombo("Select actor", activeActors[selectedActor].c_str())) {

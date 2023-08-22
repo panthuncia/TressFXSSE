@@ -137,6 +137,7 @@ public:
 	void Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollisionResponse);
 	void Update();
 	void CreateRenderResources();
+	void ToggleShortCut();
 	bool m_doReload = false;
 
 	float  m_time;       // WallClock in seconds.

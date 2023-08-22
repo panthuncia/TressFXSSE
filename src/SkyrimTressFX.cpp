@@ -271,6 +271,16 @@ void SkyrimTressFX::UpdateRenderingParameters()
 	}
 }
 
+void SkyrimTressFX::ToggleShortCut()
+{
+	OITMethod newMethod;
+	if (m_eOITMethod == OIT_METHOD_PPLL)
+		newMethod = OIT_METHOD_SHORTCUT;
+	else
+		newMethod = OIT_METHOD_PPLL;
+	SetOITMethod(newMethod);
+}
+
 void SkyrimTressFX::LoadScene()
 {
 	TressFXSceneDescription desc = LoadTFXUserFiles();
@@ -790,7 +800,7 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 					hairDesc.initialSimulationSettings = simSettings;
 					hairDesc.initialRenderingSettings = renderSettings;
 					hairDesc.tressfxSSEData = tfxData;
-					hairDesc.numFollowHairs = 0;  //TODO
+					hairDesc.numFollowHairs = 2;  //TODO
 					hairDesc.mesh = (int)m_activeScene.scene.get()->skinIDBoneNamesMap.size();
 					hairDesc.tipSeparationFactor = 1.0f;  //???
 					sd.objects.push_back(hairDesc);

@@ -838,7 +838,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, con
 	desc.Height = height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R32_TYPELESS;
+	desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -852,7 +852,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, con
 	}
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
-	viewDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 	viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	viewDesc.Texture2D.MipLevels = 1;
 	viewDesc.Texture2D.MostDetailedMip = 0;
@@ -864,7 +864,7 @@ std::unique_ptr<EI_Resource> EI_Device::CreateDepthResource(const int width, con
 
 	D3D11_DEPTH_STENCIL_VIEW_DESC stencilDesc;
 	stencilDesc.Flags = 0;
-	stencilDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	stencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	stencilDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	stencilDesc.Texture2D.MipSlice = 0;
 

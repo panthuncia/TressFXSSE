@@ -211,7 +211,7 @@ void CreateShortcutDepthsAlphaLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"RWFragmentDepthsTexture", 0, EI_RESOURCETYPE_IMAGE_RW },
+            {"RWFragmentDepthsTexture", 1, EI_RESOURCETYPE_IMAGE_RW },
         },
         EI_PS
     };
@@ -234,7 +234,7 @@ void CreateShortCutShadeParamLayout(EI_Device* pDevice)
 {
     EI_LayoutDescription desc = {
         {
-            {"TressFXShadeParams", 0, EI_RESOURCETYPE_UNIFORM },
+            {"TressFXShadeParams", 2, EI_RESOURCETYPE_UNIFORM },
         },
         EI_PS
     };
