@@ -7,9 +7,6 @@
 [submodule "FX11"]
 	path = FX11
 	url = https://github.com/panthuncia/FX11.git
-[submodule "extern/FX11"]
-	path = extern/FX11
-	url = https://github.com/panthuncia/FX11.git
 [submodule "extern/CommonLibSSE-NG"]
 	path = extern/CommonLibSSE-NG
 	url = https://github.com/panthuncia/CommonLibSSE-NG

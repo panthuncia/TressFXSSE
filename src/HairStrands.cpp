@@ -8,7 +8,6 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <sys/stat.h>
 #include "SkyrimTressFX.h"
-void printEffectVariables(ID3DX11Effect* pEffect);
 
 HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID)
 {

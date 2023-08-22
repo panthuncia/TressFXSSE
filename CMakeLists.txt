@@ -32,11 +32,9 @@ find_package(directxtk CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-add_git_submodule(extern/FX11)
 add_git_submodule(extern/DirectXMesh)
 target_include_directories(${PROJECT_NAME} 
 	PUBLIC
-		"extern/FX11/inc"
 		"extern/DirectXMesh/Utilities"
 		"extern/HBAOPlus/include"
 )
@@ -50,7 +48,6 @@ target_link_libraries(${PROJECT_NAME}
 		Microsoft::DirectX-Guids 
 		Microsoft::DirectX-Headers
 		Microsoft::DirectXTK
-		Effects11
 		imgui::imgui
 		nlohmann_json::nlohmann_json
 		D:/Modding/Dev/TressFXSSE/extern/HBAOPlus/lib/GFSDK_SSAO_D3D11.win64.lib
