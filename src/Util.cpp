@@ -353,8 +353,9 @@ namespace Util
 		std::string name = ss.str();
 		return name;
 	}
-	void PrintAllD3D11DebugMessages(ID3D11Device* d3dDevice)
+	void PrintAllD3D11DebugMessages()
 	{
+		ID3D11Device* d3dDevice = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
 		Microsoft::WRL::ComPtr<ID3D11Device> m_d3dDevice;
 		*(m_d3dDevice.GetAddressOf()) = d3dDevice;
 		Microsoft::WRL::ComPtr<ID3D11Debug>     d3dDebug;

@@ -3,7 +3,7 @@
 // required for simulation.
 // ----------------------------------------------------------------------------
 //
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@
 // THE SOFTWARE.
 //
 
-
 #include "TressFXHairObject.h"
 
 // TressFX
@@ -32,7 +31,7 @@
 #include "Math/Vector3D.h"
 #include "TressFXAsset.h"
 #include "TressFXLayouts.h"
-#include "TressFXEngineInterface.h"
+#include "EngineInterface.h"
 
 #include <memory.h>
 
@@ -40,44 +39,470 @@ using namespace AMD;
 
 #define TRESSFX_MIN_VERTS_PER_STRAND_FOR_GPU_ITERATION 64
 
-TressFXHairObject::TressFXHairObject()
-    : m_NumTotalVertice(0)
-    , m_NumTotalStrands(0)
-    , m_NumVerticePerStrand(0)
-    , m_CPULocalShapeIterations(0)
-    , mSimulationFrame(0)
-    , m_pDrawStrandsBindSet(nullptr)
-    , m_pSimBindSet(nullptr)
+// Load simulation compute shader and create all buffers
+// command context used to upload initial data.
+TressFXHairObject::TressFXHairObject(TressFXAsset* asset,
+    EI_Device*   pDevice,
+    EI_CommandContext&  commandContext,
+    const char *      name, int RenderIndex) :
+    m_NumTotalVertices(0), 
+    m_NumTotalStrands(0), 
+    m_NumVerticesPerStrand(0), 
+    m_CPULocalShapeIterations(0), 
+    m_SimulationFrame(0), 
+    m_RenderIndex(RenderIndex), 
+    m_pRenderLayoutBindSet(nullptr)
 {
+    m_NumTotalVertices = asset->m_numTotalVertices;
+    m_NumTotalStrands = asset->m_numTotalStrands;
+    m_NumVerticesPerStrand = asset->m_numVerticesPerStrand;
+
+    // Create buffers for simulation
+    {
+        m_DynamicState.CreateGPUResources(pDevice, m_NumTotalVertices, m_NumTotalStrands, name, asset);
+
+        m_SimCB[0].CreateBufferResource("TressFXSimulationConstantBuffer");
+        m_SimCB[1].CreateBufferResource("TressFXSimulationConstantBuffer");
+        m_RenderCB.CreateBufferResource("TressFXRenderConstantBuffer");
+        m_StrandCB.CreateBufferResource("TressFXStrandConstantBuffer");
+
+        // initial hair positions
+        m_InitialHairPositionsBuffer =
+            pDevice->CreateBufferResource(
+                sizeof(AMD::float4),
+                m_NumTotalVertices,
+                0,
+                "InitialPosition"
+            );
+
+        // rest lengths
+        m_HairRestLengthSRVBuffer =
+            pDevice->CreateBufferResource(
+                sizeof(float),
+                m_NumTotalVertices,
+                0,
+                "RestLength");
+
+
+
+        // strand types
+        m_HairStrandTypeBuffer = pDevice->CreateBufferResource(
+            sizeof(int),
+            m_NumTotalStrands,
+            0,
+            "StrandType");
+
+        // follow hair root offsets
+        m_FollowHairRootOffsetBuffer =
+            pDevice->CreateBufferResource(
+                sizeof(AMD::float4),
+                m_NumTotalStrands,
+                0,
+                "RootOffset");
+
+
+        // bone skinning data
+        m_BoneSkinningDataBuffer = pDevice->CreateBufferResource(sizeof(TressFXBoneSkinningData), m_NumTotalStrands, 0, "SkinningData");
+
+    }
+
+    // UPLOAD INITIAL DATA
+    // UAVs must first be transitioned for copy dest, since they start with UAV state.
+    // When done, we transition to appropriate state for start of first frame.
+
+    m_DynamicState.UploadGPUData(
+        commandContext, asset->m_positions.data(), asset->m_tangents.data(), m_NumTotalVertices);
+
+    commandContext.UpdateBuffer(m_InitialHairPositionsBuffer.get(), asset->m_positions.data());
+    commandContext.UpdateBuffer(m_HairRestLengthSRVBuffer.get(), asset->m_restLengths.data());
+    commandContext.UpdateBuffer(m_HairStrandTypeBuffer.get(), asset->m_strandTypes.data());
+    commandContext.UpdateBuffer(m_FollowHairRootOffsetBuffer.get(), asset->m_followRootOffsets.data());
+    commandContext.UpdateBuffer(m_BoneSkinningDataBuffer.get(), asset->m_boneSkinningData.data());
+
+    EI_Barrier copyBarriers[] =
+    {
+        { m_InitialHairPositionsBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_SRV },
+        { m_HairRestLengthSRVBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_SRV },
+        { m_HairStrandTypeBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_SRV },
+        { m_FollowHairRootOffsetBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_SRV },
+        { m_BoneSkinningDataBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_SRV }
+    };
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(copyBarriers), (EI_Barrier*)copyBarriers);
+
+    m_NumVerticesPerStrand = asset->m_numVerticesPerStrand;
+    m_NumFollowHairsPerGuideHair = asset->m_numFollowStrandsPerGuide;
+
+    // Bind set
+    for (int i = 0; i < 2; ++i)
+    {
+    EI_BindSetDescription bindSet =
+    {
+        {
+            // SRVs
+            m_InitialHairPositionsBuffer.get(),
+            m_HairRestLengthSRVBuffer.get(),
+            m_HairStrandTypeBuffer.get(),
+            m_FollowHairRootOffsetBuffer.get(),
+            m_BoneSkinningDataBuffer.get(),
+            // CB
+            m_SimCB[i].GetBufferResource()
+        }
+    };
+
+    m_pSimBindSet[i] = pDevice->CreateBindSet(GetSimLayout(), bindSet);
+
+    }
+
+    // Set up with defaults.
+    ResetPositions();
+
+    // Rendering setup
+    CreateRenderingGPUResources(pDevice, *asset, name);
+    PopulateDrawStrandsBindSet(pDevice, nullptr);   // Null at the beginning
+    UploadRenderingGPUResources(commandContext, *asset);
+
 }
 
-TressFXHairObject::~TressFXHairObject() {}
+// TODO Move wind settings to Simulation Parameters or whatever.
 
-static inline void InitialDataUpload(EI_CommandContextRef    commandContext,
-                                     void*                pSource,
-                                     AMD::uint32          size,
-                                     EI_StructuredBufferRef sb)
+// Wind is in a pyramid around the main wind direction.
+// To add a random appearance, the shader will sample some direction
+// within this cone based on the strand index.
+// This function computes the vector for each edge of the pyramid.
+static void SetWindCorner(Quaternion     rotFromXAxisToWindDir,
+                          Vector3     rotAxis,
+                          float                 angleToWideWindCone,
+                          float                 wM,
+                          AMD::float4& outVec)
 {
-    void* pDest = EI_SB_Map(commandContext, sb);
-    TRESSFX_ASSERT(pDest);
-    memcpy(pDest, pSource, size);
-	//AMD::TRESSFX::float4* vertices = (AMD::TRESSFX::float4*)pDest;
-	//int numVertices = size / sizeof(AMD::TRESSFX::float4);
-	//for (int j = 0; j < numVertices; j++) {
-	//	logger::info("Vertex: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
-	//}
-    EI_SB_Unmap(commandContext, sb);
+    static const Vector3 XAxis(1.0f, 0, 0);
+    Quaternion              rot(rotAxis, angleToWideWindCone);
+    Vector3              newWindDir = rotFromXAxisToWindDir * rot * XAxis;
+    outVec.x                                  = newWindDir.x * wM;
+    outVec.y                                  = newWindDir.y * wM;
+    outVec.z                                  = newWindDir.z * wM;
+    outVec.w                                  = 0;  // unused.
 }
 
+const float MATH_PI2 = 3.14159265359f;
+#define DEG_TO_RAD2(d) (d * MATH_PI2 / 180)
 
-void TressFXHairObject::UpdateStrandOffsets(AMD::TressFXAsset* asset, EI_Device* pDevice, EI_CommandContextRef commandContext, float x, float y, float z, float scale)
+
+void TressFXHairObject::SetWind(const Vector3& windDir, float windMag, int frame)
 {
-	UNREFERENCED_PARAMETER(scale);
-	UNREFERENCED_PARAMETER(pDevice);
-	uint32_t data_size = sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice;
-	AMD::TRESSFX::float4* updatedVertices = (AMD::TRESSFX::float4*)EI_Malloc(data_size);
-	memcpy(updatedVertices, asset->m_positions, data_size);
-	for (int i = 0; i < m_NumTotalVertice; i++) {
+    float wM = windMag * (pow(sin(frame * 0.01f), 2.0f) + 0.5f);
+
+    Vector3 windDirN(windDir);
+    windDirN.Normalize();
+
+    Vector3 XAxis(1.0f, 0, 0);
+    Vector3 xCrossW = XAxis.Cross(windDirN);
+
+    Quaternion rotFromXAxisToWindDir;
+    rotFromXAxisToWindDir.SetIdentity();
+
+    float angle = asin(xCrossW.Length());
+
+    if (angle > 0.001)
+    {
+        rotFromXAxisToWindDir.SetRotation(xCrossW.Normalize(), angle);
+    }
+
+    float angleToWideWindCone = DEG_TO_RAD2(40.f);
+
+    SetWindCorner(rotFromXAxisToWindDir,
+                  Vector3(0, 1.0, 0),
+                  angleToWideWindCone,
+                  wM,
+                  m_SimCB[m_SimulationFrame % 2]->m_Wind);
+    SetWindCorner(rotFromXAxisToWindDir,
+                  Vector3(0, -1.0, 0),
+                  angleToWideWindCone,
+                  wM,
+                  m_SimCB[m_SimulationFrame % 2]->m_Wind1);
+    SetWindCorner(rotFromXAxisToWindDir,
+                  Vector3(0, 0, 1.0),
+                  angleToWideWindCone,
+                  wM,
+                  m_SimCB[m_SimulationFrame % 2]->m_Wind2);
+    SetWindCorner(rotFromXAxisToWindDir,
+                  Vector3(0, 0, -1.0),
+                  angleToWideWindCone,
+                  wM,
+                  m_SimCB[m_SimulationFrame % 2]->m_Wind3);
+
+    // fourth component unused. (used to store frame number, but no longer used).
+}
+
+void TressFXHairObject::UpdatePerObjectRenderParams(EI_CommandContext& commandContext)
+{
+    m_RenderCB.Update(commandContext);
+    m_StrandCB.Update(commandContext);
+}
+
+void TressFXHairObject::DrawStrands(EI_CommandContext& commandContext,
+                                    EI_PSO&            pso,
+                                    EI_BindSet**       extraBindSets,
+                                    uint32_t		   numExtraBindSets)
+{
+    // at some point, should probably pass these in to EI_BindAndDrawIndexedInstanced.
+    static const uint32_t MaxSetsToBind = 10;	// Grow as needed
+    EI_BindSet* sets[MaxSetsToBind];
+
+    // First 2 sets are always the RenderLayout and PosTanCollection
+    sets[0] = m_pRenderLayoutBindSet.get(); sets[1] = &m_DynamicState.GetRenderBindSet();
+
+    for (uint32_t i = 0; i < numExtraBindSets; ++i)
+        sets[2+i] = extraBindSets[i];
+
+	logger::info("Binding render sets");
+    commandContext.BindSets(&pso, 2 + numExtraBindSets, sets);
+    AMD::uint32 nStrandCopies = 1;
+    
+    uint32_t NumPrimsToRender = (m_TotalIndices / 3);
+    
+    if (m_LODHairDensity != 1.f)
+    {
+        NumPrimsToRender = uint32_t(float(NumPrimsToRender) * m_LODHairDensity);
+
+        // Calculate a new number of Primitives to draw. Keep it aligned to number of primitives per strand (i.e. don't cut strands in half or anything)
+        uint32 NumPrimsPerStrand = (m_NumVerticesPerStrand - 1) * 2;
+        uint32 RemainderPrims = NumPrimsToRender % NumPrimsPerStrand;
+
+        NumPrimsToRender = (RemainderPrims > 0) ? NumPrimsToRender + NumPrimsPerStrand - RemainderPrims : NumPrimsToRender;
+
+        // Force prims to be on (guide hair + its follow hairs boundary... no partial groupings)
+        NumPrimsToRender = NumPrimsToRender - (NumPrimsToRender % (NumPrimsPerStrand * (m_NumFollowHairsPerGuideHair + 1)));
+    }
+
+    EI_IndexedDrawParams drawParams;
+    drawParams.pIndexBuffer = m_pIndexBuffer.get();
+    drawParams.numIndices = NumPrimsToRender * 3;
+    drawParams.numInstances = nStrandCopies;
+
+    commandContext.DrawIndexedInstanced(pso, drawParams);
+}
+
+void TressFXHairObject::CreateRenderingGPUResources(EI_Device*   pDevice,
+                                                    TressFXAsset& asset,
+                                                    const char *      name)
+{
+    // If rendering is seperated, we might be copying the asset count to the local member variable.
+    // But since this is currently loaded after simulation right now, we'll just make sure
+    // it's already set.
+    TRESSFX_ASSERT(asset.m_numTotalStrands == m_NumTotalStrands);
+    TRESSFX_ASSERT(asset.m_numTotalVertices == m_NumTotalVertices);
+    m_TotalIndices = asset.GetNumHairTriangleIndices();  // asset.GetNumHairTriangleIndices();
+
+    if (asset.m_strandUV.data())
+    {
+        m_HairTexCoords = pDevice->CreateBufferResource(
+                                             2 * sizeof(AMD::real32),
+                                             m_NumTotalStrands,
+                                             0,
+                                             "TexCoords");
+    }
+
+    m_HairVertexRenderParams = pDevice->CreateBufferResource(
+                                                  sizeof(AMD::real32),
+                                                  m_NumTotalVertices,
+                                                  0,
+                                                  "VertRenderParams");
+
+    // TODO seperate creation from upload. Go through a real interface.
+    m_pIndexBuffer = pDevice->CreateBufferResource( sizeof(AMD::int32), m_TotalIndices, EI_BF_INDEXBUFFER, name);
+}
+
+void TressFXHairObject::UploadRenderingGPUResources(EI_CommandContext&  commandContext,
+                                                    TressFXAsset& asset)
+{
+    TRESSFX_ASSERT(asset.m_numTotalStrands == m_NumTotalStrands);
+    TRESSFX_ASSERT(asset.m_numTotalVertices == m_NumTotalVertices);
+    TRESSFX_ASSERT(m_TotalIndices == asset.GetNumHairTriangleIndices());
+   
+    if (asset.m_strandUV.data())
+    {
+        commandContext.UpdateBuffer(m_HairTexCoords.get(), asset.m_strandUV.data());
+    }
+
+    commandContext.UpdateBuffer(m_HairVertexRenderParams.get(), asset.m_thicknessCoeffs.data());
+    commandContext.UpdateBuffer(m_pIndexBuffer.get(), asset.m_triangleIndices.data());
+
+    EI_Barrier copyToVS[] = 
+    {
+        { m_HairTexCoords.get(), EI_STATE_COPY_DEST, EI_STATE_SRV},
+        { m_HairVertexRenderParams.get(), EI_STATE_COPY_DEST, EI_STATE_SRV },
+        { m_pIndexBuffer.get(), EI_STATE_COPY_DEST, EI_STATE_INDEX_BUFFER }
+    };
+
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(copyToVS), copyToVS);
+   
+}
+
+void TressFXHairObject::PopulateDrawStrandsBindSet(EI_Device* pDevice, TressFXRenderingSettings* pRenderSettings/*=nullptr*/)
+{
+    if (pRenderSettings)
+    {
+        if (pRenderSettings->m_BaseAlbedoName != "<none>")
+        {
+            m_BaseAlbedo = GetDevice()->CreateResourceFromFile(pRenderSettings->m_BaseAlbedoName.c_str(), true);
+        }
+        if (pRenderSettings->m_StrandAlbedoName != "<none>")
+        {
+            m_StrandAlbedo = GetDevice()->CreateResourceFromFile(pRenderSettings->m_BaseAlbedoName.c_str(), true);
+        }
+    }
+    EI_BindSetDescription bindSetDesc =
+    {
+        { 
+          m_HairVertexRenderParams.get(), m_HairTexCoords.get(), 
+          m_BaseAlbedo.get() ? m_BaseAlbedo.get() : pDevice->GetDefaultWhiteTexture(),
+          m_RenderCB.GetBufferResource(), m_StrandCB.GetBufferResource(),
+          m_StrandAlbedo.get() ? m_StrandAlbedo.get() : pDevice->GetDefaultWhiteTexture(),
+        }
+    };
+    m_pRenderLayoutBindSet = pDevice->CreateBindSet(GetTressFXParamLayout(), bindSetDesc);
+}
+
+void TressFXHairObject::UpdateBoneMatrices(const AMD::float4x4* pBoneMatricesInWS, int numBoneMatrices)
+{
+    int numMatrices = min(numBoneMatrices, AMD_TRESSFX_MAX_NUM_BONES);
+    for (int i = 0; i < numMatrices; ++i)
+    {
+        m_SimCB[m_SimulationFrame%2]->m_BoneSkinningMatrix[i] = pBoneMatricesInWS[i];
+    }
+}
+
+void TressFXHairObject::UpdateConstantBuffer(EI_CommandContext& commandContext)
+{
+    m_SimCB[m_SimulationFrame%2].Update(commandContext);
+}
+
+void TressFXHairObject::UpdateSimulationParameters(const TressFXSimulationSettings* settings, float timeStep)
+{
+    m_SimCB[m_SimulationFrame%2]->SetVelocityShockPropogation(settings->m_vspCoeff);
+    m_SimCB[m_SimulationFrame%2]->SetVSPAccelThreshold(settings->m_vspAccelThreshold);
+    m_SimCB[m_SimulationFrame%2]->SetDamping(settings->m_damping);
+    m_SimCB[m_SimulationFrame%2]->SetLocalStiffness(settings->m_localConstraintStiffness);
+    m_SimCB[m_SimulationFrame%2]->SetGlobalStiffness(settings->m_globalConstraintStiffness);
+    m_SimCB[m_SimulationFrame%2]->SetGlobalRange(settings->m_globalConstraintsRange);
+    m_SimCB[m_SimulationFrame%2]->SetLocalStiffness(settings->m_localConstraintStiffness);
+    m_SimCB[m_SimulationFrame%2]->SetGravity(settings->m_gravityMagnitude);
+    m_SimCB[m_SimulationFrame%2]->SetTimeStep(timeStep);
+    m_SimCB[m_SimulationFrame%2]->SetCollision(false);
+    m_SimCB[m_SimulationFrame%2]->SetVerticesPerStrand(m_NumVerticesPerStrand);
+    m_SimCB[m_SimulationFrame%2]->SetFollowHairsPerGuidHair(m_NumFollowHairsPerGuideHair);
+    m_SimCB[m_SimulationFrame%2]->SetTipSeperation(settings->m_tipSeparation);
+
+    // use 1.0 for now, this needs to be maxVelocity * timestep
+    m_SimCB[m_SimulationFrame % 2]->g_ClampPositionDelta = 20.0f;
+
+    // Right now, we do all local contraint iterations on the CPU.
+    // It's actually a bit faster to
+
+    if (m_NumVerticesPerStrand >= TRESSFX_MIN_VERTS_PER_STRAND_FOR_GPU_ITERATION)
+    {
+        m_SimCB[m_SimulationFrame % 2]->SetLocalIterations((int)settings->m_localConstraintsIterations);
+        m_CPULocalShapeIterations = 1;
+    }
+    else
+    {
+        m_SimCB[m_SimulationFrame % 2]->SetLocalIterations(1);
+        m_CPULocalShapeIterations = (int)settings->m_localConstraintsIterations;
+    }
+
+    m_SimCB[m_SimulationFrame % 2]->SetLengthIterations((int)settings->m_lengthConstraintsIterations);
+
+    // Set wind parameters
+    Vector3 windDir(
+        settings->m_windDirection[0], settings->m_windDirection[1], settings->m_windDirection[2]);
+    float windMag = settings->m_windMagnitude;
+    SetWind(windDir, windMag, m_SimulationFrame);
+
+
+#if TRESSFX_COLLISION_CAPSULES
+    m_SimCB.m_numCollisionCapsules.x = 0;
+
+    // Below is an example showing how to pass capsule collision objects. 
+    /*
+    mSimCB.m_numCollisionCapsules.x = 1;
+    mSimCB.m_centerAndRadius0[0] = { 0, 0.f, 0.f, 50.f };
+    mSimCB.m_centerAndRadius1[0] = { 0, 100.f, 0, 10.f };
+    */
+#endif
+    // make sure we start of with a correct pose
+    if (m_SimulationFrame < 2)
+        ResetPositions();
+
+    // Bone matrix set elsewhere. It is not dependent on the settings passed in here.
+}
+
+void TressFXHairObject::UpdateRenderingParameters(const TressFXRenderingSettings* parameters, const int NodePoolSize, float timeStep, float Distance, bool ShadowUpdate /*= false*/)
+{
+	UNREFERENCED_PARAMETER(timeStep);
+    // Update Render Parameters
+    m_RenderCB->FiberRadius = parameters->m_FiberRadius;	// Don't modify radius by LOD multiplier as this one is used to calculate shadowing and that calculation should remain unaffected
+    
+    m_RenderCB->ShadowAlpha = parameters->m_HairShadowAlpha;
+    m_RenderCB->FiberSpacing = parameters->m_HairFiberSpacing;
+
+    m_RenderCB->HairKs2 = parameters->m_HairKSpec2;
+    m_RenderCB->HairEx2 = parameters->m_HairSpecExp2;
+
+    m_RenderCB->MatKValue = { 0.f, parameters->m_HairKDiffuse, parameters->m_HairKSpec1, parameters->m_HairSpecExp1 }; // no ambient
+    
+    m_RenderCB->MaxShadowFibers = parameters->m_HairMaxShadowFibers;
+    
+    // Update Strand Parameters (per hair object)
+    m_StrandCB->MatBaseColor = parameters->m_HairMatBaseColor;
+    m_StrandCB->MatTipColor = parameters->m_HairMatTipColor;
+    m_StrandCB->TipPercentage = parameters->m_TipPercentage;
+    m_StrandCB->StrandUVTilingFactor = parameters->m_StrandUVTilingFactor;
+    m_StrandCB->FiberRatio = parameters->m_FiberRatio;
+
+    // Reset LOD hair density for the frame
+    m_LODHairDensity = 1.f;
+
+    float FiberRadius = parameters->m_FiberRadius;
+    if (parameters->m_EnableHairLOD)
+    {
+        float MinLODDist = ShadowUpdate? min(parameters->m_ShadowLODStartDistance, parameters->m_ShadowLODEndDistance) : min(parameters->m_LODStartDistance, parameters->m_LODEndDistance);
+        float MaxLODDist = ShadowUpdate? max(parameters->m_ShadowLODStartDistance, parameters->m_ShadowLODEndDistance) : max(parameters->m_LODStartDistance, parameters->m_LODEndDistance);
+
+        if (Distance > MinLODDist)
+        {
+            float DistanceRatio = min((Distance - MinLODDist) / max(MaxLODDist - MinLODDist, 0.00001f), 1.f);
+
+            // Lerp: x + s(y-x)
+            float MaxLODFiberRadius = FiberRadius * (ShadowUpdate? parameters->m_ShadowLODWidthMultiplier : parameters->m_LODWidthMultiplier);
+            FiberRadius = FiberRadius + (DistanceRatio * (MaxLODFiberRadius - FiberRadius));
+
+            // Lerp: x + s(y-x)
+            m_LODHairDensity = 1.f + (DistanceRatio * ((ShadowUpdate ? parameters->m_ShadowLODPercent : parameters->m_LODPercent) - 1.f));
+        }
+    }
+
+    m_StrandCB->FiberRadius = FiberRadius;
+
+    m_StrandCB->NumVerticesPerStrand = m_NumVerticesPerStrand;  // Always constant
+    m_StrandCB->EnableThinTip = parameters->m_EnableThinTip;
+    m_StrandCB->NodePoolSize = NodePoolSize;
+    m_StrandCB->RenderParamsIndex = m_RenderIndex;				// Always constant
+
+    m_StrandCB->EnableStrandUV = parameters->m_EnableStrandUV;
+    m_StrandCB->EnableStrandTangent = parameters->m_EnableStrandTangent;
+}
+
+void TressFXHairObject::UpdateStrandOffsets(TressFXAsset* asset, EI_CommandContext commandContext, float x, float y, float z, float scale)
+{
+	uint32_t              data_size = sizeof(float4) * m_NumTotalVertices;
+	float4* updatedVertices = (float4*)malloc(data_size);
+	if (!updatedVertices) {
+		logger::error("malloc failed!");
+		return;
+	}
+	memcpy(updatedVertices, asset->m_positions.data(), data_size);
+	for (int i = 0; i < m_NumTotalVertices; i++) {
 		updatedVertices[i].x *= scale;
 		updatedVertices[i].y *= scale;
 		updatedVertices[i].z *= scale;
@@ -85,9 +510,8 @@ void TressFXHairObject::UpdateStrandOffsets(AMD::TressFXAsset* asset, EI_Device*
 		updatedVertices[i].y += y;
 		updatedVertices[i].z += z;
 	}
-	InitialDataUpload(commandContext, updatedVertices, data_size, *mInitialHairPositionsBuffer);
-	EI_Safe_Free(updatedVertices);
-
+	commandContext.UpdateBuffer(m_InitialHairPositionsBuffer.get(), updatedVertices);
+	free(updatedVertices);
 	//destroy and recreate bind set
 	/*EI_DestroyBindSet(pDevice, m_pSimBindSet);
 	TressFXBindSet bindSet;
@@ -110,437 +534,9 @@ void TressFXHairObject::UpdateStrandOffsets(AMD::TressFXAsset* asset, EI_Device*
 	bindSet.nBytes = sizeof(TressFXSimulationConstantBuffer);
 
 	m_pSimBindSet = EI_CreateBindSet(pDevice, bindSet);*/
-	
 }
 
-// Load simulation compute shader and create all buffers
-// command context used to upload initial data.
-void TressFXHairObject::Create(AMD::TressFXAsset* asset,
-                               EI_Device*   pDevice,
-                               EI_CommandContextRef  commandContext,
-                               EI_StringHash      name,
-                               EI_SRV             hairColorTextureSRV
-                              )
-{
-    m_NumTotalVertice = asset->m_numTotalVertices;
-    m_NumTotalStrands = asset->m_numTotalStrands;
-    m_NumVerticePerStrand = asset->m_numVerticesPerStrand;
-
-    // Create buffers for simulation
-    {
-        mPosTanCollection.CreateGPUResources(pDevice, m_NumTotalVertice, name);
-
-        // initial hair positions
-        mInitialHairPositionsBuffer =
-            EI_CreateReadOnlySB(pDevice,
-                                 sizeof(AMD::TRESSFX::float4),
-                                 m_NumTotalVertice,
-                                 TRESSFX_STRING_HASH("InitialPosition"),
-                                 name
-                                );
-
-        // global rotations
-            mGlobalRotationsBuffer =
-                EI_CreateReadOnlySB(pDevice,
-                                     sizeof(AMD::TRESSFX::float4),
-                                     m_NumTotalVertice,
-                                     TRESSFX_STRING_HASH("GlobalRotations"), name);
-
-
-
-        // rest lengths
-            mHairRestLengthSRVBuffer =
-                EI_CreateReadOnlySB(pDevice,
-                                    sizeof(float),
-                                    m_NumTotalVertice,
-                                    TRESSFX_STRING_HASH("RestLength"), name);
-
-
-
-        // strand types
-            mHairStrandTypeBuffer = EI_CreateReadOnlySB(pDevice,
-                                                        sizeof(int),
-                                                        m_NumTotalStrands,
-                                                        TRESSFX_STRING_HASH("StrandType"), name);
-
-
-
-        // reference vectors in local frame
-            mHairRefVecsInLocalFrameBuffer =
-                EI_CreateReadOnlySB(pDevice,
-                                    sizeof(AMD::TRESSFX::float4),
-                                    m_NumTotalVertice,
-                                    TRESSFX_STRING_HASH("LocalRef"), name);
-
-
-        // follow hair root offsets
-            mFollowHairRootOffsetBuffer =
-                EI_CreateReadOnlySB(pDevice,
-                                    sizeof(AMD::TRESSFX::float4),
-                                    m_NumTotalStrands,
-                                    TRESSFX_STRING_HASH("RootOffset"), name);
-
-
-        // bone skinning data
-         mBoneSkinningDataBuffer = EI_CreateReadOnlySB(pDevice, sizeof(AMD::TressFXBoneSkinningData), m_NumTotalStrands, TRESSFX_STRING_HASH("SkinningData"),name);
-    }
-
-    // UPLOAD INITIAL DATA
-    // UAVs must first be transitioned for copy dest, since they start with UAV state.
-    // When done, we transition to appropriate state for start of first frame.
-    mPosTanCollection.UploadGPUData(
-        commandContext, asset->m_positions, asset->m_tangents, m_NumTotalVertice);
-    InitialDataUpload(commandContext, asset->m_positions, sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice, *mInitialHairPositionsBuffer);
-    InitialDataUpload(commandContext, asset->m_globalRotations, sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice, *mGlobalRotationsBuffer);
-    InitialDataUpload(commandContext, asset->m_restLengths, sizeof(float) * m_NumTotalVertice, *mHairRestLengthSRVBuffer);
-    InitialDataUpload(commandContext, asset->m_strandTypes, sizeof(int) * m_NumTotalStrands, *mHairStrandTypeBuffer);
-    InitialDataUpload(commandContext, asset->m_refVectors, sizeof(AMD::TRESSFX::float4) * m_NumTotalVertice, *mHairRefVecsInLocalFrameBuffer);
-    InitialDataUpload(commandContext, asset->m_followRootOffsets, sizeof(AMD::TRESSFX::float4) * m_NumTotalStrands, *mFollowHairRootOffsetBuffer);
-    InitialDataUpload(commandContext, asset->m_boneSkinningData, sizeof(AMD::TressFXBoneSkinningData) * m_NumTotalStrands, *mBoneSkinningDataBuffer);
-    EI_Barrier copyBarriers[] = 
-    {
-        { mInitialHairPositionsBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mGlobalRotationsBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mHairRestLengthSRVBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mHairStrandTypeBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mHairRefVecsInLocalFrameBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mFollowHairRootOffsetBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV },
-        { mBoneSkinningDataBuffer, EI_STATE_COPY_DEST, EI_STATE_NON_PS_SRV }
-    };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(copyBarriers), (EI_Barrier*) copyBarriers);
-    m_NumOfVerticesInStrand      = asset->m_numVerticesPerStrand;
-    m_NumFollowHairsPerGuideHair = asset->m_numFollowStrandsPerGuide;
-
-    // Bind set
-    TressFXBindSet bindSet;
-
-    EI_SRV      SRVs[7];
-
-    SRVs[0] = EI_GetSRV(mInitialHairPositionsBuffer);
-    SRVs[1] = EI_GetSRV(mGlobalRotationsBuffer);
-    SRVs[2] = EI_GetSRV(mHairRestLengthSRVBuffer);
-    SRVs[3] = EI_GetSRV(mHairStrandTypeBuffer);
-    SRVs[4] = EI_GetSRV(mHairRefVecsInLocalFrameBuffer);
-    SRVs[5] = EI_GetSRV(mFollowHairRootOffsetBuffer);
-    SRVs[6] = EI_GetSRV(mBoneSkinningDataBuffer);
-
-    bindSet.nSRVs  = AMD_ARRAY_SIZE(SRVs);
-    bindSet.nUAVs  = 0;
-    bindSet.uavs   = nullptr;
-    bindSet.srvs   = SRVs;
-    bindSet.values = &(mSimCB);
-    bindSet.nBytes = sizeof(TressFXSimulationConstantBuffer);
-
-    m_pSimBindSet = EI_CreateBindSet(pDevice, bindSet);
-
-    // Set up with defaults.
-    UpdateSimulationParameters(TressFXSimulationSettings());
-
-    // Rendering setup
-    CreateRenderingGPUResources(pDevice, *asset, name);
-    PopulateDrawStrandsBindSet(pDevice, hairColorTextureSRV);
-    UploadRenderingGPUResources(commandContext, *asset);
-
-}
-
-
-void TressFXHairObject::Destroy(EI_Device* pDevice)
-{
-    // Destroy rendering resources.
-    EI_DestroyBindSet(pDevice, m_pDrawStrandsBindSet);
-    if (mHairTexCoords)
-    {
-        EI_Destroy(pDevice, mHairTexCoords);
-    }
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mHairVertexRenderParams);
-
-
-    // destroy Sim resources.
-    EI_DestroyBindSet(pDevice, m_pSimBindSet);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mInitialHairPositionsBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mGlobalRotationsBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mHairRestLengthSRVBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mHairStrandTypeBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mHairRefVecsInLocalFrameBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mFollowHairRootOffsetBuffer);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, mBoneSkinningDataBuffer);
-
-    // destroy shared resources
-    mPosTanCollection.Destroy(pDevice);
-
-    EI_IB_Destroy(pDevice, mpIndexBuffer);
-}
-
-
-// TODO Move wind settings to Simulation Parameters or whatever.
-
-// Wind is in a pyramid around the main wind direction.
-// To add a random appearance, the shader will sample some direction
-// within this cone based on the strand index.
-// This function computes the vector for each edge of the pyramid.
-static void SetWindCorner(AMD::tressfx_quat     rotFromXAxisToWindDir,
-                          AMD::tressfx_vec3     rotAxis,
-                          float                 angleToWideWindCone,
-                          float                 wM,
-                          AMD::TRESSFX::float4& outVec)
-{
-    static const AMD::tressfx_vec3 XAxis(1.0f, 0, 0);
-    AMD::tressfx_quat              rot(rotAxis, angleToWideWindCone);
-    AMD::tressfx_vec3              newWindDir = rotFromXAxisToWindDir * rot * XAxis;
-    outVec.x                                  = newWindDir.x * wM;
-    outVec.y                                  = newWindDir.y * wM;
-    outVec.z                                  = newWindDir.z * wM;
-    outVec.w                                  = 0;  // unused.
-}
-
-const float MATH_PI2 = 3.14159265359f;
-#define DEG_TO_RAD2(d) (d * MATH_PI2 / 180)
-
-
-void TressFXHairObject::SetWind(const AMD::tressfx_vec3& windDir, float windMag, int frame)
-{
-    float wM = windMag * (pow(sin(frame * 0.01f), 2.0f) + 0.5f);
-
-    AMD::tressfx_vec3 windDirN(windDir);
-    windDirN.Normalize();
-
-    AMD::tressfx_vec3 XAxis(1.0f, 0, 0);
-    AMD::tressfx_vec3 xCrossW = XAxis.Cross(windDirN);
-
-    AMD::tressfx_quat rotFromXAxisToWindDir;
-    rotFromXAxisToWindDir.SetIdentity();
-
-    float angle = asin(xCrossW.Length());
-
-    if (angle > 0.001)
-    {
-        rotFromXAxisToWindDir.SetRotation(xCrossW.Normalize(), angle);
-    }
-
-    float angleToWideWindCone = DEG_TO_RAD2(40.f);
-
-    SetWindCorner(rotFromXAxisToWindDir,
-                  AMD::tressfx_vec3(0, 1.0, 0),
-                  angleToWideWindCone,
-                  wM,
-                  mSimCB.m_Wind);
-    SetWindCorner(rotFromXAxisToWindDir,
-                  AMD::tressfx_vec3(0, -1.0, 0),
-                  angleToWideWindCone,
-                  wM,
-                  mSimCB.m_Wind1);
-    SetWindCorner(rotFromXAxisToWindDir,
-                  AMD::tressfx_vec3(0, 0, 1.0),
-                  angleToWideWindCone,
-                  wM,
-                  mSimCB.m_Wind2);
-    SetWindCorner(rotFromXAxisToWindDir,
-                  AMD::tressfx_vec3(0, 0, -1.0),
-                  angleToWideWindCone,
-                  wM,
-                  mSimCB.m_Wind3);
-
-    // fourth component unused. (used to store frame number, but no longer used).
-}
-
-void TressFXHairObject::UpdatePerObjectRenderParams()
-{
-    mRenderCB.m_NumVerticesPerStrand = m_NumVerticePerStrand;
-}
-
-void TressFXHairObject::DrawStrands(EI_CommandContextRef commandContext,
-                                    EI_PSO&            pso)
-{
-    UpdatePerObjectRenderParams();
-    // at some point, should probably pass these in to EI_BindAndDrawIndexedInstanced.
-    EI_Bind(commandContext, GetRenderPosTanLayout(), mPosTanCollection.GetRenderBindSet());
-    //EI_Bind(commandContext, renderLayout, *m_pDrawStrandsBindSet);
-    EI_Bind(commandContext, GetRenderLayout(), *m_pDrawStrandsBindSet);
-    // This could be an argument at some point.
-    AMD::uint32 nStrandCopies = 1;
-    float  density = 1.0f;
-
-    EI_IndexedDrawParams drawParams;
-    drawParams.pIndexBuffer = mpIndexBuffer;
-    drawParams.numIndices = AMD::uint32(density * mtotalIndices);
-    drawParams.numInstances = nStrandCopies;
-
-    EI_Draw(commandContext, pso, drawParams);
-}
-
-void TressFXHairObject::CreateRenderingGPUResources(EI_Device*   pDevice,
-                                                    AMD::TressFXAsset& asset,
-                                                    EI_StringHash      name)
-{
-    // If rendering is seperated, we might be copying the asset count to the local member variable.
-    // But since this is currently loaded after simulation right now, we'll just make sure
-    // it's already set.
-    TRESSFX_ASSERT(asset.m_numTotalStrands == m_NumTotalStrands);
-    TRESSFX_ASSERT(asset.m_numTotalVertices == m_NumTotalVertice);
-    mtotalIndices = asset.GetNumHairTriangleIndices();  // asset.GetNumHairTriangleIndices();
-
-    if (asset.m_strandUV)
-    {
-        mHairTexCoords = EI_CreateReadOnlySB(pDevice,
-                                             2 * sizeof(AMD::real32),
-                                             m_NumTotalStrands,
-                                             TRESSFX_STRING_HASH("TexCoords"), name);
-    }
-
-    mHairVertexRenderParams = EI_CreateReadOnlySB(pDevice,
-                                                  sizeof(AMD::real32),
-                                                  m_NumTotalVertice,
-                                                  TRESSFX_STRING_HASH("VertRenderParams"), name);
-
-    // TODO seperate creation from upload. Go through a real interface.
-    mpIndexBuffer = EI_CreateIndexBuffer(pDevice, mtotalIndices, asset.m_triangleIndices, name);
-}
-
-void TressFXHairObject::UploadRenderingGPUResources(EI_CommandContextRef  commandContext,
-                                                    AMD::TressFXAsset& asset)
-{
-    TRESSFX_ASSERT(asset.m_numTotalStrands == m_NumTotalStrands);
-    TRESSFX_ASSERT(asset.m_numTotalVertices == m_NumTotalVertice);
-    TRESSFX_ASSERT(mtotalIndices == asset.GetNumHairTriangleIndices());
-
-    if (asset.m_strandUV)
-    {
-        InitialDataUpload(commandContext,
-                                 asset.m_strandUV,
-                                 2 * sizeof(AMD::real32) * m_NumTotalStrands,
-                                 *mHairTexCoords);
-    }
-
-    InitialDataUpload(commandContext,
-                             asset.m_thicknessCoeffs,
-                             sizeof(AMD::real32) * m_NumTotalVertice,
-                             *mHairVertexRenderParams);
-
-    EI_Barrier copyToVS[] = 
-    {
-        {mHairTexCoords, EI_STATE_COPY_DEST, EI_STATE_VS_SRV},
-        { mHairVertexRenderParams, EI_STATE_COPY_DEST, EI_STATE_VS_SRV }
-    };
-
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(copyToVS), copyToVS);
-
-}
-
-
-void TressFXHairObject::PopulateDrawStrandsBindSet(EI_Device* pDevice,
-                                                   EI_SRV           hairColorTextureSRV)
-{
-    EI_SRV srvs[3];
-
-    srvs[TRESSFX_IDSRV_THICKNESS_OFFSET] = EI_GetSRV(mHairVertexRenderParams);
-
-    // The number (1 to 3) is based on whether we have texture coordinates and a texture,
-    // determined below.
-    // This will have to match the shader expectation, which is checked elsewhere.
-
-    // CLEANUP Call the TressFX one a description?
-    TressFXBindSet bindSetDesc;
-    bindSetDesc.nUAVs = 0;
-    bindSetDesc.uavs = 0;
-    bindSetDesc.srvs = srvs;
-    bindSetDesc.nSRVs = 1;
-
-
-
-    if (hairColorTextureSRV)
-    {
-        if (! EI_GetSRV(mHairTexCoords) )
-        {
-            TressFXLogWarning(
-                "hair color texture specified for a model that has no hair texture coordinates. It will be ignored.");
-        }
-        else
-        {
-            srvs[TRESSFX_IDSRV_ROOT_TEXCOORD_OFFSET] = EI_GetSRV(mHairTexCoords);
-            ++bindSetDesc.nSRVs;
-            if (hairColorTextureSRV)
-            {
-                srvs[TRESSFX_IDSRV_COLOR_TEXTURE_OFFSET] = hairColorTextureSRV;
-                ++bindSetDesc.nSRVs;
-            }
-        }
-    }
-
-    bindSetDesc.values  = &(mRenderCB);
-    bindSetDesc.nBytes  = sizeof(mRenderCB);
-    m_pDrawStrandsBindSet = EI_CreateBindSet(pDevice, bindSetDesc);
-}
-
-void TressFXHairObject::UpdateBoneMatrices(EI_CommandContextRef  commandContext, const float* pBoneMatricesInWS, size_t sizeOfBoneMatrices)
-{
-	UNREFERENCED_PARAMETER(commandContext);
-    memcpy(mSimCB.m_BoneSkinningMatrix,
-           pBoneMatricesInWS,
-           (AMD::uint32)(sizeOfBoneMatrices < AMD_TRESSFX_MAX_NUM_BONES * sizeof(float) * 16
-                        ? sizeOfBoneMatrices
-                        : AMD_TRESSFX_MAX_NUM_BONES * sizeof(float) * 16));
-}
-
-
-void TressFXHairObject::UpdateSimulationParameters(const TressFXSimulationSettings& settings)
-{
-    mSimCB.SetVelocityShockPropogation(settings.m_vspCoeff);
-    mSimCB.SetVSPAccelThreshold(settings.m_vspAccelThreshold);
-
-    mSimCB.SetDamping(settings.m_damping);
-    mSimCB.SetLocalStiffness(settings.m_localConstraintStiffness);
-    mSimCB.SetGlobalStiffness(settings.m_globalConstraintStiffness);
-    mSimCB.SetGlobalRange(settings.m_globalConstraintsRange);
-    mSimCB.SetLocalStiffness(settings.m_localConstraintStiffness);
-
-    mSimCB.SetGravity(settings.m_gravityMagnitude);
-    mSimCB.SetTimeStep(1.f / 60.f);
-    mSimCB.SetCollision(false);
-    mSimCB.SetVerticesPerStrand(m_NumOfVerticesInStrand);
-    mSimCB.SetFollowHairsPerGuidHair(m_NumFollowHairsPerGuideHair);
-    mSimCB.SetTipSeperation(settings.m_tipSeparation);
-
-    // Right now, we do all local contraint iterations on the CPU.
-    // It's actually a bit faster to
-
-    if (m_NumVerticePerStrand >= TRESSFX_MIN_VERTS_PER_STRAND_FOR_GPU_ITERATION)
-    {
-        mSimCB.SetLocalIterations((int)settings.m_localConstraintsIterations);
-        m_CPULocalShapeIterations = 1;
-    }
-    else
-    {
-        mSimCB.SetLocalIterations(1);
-        m_CPULocalShapeIterations = (int)settings.m_localConstraintsIterations;
-    }
-
-    mSimCB.SetLengthIterations((int)settings.m_lengthConstraintsIterations);
-
-    // Set wind parameters
-    AMD::tressfx_vec3 windDir(
-        settings.m_windDirection[0], settings.m_windDirection[1], settings.m_windDirection[2]);
-    float windMag = settings.m_windMagnitude;
-    SetWind(windDir, windMag, mSimulationFrame);
-
-
-#if TRESSFX_COLLISION_CAPSULES
-    mSimCB.m_numCollisionCapsules.x = 0;
-
-    // Below is an example showing how to pass capsule collision objects. 
-    /*
-    mSimCB.m_numCollisionCapsules.x = 1;
-    mSimCB.m_centerAndRadius0[0] = { 0, 0.f, 0.f, 50.f };
-    mSimCB.m_centerAndRadius1[0] = { 0, 100.f, 0, 10.f };
-    */
-#endif
-
-
-
-    // Bone matrix set elsewhere. It is not dependent on the settings passed in here.
-}
-
-
-// Positions and tangetns are handled in the following order, from the point of view of each
+// Positions and tangents are handled in the following order, from the point of view of each
 // buffer.
 //
 // Positions updated from previous sim output by copy. (COPY_DEST)
@@ -548,132 +544,94 @@ void TressFXHairObject::UpdateSimulationParameters(const TressFXSimulationSettin
 // SDF updates mPositions and mPositionsPrev (UAVs)
 // Render with mPositions and mTangnets (PS SRVs)
 
-PosTanCollection::PosTanCollection() {}
-PosTanCollection::~PosTanCollection() {}
-
-void PosTanCollection::CreateGPUResources(EI_Device* pDevice, int numVertices, EI_StringHash name)
+void TressFXDynamicState::CreateGPUResources(EI_Device* pDevice, int numVertices, int numStrands, const char * name, TressFXAsset* asset)
 {
-    m_PositionsPrev = EI_CreateReadWriteSB(pDevice, sizeof(AMD::TRESSFX::float4), numVertices, TRESSFX_STRING_HASH("PosPrev"), name);
-    m_PositionsPrevPrev = EI_CreateReadWriteSB(pDevice, sizeof(AMD::TRESSFX::float4), numVertices, TRESSFX_STRING_HASH("PosPrevPrev"), name);
-    m_Positions = EI_CreateReadWriteSB(pDevice, sizeof(AMD::TRESSFX::float4), numVertices, TRESSFX_STRING_HASH("Pos"), name);
-    m_Tangents = EI_CreateReadWriteSB(pDevice, sizeof(AMD::TRESSFX::float4), numVertices, TRESSFX_STRING_HASH("Tan"), name);
+	UNREFERENCED_PARAMETER(name);
+	UNREFERENCED_PARAMETER(asset);
+    m_PositionsPrev = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "PosPrev");
+    m_PositionsPrevPrev = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "PosPrevPrev");
+    m_Positions = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "Pos");
+    m_Tangents = pDevice->CreateBufferResource(sizeof(AMD::float4), numVertices, EI_BF_NEEDSUAV, "Tan");
+    m_StrandLevelData = pDevice->CreateBufferResource(sizeof(TressFXStrandLevelData), numStrands, EI_BF_NEEDSUAV, "StrandLevelData");
 
-    TressFXBindSet bindSet;
-    // No constant buffer.
-    bindSet.nBytes = 0;
-    bindSet.values = 0;
+    EI_BindSetDescription bindSet;
 
-    EI_UAV simUAVs[4];
-    EI_UAV applySDFUAVs[2];
-    EI_SRV renderSRVs[2];
+    bindSet = {
+        {m_Positions.get(), m_PositionsPrev.get(), m_PositionsPrevPrev.get(), m_Tangents.get(), m_StrandLevelData.get() }
+    };
+    m_pSimBindSets = pDevice->CreateBindSet(GetSimPosTanLayout(), bindSet);
 
-    // We supply storage for the list of uavs in this class.
-    simUAVs[TRESSFX_IDUAV_POS_OFFSET]           = EI_GetUAV(m_Positions);
-    simUAVs[TRESSFX_IDUAV_POS_PREV_OFFSET]      = EI_GetUAV(m_PositionsPrev);
-    simUAVs[TRESSFX_IDUAV_POS_PREV_PREV_OFFSET] = EI_GetUAV(m_PositionsPrevPrev);
-    simUAVs[TRESSFX_IDUAV_TAN_OFFSET]           = EI_GetUAV(m_Tangents);
+    bindSet = {
+        {m_Positions.get(), m_PositionsPrev.get()}
+    };
+    m_pApplySDFBindSets = pDevice->CreateBindSet(GetApplySDFLayout(), bindSet);
 
-    bindSet.nSRVs = 0;
-    bindSet.nUAVs = AMD_ARRAY_SIZE(simUAVs);
-    TRESSFX_ASSERT(bindSet.nUAVs == 4);  // check that I used the macro right.
-    bindSet.uavs = simUAVs;
-    m_pSimBindSets = EI_CreateBindSet(pDevice, bindSet);
-
-    applySDFUAVs[TRESSFX_IDUAV_POS_OFFSET]           = EI_GetUAV(m_Positions);
-    applySDFUAVs[TRESSFX_IDUAV_POS_PREV_OFFSET]      = EI_GetUAV(m_PositionsPrev);
-    //applySDFUAVs[TRESSFX_IDUAV_POS_PREV_PREV_OFFSET] = mPositionsPrevPrev.uav;
-
-    bindSet.nSRVs     = 0;
-    bindSet.nUAVs     = AMD_ARRAY_SIZE(applySDFUAVs);
-    bindSet.uavs      = applySDFUAVs;
-    m_pApplySDFBindSets = EI_CreateBindSet(pDevice, bindSet);
-
-    renderSRVs[TRESSFX_IDSRV_POS_OFFSET] = EI_GetSRV(m_Positions);
-    renderSRVs[TRESSFX_IDSRV_TAN_OFFSET] = EI_GetSRV(m_Tangents);
-
-    bindSet.nSRVs   = AMD_ARRAY_SIZE(renderSRVs);
-    bindSet.srvs    = renderSRVs;
-    bindSet.nUAVs   = 0;
-    m_pRenderBindSets = EI_CreateBindSet(pDevice, bindSet);
+    bindSet = {
+        {m_Positions.get(), m_Tangents.get()}
+    };
+    m_pRenderBindSets = pDevice->CreateBindSet(GetRenderPosTanLayout(), bindSet);
 }
 
-
-void PosTanCollection::Destroy(EI_Device* pDevice)
+void TressFXDynamicState::UploadGPUData(EI_CommandContext& commandContext, void* pos, void* tan, int numVertices)
 {
-    EI_DestroyBindSet(pDevice, m_pRenderBindSets);
-    EI_DestroyBindSet(pDevice, m_pApplySDFBindSets);
-    EI_DestroyBindSet(pDevice, m_pSimBindSets);
-
-    AMD_SAFE_RESOURCE_DELETE(pDevice, m_Tangents);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, m_Positions);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, m_PositionsPrevPrev);
-    AMD_SAFE_RESOURCE_DELETE(pDevice, m_PositionsPrev);
-}
-
-
-void PosTanCollection::UploadGPUData(EI_CommandContextRef commandContext, void* pos, void* tan, int numVertices)
-{
+	UNREFERENCED_PARAMETER(numVertices);
     TRESSFX_ASSERT(m_Positions != nullptr);
     TRESSFX_ASSERT(m_Tangents != nullptr);
     TRESSFX_ASSERT(m_PositionsPrev != nullptr);
     TRESSFX_ASSERT(m_PositionsPrevPrev != nullptr);
-
+    
     EI_Barrier uavToUpload[] = 
     {
-        { m_Positions, EI_STATE_UAV, EI_STATE_COPY_DEST },
-        { m_Tangents, EI_STATE_UAV, EI_STATE_COPY_DEST },
-        { m_PositionsPrev, EI_STATE_UAV, EI_STATE_COPY_DEST },
-        { m_PositionsPrevPrev, EI_STATE_UAV, EI_STATE_COPY_DEST }
+        { m_Positions.get(), EI_STATE_UAV, EI_STATE_COPY_DEST },
+        { m_Tangents.get(), EI_STATE_UAV, EI_STATE_COPY_DEST },
+        { m_PositionsPrev.get(), EI_STATE_UAV, EI_STATE_COPY_DEST },
+        { m_PositionsPrevPrev.get(), EI_STATE_UAV, EI_STATE_COPY_DEST }
     };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uavToUpload), uavToUpload);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uavToUpload), uavToUpload);
 
-	/*auto vertices = (AMD::TRESSFX::float4*)pos;
-	for (int j = 0; j < numVertices; j++) {
-		logger::info("Vertex: {} {} {}, w: {}", vertices[j].x, vertices[j].y, vertices[j].z, vertices[j].w);
-	}*/
-	logger::info("uploading positions:");
-    InitialDataUpload(commandContext, pos, sizeof(AMD::TRESSFX::float4) * numVertices, *m_Positions);
-    InitialDataUpload(commandContext, tan, sizeof(AMD::TRESSFX::float4) * numVertices, *m_Tangents);
-    InitialDataUpload(commandContext, pos, sizeof(AMD::TRESSFX::float4) * numVertices, *m_PositionsPrev);
-    InitialDataUpload(commandContext, pos, sizeof(AMD::TRESSFX::float4) * numVertices, *m_PositionsPrevPrev);
+ 
+    commandContext.UpdateBuffer(m_Positions.get(), pos);
+    commandContext.UpdateBuffer(m_Tangents.get(), tan);
+    commandContext.UpdateBuffer(m_PositionsPrev.get(), pos);
+    commandContext.UpdateBuffer(m_PositionsPrevPrev.get(), pos);
 
     EI_Barrier uploadToUAV[] =
     {
-        { m_Positions, EI_STATE_COPY_DEST, EI_STATE_UAV },
-        { m_Tangents, EI_STATE_COPY_DEST, EI_STATE_UAV },
-        { m_PositionsPrev, EI_STATE_COPY_DEST, EI_STATE_UAV },
-        { m_PositionsPrevPrev, EI_STATE_COPY_DEST, EI_STATE_UAV },
+        { m_Positions.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
+        { m_Tangents.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
+        { m_PositionsPrev.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
+        { m_PositionsPrevPrev.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
     };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uploadToUAV), uploadToUAV);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uploadToUAV), uploadToUAV);
 }
 
-void PosTanCollection::TransitionSimToRendering(EI_CommandContextRef commandContext)
+void TressFXDynamicState::TransitionSimToRendering(EI_CommandContext& commandContext)
 {
     TRESSFX_ASSERT(m_Positions != nullptr);
     TRESSFX_ASSERT(m_Tangents != nullptr);
 
     EI_Barrier simToRender[] = 
     {
-        { m_Positions, EI_STATE_UAV, EI_STATE_VS_SRV },
-        { m_Tangents, EI_STATE_UAV, EI_STATE_VS_SRV }
+        { m_Positions.get(), EI_STATE_UAV, EI_STATE_SRV },
+        { m_Tangents.get(), EI_STATE_UAV, EI_STATE_SRV }
     };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(simToRender), simToRender);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(simToRender), simToRender);
 }
 
-void PosTanCollection::TransitionRenderingToSim(EI_CommandContextRef commandContext)
+void TressFXDynamicState::TransitionRenderingToSim(EI_CommandContext& commandContext)
 {
     TRESSFX_ASSERT(m_Positions != nullptr);
     TRESSFX_ASSERT(m_Tangents != nullptr);
 
     EI_Barrier renderToSim[] =
     {
-        { m_Positions, EI_STATE_VS_SRV, EI_STATE_UAV },
-        { m_Tangents, EI_STATE_VS_SRV, EI_STATE_UAV }
+        { m_Positions.get(), EI_STATE_SRV, EI_STATE_UAV },
+        { m_Tangents.get(), EI_STATE_SRV, EI_STATE_UAV }
     };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(renderToSim), renderToSim);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(renderToSim), renderToSim);
 }
 
-void PosTanCollection::UAVBarrier(EI_CommandContextRef commandContext)
+void TressFXDynamicState::UAVBarrier(EI_CommandContext& commandContext)
 {
     TRESSFX_ASSERT(m_Positions != nullptr);
     TRESSFX_ASSERT(m_PositionsPrev != nullptr);
@@ -681,14 +639,12 @@ void PosTanCollection::UAVBarrier(EI_CommandContextRef commandContext)
 
     EI_Barrier uav[] = 
     {
-        { m_Positions, EI_STATE_UAV, EI_STATE_UAV },
-        { m_PositionsPrev, EI_STATE_UAV, EI_STATE_UAV },
-        { m_PositionsPrevPrev, EI_STATE_UAV, EI_STATE_UAV }
+        { m_Positions.get(), EI_STATE_UAV, EI_STATE_UAV },
+        { m_PositionsPrev.get(), EI_STATE_UAV, EI_STATE_UAV },
+        { m_PositionsPrevPrev.get(), EI_STATE_UAV, EI_STATE_UAV }
     };
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(uav), uav);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(uav), uav);
 
     // Assuming tangent is only written by one kernel, so will get caught with transition to SRV
     // for rendering.
 }
-
-

@@ -8,6 +8,8 @@
 #include <string>
 #include <glm/glm.hpp>
 using json = nlohmann::json;
+class TressFXRenderingSettings;
+class TressFXSimulationSettings;
 class Menu : public RE::BSTEventSink<RE::InputEvent*>
 {
 public:
@@ -39,6 +41,8 @@ public:
 	void DrawInt(uint16_t integer, std::string name);
 	void DrawNiTransform(RE::NiTransform transform, std::string name);
 	void UpdateActiveHairs(std::vector<std::string> actors);
+	TressFXRenderingSettings GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings);
+	TressFXSimulationSettings GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings);
 	
 	float ambientLightingAmount = 1.0f;
 	float pointLightDiffuseAmount = 1.0f;
@@ -58,42 +62,43 @@ public:
 	bool                     offsetSlidersUpdated = false;
 
 	//hair render and sim parameters
-	float                    fiberRadiusSliderValue = 0.002;
-	float                    fiberSpacingSliderValue = 0.1;
-	float                    fiberRatioSliderValue = 0.5;
-	float                    kdSliderValue = 0.07;
-	float                    ks1SliderValue = 0.17;
-	float                    ex1SliderValue = 14.4;
-	float                    ks2SliderValue = 0.72;
-	float                    ex2SliderValue = 11.8;
+	float                    fiberRadiusSliderValue = 0.002f;
+	float                    fiberSpacingSliderValue = 0.1f;
+	float                    fiberRatioSliderValue = 0.5f;
+	float                    kdSliderValue = 0.07f;
+	float                    ks1SliderValue = 0.17f;
+	float                    ex1SliderValue = 14.4f;
+	float                    ks2SliderValue = 0.72f;
+	float                    ex2SliderValue = 11.8f;
 	int                      localConstraintsIterationsSlider = 3;
 	int                      lengthConstraintsIterationsSlider = 3;
-	float                    localConstraintsStiffnessSlider = 0.9;
-	float                    globalConstraintsStiffnessSlider = 0.4;
-	float                    globalConstraintsRangeSlider = 0.3;
-	float                    dampingSlider = 0.06;
-	float                    vspAmountSlider = 0.75;
-	float                    vspAccelThresholdSlider = 1.2;
-	float                    hairOpacitySlider = 0.63;
-	float                    hairShadowAlphaSlider = 0.35;
+	float                    localConstraintsStiffnessSlider = 0.9f;
+	float                    globalConstraintsStiffnessSlider = 0.4f;
+	float                    globalConstraintsRangeSlider = 0.3f;
+	float                    dampingSlider = 0.06f;
+	float                    vspAmountSlider = 0.75f;
+	float                    vspAccelThresholdSlider = 1.2f;
+	float                    hairOpacitySlider = 0.63f;
+	float                    hairShadowAlphaSlider = 0.35f;
 	bool                     thinTipCheckbox = true;
 	bool                     drawShadowsCheckbox = true;
 	bool                     communityShadersScreenSpaceShadowsCheckbox = true;
 	bool                     drawHairCheckbox = true;
 	bool                     HBAOCheckbox = true;
 	bool                     clearBeforeHBAOCheckbox = false;
-	float                    gravityMagnitudeSlider = 0.09;
+	float                    gravityMagnitudeSlider = 0.09f;
+	bool                     drawDebugMarkersCheckbox = true;
 	//ao
-	float aoLargeScaleAOSlider = 0.0;
-	float aoSmallScaleAOSlider = 1.0;
-	float aoBiasSlider = 0.266;
+	float aoLargeScaleAOSlider = 0.0f;
+	float aoSmallScaleAOSlider = 1.0f;
+	float aoBiasSlider = 0.266f;
 	bool aoBlurEnableCheckbox = true;
-	float aoBlurSharpnessSlider = 100.0;
-	float aoPowerExponentSlider = 2.0;
-	float aoRadiusSlider = 0.038;
+	float aoBlurSharpnessSlider = 100.0f;
+	float aoPowerExponentSlider = 2.0f;
+	float aoRadiusSlider = 0.038f;
 	bool aoDepthThresholdEnableCheckbox = false;
-	float aoDepthThresholdMaxViewDepthSlider = 0;
-	float aoDepthThresholdSharpnessSlider = 100;
+	float aoDepthThresholdMaxViewDepthSlider = 0.0f;
+	float aoDepthThresholdSharpnessSlider = 100.0f;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;
 	std::vector<std::string> activeHairs = { "NONE" };

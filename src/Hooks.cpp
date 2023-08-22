@@ -1,14 +1,13 @@
 #include "Hooks.h"
 #include "HookEvents.h"
 #include "ActorManager.h"
-#include "Hair.h"
 #include <sstream> //for std::stringstream 
 #include <string>  //for std::string
 #include <d3d11.h>
+#include <chrono>
 #include "Util.h"
-#include "PPLLObject.h"
 #include "Menu.h"
-#include "HBAOPlus.h"
+#include "SkyrimTressFX.h"
 decltype(&RE::BSFaceGenNiNode::FixSkinInstances) ptrFixSkinInstances;
 
 struct BSFaceGenNiNode_FixSkinInstances
@@ -57,15 +56,16 @@ struct Main_Update
 	static void thunk()
 	{
 		//call main game loop
-		PPLLObject* ppll = PPLLObject::GetSingleton();
-		if (ppll->m_doReload) {
-			ppll->ReloadAllHairs();
+		SkyrimTressFX* tfx = SkyrimTressFX::GetSingleton();
+		if (tfx->m_doReload) {
+			tfx->ReloadAllHairs();
 		}
 		func();
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
 //uint8_t skipFrame = 10;
+using namespace std::chrono;
 struct Hooks
 {
 	struct Main_DrawWorld_MainDraw
@@ -75,17 +75,27 @@ struct Hooks
 			auto val = func(a1, a2, a3, a4, a5);
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
-			auto ppll = PPLLObject::GetSingleton();
-			if (ppll->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
+			auto tfx = SkyrimTressFX::GetSingleton();
+			//if this is the first frame, we need to grab the color texture
+			if (!tfx->m_gameLoaded) {
+				tfx->CreateRenderResources();
+			}
+			if (tfx->m_currentState!=state::done_drawing && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || 
 				camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				//tfx->Update();
+				uint64_t ms = duration_cast<milliseconds>(
+					system_clock::now().time_since_epoch())
+				                  .count();
+				double time = (double)ms / 1000;
+				time;
+				tfx->Update();
+				tfx->Simulate(time, false, false);
 				if (Menu::GetSingleton()->drawHairCheckbox) {
-					ppll->UpdateVariables();
-					//ppll->Simulate();
-					ppll->Draw();
-					ppll->m_currentState = state::done_drawing;
+					tfx->Draw();
+					tfx->m_currentState = state::done_drawing;
 				}
 				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
-				auto hbao = HBAOPlus::GetSingleton();
+				/*auto hbao = HBAOPlus::GetSingleton();
 				if (!hbao->gotRTV) {
 					ID3D11RenderTargetView* pRTV;
 					RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context->OMGetRenderTargets(1, &pRTV, nullptr);
@@ -93,7 +103,7 @@ struct Hooks
 					hbao->SetRenderTarget(pRTV, GFSDK_SSAO_MULTIPLY_RGB);
 				}
 				if (Menu::GetSingleton()->HBAOCheckbox) {
-					hbao->SetInput(ppll->m_projXMMatrix, 69.99104);
+					hbao->SetInput(tfx->m_activeScene.scene.get()->m_projMatrix, (float)69.99104);
 					if (Menu::GetSingleton()->clearBeforeHBAOCheckbox) {
 						logger::info("Clearing RTV");
 						float clearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
@@ -102,13 +112,14 @@ struct Hooks
 					logger::info("Rendering AO");
 					hbao->SetAOParameters();
 					hbao->RenderAO();
-				}
+				}*/
+			} else {
+				//logger::info("Skipping frame");
 			}
 			return val;
 		}
 		static inline REL::Relocation<decltype(thunk)> func;
 	};
-
 	struct Main_PostDrawWorld_MainDraw
 	{
 		static void thunk(INT64 BSGraphics_Renderer, int unk)
@@ -116,9 +127,9 @@ struct Hooks
 			func(BSGraphics_Renderer, unk);
 			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
-			auto ppll = PPLLObject::GetSingleton();
-			if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-				MarkerRender::GetSingleton()->DrawAllMarkers(ppll->m_viewXMMatrix, ppll->m_projXMMatrix);
+			auto tfx = SkyrimTressFX::GetSingleton();
+			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+				MarkerRender::GetSingleton()->DrawAllMarkers(tfx->m_activeScene.scene.get()->m_viewMatrix, tfx->m_activeScene.scene.get()->m_projMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
 		}
@@ -128,9 +139,8 @@ struct Hooks
 void DrawShadows() {
 	//Menu::GetSingleton()->DrawVector3(a1->light.get()->world.translate, "shadowLight pos:")
 	auto camera = RE::PlayerCamera::GetSingleton();
-	auto ppll = PPLLObject::GetSingleton();
-	ppll->m_currentState = state::draw_shadows;
-	if (ppll->m_gameLoaded && camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
+	auto tfx = SkyrimTressFX::GetSingleton();
+	if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 		//RE::ThirdPersonState* tps = reinterpret_cast<RE::ThirdPersonState*>(camera->currentState.get());
 		/*if (skipFrame) {
 				skipFrame--;
@@ -160,11 +170,11 @@ void DrawShadows() {
 			//ppll->m_markerPositions.push_back(transform);
 
 			//get viewport
-			auto              currentViewport = ppll->m_currentViewport;
+			auto              currentViewport = tfx->m_activeScene.scene.get()->m_currentViewport;
 			DirectX::XMVECTOR viewportVector = DirectX::XMVectorSet(currentViewport.TopLeftX, currentViewport.TopLeftY, currentViewport.Width, currentViewport.Height);
-			ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
-			logger::info("drawing hair shadows");
-			PPLLObject::GetSingleton()->DrawShadows();
+			//ppll->m_pStrandEffect->GetVariableByName("g_vViewport")->AsVector()->SetFloatVector(reinterpret_cast<float*>(&viewportVector));
+			//logger::info("drawing hair shadows");
+			//tfx->DrawShadows();
 			//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 	}
 }
@@ -173,9 +183,11 @@ struct BSShadowLight_DrawShadows
 	static void thunk(RE::BSShadowLight* a1, INT64* a2, DWORD* a3, int a4)
 	{
 		func(a1, a2, a3, a4);
-		if (Menu::GetSingleton()->drawShadowsCheckbox) {
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = state::draw_shadows;
+		/*if (Menu::GetSingleton()->drawShadowsCheckbox) {
 			DrawShadows();
-		}
+		}*/
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
@@ -189,81 +201,83 @@ struct Sub_DrawShadows
 {
 	static INT64 thunk(INT64 a1, UINT64* a2)
 	{
-		auto                    pManager = RE::BSGraphics::Renderer::GetSingleton();
-		auto                    pContext = pManager->GetRuntimeData().context;
-		ID3D11DepthStencilView* pOriginalDSV;
-		pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV,0, 0, nullptr);
-		pOriginalDSV->GetResource(&pOriginalDepthTexture);
-		//create texture for copy
-		if (pCurrentDepthStencilResourceNoHair == nullptr) {
-			auto pDevice = pManager->GetRuntimeData().forwarder;
-			auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
-			DXGI_SWAP_CHAIN_DESC swapDesc;
-			pSwapChain->GetDesc(&swapDesc);
-			D3D11_TEXTURE2D_DESC desc;
-			desc.Width = swapDesc.BufferDesc.Width;
-			desc.Height = swapDesc.BufferDesc.Height;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-			desc.SampleDesc.Count = 1;
-			desc.SampleDesc.Quality = 0;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			desc.CPUAccessFlags = 0;
-			desc.MiscFlags = 0;
-			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
-		}
-		if (pCurrentDepthStencilResourceWithHair == nullptr) {
-			auto                 pDevice = pManager->GetRuntimeData().forwarder;
-			auto                 pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
-			DXGI_SWAP_CHAIN_DESC swapDesc;
-			pSwapChain->GetDesc(&swapDesc);
-			D3D11_TEXTURE2D_DESC desc;
-			desc.Width = swapDesc.BufferDesc.Width;
-			desc.Height = swapDesc.BufferDesc.Height;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-			desc.SampleDesc.Count = 1;
-			desc.SampleDesc.Quality = 0;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-			desc.CPUAccessFlags = 0;
-			desc.MiscFlags = 0;
-			pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
-		}
-		if (pHairDepthSRV == nullptr) {
-			auto pDevice = pManager->GetRuntimeData().forwarder;
-			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
-			viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-			viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			viewDesc.Texture2D.MipLevels = 1;
-			viewDesc.Texture2D.MostDetailedMip = 0;
-			logger::info("Creating Community Shaders depth SRV");
-			HRESULT hr2 = pDevice->CreateShaderResourceView(pCurrentDepthStencilResourceWithHair, &viewDesc, &pHairDepthSRV);
-			Util::printHResult(hr2);
-			if (pHairDepthSRV == nullptr) {
-				//Util::PrintAllD3D11DebugMessages(pDevice);
-				logger::info("Depth SRV creation failed!");
-			}
-		}
-		logger::info("Copying depth stencil");
-		pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
-		DrawShadows();
-		//copy new depth with hair
-		pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
-		if (Menu::GetSingleton()->communityShadersScreenSpaceShadowsCheckbox && pHairDepthSRV != nullptr) {
-			Util::OverrideCommunityShadersScreenSpaceShadowsDepthTexture(pHairDepthSRV);
-		}
-		//hack to enable AO even if we don't want shadows
-		if (!Menu::GetSingleton()->drawShadowsCheckbox) {
-			logger::info("Restoring original depth to disable shadows");
-			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
-		}
-		//catch next copy to stop hair depth from being used elsewhere
-		catchNextResourceCopy = true;
-		overrideResource = pCurrentDepthStencilResourceNoHair;
+		//auto                    pManager = RE::BSGraphics::Renderer::GetSingleton();
+		//auto                    pContext = pManager->GetRuntimeData().context;
+		//ID3D11DepthStencilView* pOriginalDSV;
+		//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV,0, 0, nullptr);
+		//pOriginalDSV->GetResource(&pOriginalDepthTexture);
+		////create texture for copy
+		//if (pCurrentDepthStencilResourceNoHair == nullptr) {
+		//	auto pDevice = pManager->GetRuntimeData().forwarder;
+		//	auto pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+		//	DXGI_SWAP_CHAIN_DESC swapDesc;
+		//	pSwapChain->GetDesc(&swapDesc);
+		//	D3D11_TEXTURE2D_DESC desc;
+		//	desc.Width = swapDesc.BufferDesc.Width;
+		//	desc.Height = swapDesc.BufferDesc.Height;
+		//	desc.MipLevels = 1;
+		//	desc.ArraySize = 1;
+		//	desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+		//	desc.SampleDesc.Count = 1;
+		//	desc.SampleDesc.Quality = 0;
+		//	desc.Usage = D3D11_USAGE_DEFAULT;
+		//	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		//	desc.CPUAccessFlags = 0;
+		//	desc.MiscFlags = 0;
+		//	pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceNoHair);
+		//}
+		//if (pCurrentDepthStencilResourceWithHair == nullptr) {
+		//	auto                 pDevice = pManager->GetRuntimeData().forwarder;
+		//	auto                 pSwapChain = pManager->GetRuntimeData().renderWindows->swapChain;
+		//	DXGI_SWAP_CHAIN_DESC swapDesc;
+		//	pSwapChain->GetDesc(&swapDesc);
+		//	D3D11_TEXTURE2D_DESC desc;
+		//	desc.Width = swapDesc.BufferDesc.Width;
+		//	desc.Height = swapDesc.BufferDesc.Height;
+		//	desc.MipLevels = 1;
+		//	desc.ArraySize = 1;
+		//	desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+		//	desc.SampleDesc.Count = 1;
+		//	desc.SampleDesc.Quality = 0;
+		//	desc.Usage = D3D11_USAGE_DEFAULT;
+		//	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		//	desc.CPUAccessFlags = 0;
+		//	desc.MiscFlags = 0;
+		//	pDevice->CreateTexture2D(&desc, NULL, &pCurrentDepthStencilResourceWithHair);
+		//}
+		//if (pHairDepthSRV == nullptr) {
+		//	auto pDevice = pManager->GetRuntimeData().forwarder;
+		//	D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
+		//	viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+		//	viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		//	viewDesc.Texture2D.MipLevels = 1;
+		//	viewDesc.Texture2D.MostDetailedMip = 0;
+		//	logger::info("Creating Community Shaders depth SRV");
+		//	HRESULT hr2 = pDevice->CreateShaderResourceView(pCurrentDepthStencilResourceWithHair, &viewDesc, &pHairDepthSRV);
+		//	Util::printHResult(hr2);
+		//	if (pHairDepthSRV == nullptr) {
+		//		//Util::PrintAllD3D11DebugMessages(pDevice);
+		//		logger::info("Depth SRV creation failed!");
+		//	}
+		//}
+		//logger::info("Copying depth stencil");
+		//pContext->CopyResource(pCurrentDepthStencilResourceNoHair, pOriginalDepthTexture);
+		//DrawShadows();
+		////copy new depth with hair
+		//pContext->CopyResource(pCurrentDepthStencilResourceWithHair, pOriginalDepthTexture);
+		//if (Menu::GetSingleton()->communityShadersScreenSpaceShadowsCheckbox && pHairDepthSRV != nullptr) {
+		//	Util::OverrideCommunityShadersScreenSpaceShadowsDepthTexture(pHairDepthSRV);
+		//}
+		////hack to enable AO even if we don't want shadows
+		//if (!Menu::GetSingleton()->drawShadowsCheckbox) {
+		//	logger::info("Restoring original depth to disable shadows");
+		//	pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		//}
+		////catch next copy to stop hair depth from being used elsewhere
+		//catchNextResourceCopy = true;
+		//overrideResource = pCurrentDepthStencilResourceNoHair;
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = draw_shadows;
 		return func(a1, a2);
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
@@ -274,22 +288,20 @@ struct Sub_ShadowMap
 	static INT64 thunk(INT64 a1)
 	{
 		auto                    val = func(a1);
-		auto                    pContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
-		//ID3D11DepthStencilView* pOriginalDSV;
-		//pContext->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, &pOriginalDSV, 0, 0, nullptr);
-		//ID3D11Resource* pOriginalDepthTexture;
-		//pOriginalDSV->GetResource(&pOriginalDepthTexture);
-		if (pCurrentDepthStencilResourceNoHair == nullptr) {
-			logger::warn("Copied depth texture is null!");
-		} else if(pOriginalDepthTexture == nullptr){
-			logger::warn("Original depth texture is null!");
-		}
-		else {
-			//TODO: Can I intercept the RTV used for shadows instead of copying again?
-			logger::info("Copying depth stencil for HBAO");
-			HBAOPlus::GetSingleton()->CopyDSVTexture(pCurrentDepthStencilResourceWithHair);
-			pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
-		}
+		//auto                    pContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;
+		//if (pCurrentDepthStencilResourceNoHair == nullptr) {
+		//	logger::warn("Copied depth texture is null!");
+		//} else if(pOriginalDepthTexture == nullptr){
+		//	logger::warn("Original depth texture is null!");
+		//}
+		//else {
+		//	//TODO: Can I intercept the RTV used for shadows instead of copying again?
+		//	logger::info("Copying depth stencil for HBAO");
+		//	HBAOPlus::GetSingleton()->CopyDSVTexture(pCurrentDepthStencilResourceWithHair);
+		//	pContext->CopyResource(pOriginalDepthTexture, pCurrentDepthStencilResourceNoHair);
+		//}
+		auto tfx = SkyrimTressFX::GetSingleton();
+		tfx->m_currentState = draw_shadows;
 		return val;
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
@@ -317,6 +329,7 @@ void hookMainDraw() {
 
 	//shadow map, replace depth
 	stl::write_thunk_call<Sub_ShadowMap>(REL::RelocationID(35560, 82084).address() + REL::Relocate(0x492, 0x17A));  //TODO AE //shadow map
+	
 	//stl::write_vfunc<0x0A, BSShadowLight_DrawShadows>(RE::VTABLE_BSShadowDirectionalLight[0]);
 
 	//draw markers
@@ -326,23 +339,22 @@ void hookFacegen()
 {
 	stl::write_vfunc<0x3E, BSFaceGenNiNode_FixSkinInstances>(RE::VTABLE_BSFaceGenNiNode[0]);
 }
+using namespace std::chrono;
 namespace LightHooks{
 	void Install(){
 		UpdateHooks::Hook();
 	}
 	void UpdateHooks::Nullsub()
 	{
-		PPLLObject::GetSingleton()->UpdateLights();
+		SkyrimTressFX::GetSingleton()->UpdateLights();
 		//get current transforms now, because they're borked later
-		for (auto hairPair : PPLLObject::GetSingleton()->m_hairs){
-			hairPair.second->UpdateBones();
+		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects){
+			hair.hairStrands->UpdateBones();
 		}
 		//simulate before render pass
-		auto ppll = PPLLObject::GetSingleton();
+		//auto tfx = SkyrimTressFX::GetSingleton();
 		auto camera = RE::PlayerCamera::GetSingleton();
 		if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
-			ppll->UpdateVariables();
-			ppll->Simulate();
 		}
 		_Nullsub();
 	}

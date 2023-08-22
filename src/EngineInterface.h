@@ -17,8 +17,10 @@
 
 #pragma once
 
-#include "AMD_Types.h"
+#include "TressFX/AMD_Types.h"
 #include <vector>
+
+using namespace DirectX;
 
 // tressfx gpu interface implementation
 class EI_Device;              // ID3D11Device
@@ -31,7 +33,7 @@ struct EI_RenderTargetSet;          // Render set
 
 enum EI_ShaderStage
 {
-	EI_UNINITIALIZED = 0,  // we will always specify shader stage.  "all" is never used.
+	EI_UNINITIALIZED = 0,  // we will always specify shader stage.  "all" is never used. //So that was a fuckin lie
 	EI_VS,
 	EI_PS,
 	EI_CS,
@@ -176,7 +178,7 @@ enum EI_LayoutState {
 enum EI_RenderPassFlags
 {
 	None = 0,
-	Load = 0x01,
+	load = 0x01,
 	Clear = 0x02,
 	Store = 0x04,
 	Depth = 0x08,
@@ -195,7 +197,9 @@ struct EI_AttachmentParams
 enum class EI_ResourceType
 {
 	Undefined = 0,
+	ConstantBuffer,
 	Buffer,
+	IndexBuffer,
 	Texture,
 	Sampler,
 };
@@ -278,7 +282,5 @@ enum EI_BufferFlags {
 #define EI_LogWarning(msg) printf("%s", msg)
 
 
-#include "DX11/DX11EngineInterfaceImpl.h"
-
-
-#include "SceneGLTFImpl.h"
+#include "DX11EngineInterfaceImpl.h"
+#include "Scene.h"

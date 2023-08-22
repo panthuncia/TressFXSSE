@@ -2,7 +2,7 @@
 // Layouts describe resources for each type of shader in TressFX.
 // ----------------------------------------------------------------------------
 //
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,834 +24,310 @@
 //
 
 #include "TressFXLayouts.h"
-
+#include "EngineInterface.h"
 
 using namespace AMD;
 
-void CreateSimPosTanLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutManager)
+// By default, app allocates space for each of these, and TressFX uses it.
+// These are globals, because there should really just be one instance.
+TressFXLayouts*                        g_TressFXLayouts = nullptr;
+
+void CreateSimPosTanLayout(EI_Device* pDevice)
 {
-    static const int NUM_UAVS = 4;
-
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("g_HairVertexPositions"),
-        TRESSFX_STRING_HASH("g_HairVertexPositionsPrev"),
-        TRESSFX_STRING_HASH("g_HairVertexPositionsPrevPrev"),
-        TRESSFX_STRING_HASH("g_HairVertexTangents")
-    };
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        0,
-        nullptr,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"g_HairVertexPositions", 0, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_HairVertexPositionsPrev", 1, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_HairVertexPositionsPrevPrev", 2, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_HairVertexTangents", 3, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_StrandLevelData", 4, EI_RESOURCETYPE_BUFFER_RW },
+        },
         EI_CS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pSimPosTanLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, pLayoutManager, layoutDesc);
+    g_TressFXLayouts->pSimPosTanLayout = pDevice->CreateLayout(desc);
 }
 
-
-
-void CreateRenderPosTanLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutManager)
+void CreateRenderPosTanLayout(EI_Device* pDevice)
 {
-    static const int NUM_SRVS = 2;
-
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("g_GuideHairVertexPositions"),
-        TRESSFX_STRING_HASH("g_GuideHairVertexTangents")
-    };
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
+    EI_LayoutDescription desc = {
+        {
+            {"g_GuideHairVertexPositions", 0, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_GuideHairVertexTangents", 1, EI_RESOURCETYPE_BUFFER_RO },
+        },
+        EI_ALL
     };
 
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        0,
-        nullptr,
-
-        constDesc,
-        EI_VS
-    };
-
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pRenderPosTanLayout;
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-    pLayout = EI_CreateLayout(pDevice, pLayoutManager, layoutDesc);
+    g_TressFXLayouts->pRenderPosTanLayout = pDevice->CreateLayout(desc);
 }
 
-
-
-void CreateRenderLayout2(EI_Device* pDevice, EI_LayoutManagerRef pLayoutManager)
+void CreateRenderLayout(EI_Device* pDevice)
 {
- 
-    static const EI_StringHash srvSlotNames[3] =
-    {
-        TRESSFX_STRING_HASH("g_HairThicknessCoeffs"),
-        TRESSFX_STRING_HASH("g_HairStrandTexCd"),
-        TRESSFX_STRING_HASH("g_txHairColor")
+    EI_LayoutDescription desc = {
+        {
+            {"g_HairThicknessCoeffs", 2, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_HairStrandTexCd", 3, EI_RESOURCETYPE_BUFFER_RO },
+            {"BaseAlbedoTexture", 4, EI_RESOURCETYPE_IMAGE_RO },
+            {"TressFXParameters", 3, EI_RESOURCETYPE_UNIFORM },
+            {"TressFXStrandParameters", 4, EI_RESOURCETYPE_UNIFORM },
+            {"StrandAlbedoTexture", 5, EI_RESOURCETYPE_IMAGE_RO },
+        },
+        EI_ALL
     };
 
-    EI_StringHash paramNames[] = { "g_NumVerticesPerStrand" };
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH("tressfxShadeParameters"),
-        sizeof(TressFXRenderingConstantBuffer),
-        1,
-        paramNames
-    };
-
-    static const TressFXLayoutDescription renderLayoutDesc =
-    {
-        3,
-        srvSlotNames,
-
-        0,
-        nullptr,
-
-        constDesc,
-        EI_VS
-    };
-
-    if (g_TressFXLayouts->pRenderLayout != nullptr)
-        EI_DestroyLayout(pDevice, g_TressFXLayouts->pRenderLayout);
-
-    g_TressFXLayouts->pRenderLayout = EI_CreateLayout(pDevice, pLayoutManager, renderLayoutDesc);
+    g_TressFXLayouts->pTressFXParamLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateGenerateSDFLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateSamplerLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 1;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("g_TrimeshVertexIndices")
+    EI_LayoutDescription desc = {
+        {
+            {"LinearWrapSampler", 0, EI_RESOURCETYPE_SAMPLER },
+        },
+        EI_ALL
     };
 
-    // UAVS
-    static const int NUM_UAVS = 2;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("g_SignedDistanceField"),
-        TRESSFX_STRING_HASH("collMeshVertexPositions")
-    };
+    g_TressFXLayouts->pSamplerLayout = pDevice->CreateLayout(desc);
+}
 
-    EI_StringHash paramNames[] = {
-        TRESSFX_STRING_HASH("g_Origin"),
-        TRESSFX_STRING_HASH("g_CellSize"),
-        TRESSFX_STRING_HASH("g_NumCellsX"),
-        TRESSFX_STRING_HASH("g_NumCellsY"),
-        TRESSFX_STRING_HASH("g_NumCellsZ"),
-        TRESSFX_STRING_HASH("g_MaxMarchingCubesVertices"),
-        TRESSFX_STRING_HASH("g_MarchingCubesIsolevel"),
-        TRESSFX_STRING_HASH("g_CollisionMargin"),
-        TRESSFX_STRING_HASH("g_NumHairVerticesPerStrand"),
-        TRESSFX_STRING_HASH("g_NumTotalHairVertices"),
-        TRESSFX_STRING_HASH("pad1"),
-        TRESSFX_STRING_HASH("pad2"),
-        TRESSFX_STRING_HASH("pad3"),
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH("tressfxSDFCollisionParameters"),
-        sizeof(TressFXSDFCollisionConstantBuffer),
-        AMD_ARRAY_SIZE(paramNames),
-        paramNames
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+void CreateGenerateSDFLayout(EI_Device* pDevice)
+{
+    EI_LayoutDescription desc = {
+        {
+            {"g_TrimeshVertexIndices", 0, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_SignedDistanceField", 1, EI_RESOURCETYPE_BUFFER_RW },
+            {"collMeshVertexPositions", 2, EI_RESOURCETYPE_BUFFER_RW },
+            {"ConstBuffer_SDF", 3, EI_RESOURCETYPE_UNIFORM },
+        },
         EI_CS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pGenerateSDFLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
-
+    g_TressFXLayouts->pGenerateSDFLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateSimLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateSimLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 7;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-       TRESSFX_STRING_HASH("g_InitialHairPositions"),
-       TRESSFX_STRING_HASH("g_GlobalRotations"),
-       //TRESSFX_STRING_HASH("g_LocalRotations"),
-       TRESSFX_STRING_HASH("g_HairRestLengthSRV"),
-       TRESSFX_STRING_HASH("g_HairStrandType"),
-       TRESSFX_STRING_HASH("g_HairRefVecsInLocalFrame"),
-       TRESSFX_STRING_HASH("g_FollowHairRootOffset"),
-       TRESSFX_STRING_HASH("g_BoneSkinningData")
-        //TRESSFX_STRING_HASH("g_BoneSkinningMatrix")
-    };
-
-    // UAVS
-    static const int NUM_UAVS = 0;
-    //static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    //{
-    //    //TRESSFX_STRING_HASH("g_InitialHairPositions"),
-    //    /*TRESSFX_STRING_HASH("g_GlobalRotations"),
-    //    TRESSFX_STRING_HASH("g_LocalRotations")*/
-    //};
-
-    static const EI_StringHash* uavSlotNames = nullptr;
-
-
-    EI_StringHash paramNames[] = {
-        TRESSFX_STRING_HASH("g_Wind"),    TRESSFX_STRING_HASH("g_Wind1"),
-        TRESSFX_STRING_HASH("g_Wind2"),   TRESSFX_STRING_HASH("g_Wind3"),
-        TRESSFX_STRING_HASH("g_Shape"),   TRESSFX_STRING_HASH("g_GravTimeTip"),
-        TRESSFX_STRING_HASH("g_SimInts"), TRESSFX_STRING_HASH("g_Counts"),
-        TRESSFX_STRING_HASH("g_VSP"),     TRESSFX_STRING_HASH("g_BoneSkinningMatrix")
-
-#if TRESSFX_COLLISION_CAPSULES
-        , TRESSFX_STRING_HASH("g_centerAndRadius0")
-        , TRESSFX_STRING_HASH("g_centerAndRadius1")
-        , TRESSFX_STRING_HASH("g_numCollisionCapsules")
-#endif
-    };
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH("tressfxSDFCollisionParameters"),
-        sizeof(TressFXSDFCollisionConstantBuffer),
-        AMD_ARRAY_SIZE(paramNames),
-        paramNames
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"g_InitialHairPositions", 4, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_HairRestLengthSRV", 5, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_HairStrandType", 6, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_FollowHairRootOffset", 7, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_BoneSkinningData", 12, EI_RESOURCETYPE_BUFFER_RO },
+            {"tressfxSimParameters", 13, EI_RESOURCETYPE_UNIFORM },
+        },
         EI_CS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pSimLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pSimLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateApplySDFLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateApplySDFLayout(EI_Device* pDevice)
 {
-
-    // SRVS
-    static const int NUM_SRVS = 0;
-
-
-    // UAVS
-    static const int NUM_UAVS = 2;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("g_HairVertices"),
-        TRESSFX_STRING_HASH("g_PrevHairVertices")
-    };
-
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        0,
-        nullptr,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"g_HairVertices", 0, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_PrevHairVertices", 1, EI_RESOURCETYPE_BUFFER_RW },
+        },
         EI_CS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pApplySDFLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pApplySDFLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateBoneSkinningLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateBoneSkinningLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 2;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("g_BoneSkinningData"),
-        TRESSFX_STRING_HASH("initialVertexPositions")
+    EI_LayoutDescription desc = {
+        {
+            {"bs_boneSkinningData", 1, EI_RESOURCETYPE_BUFFER_RO },
+            {"bs_initialVertexPositions", 2, EI_RESOURCETYPE_BUFFER_RO },
+            {"bs_collMeshVertexPositions", 0, EI_RESOURCETYPE_BUFFER_RW },
+            {"ConstBufferCS_BoneMatrix", 3, EI_RESOURCETYPE_UNIFORM },
+        },
+        EI_ALL
     };
 
-    // UAVS
-    static const int NUM_UAVS = 1;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("collMeshVertexPositions")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
-        EI_CS
-    };
-
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pBoneSkinningLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pBoneSkinningLayout = pDevice->CreateLayout(desc);
 
 }
 
-void CreateSDFMarchingCubesLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateSDFMarchingCubesLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 2;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("g_MarchingCubesEdgeTable"),
-        TRESSFX_STRING_HASH("g_MarchingCubesTriangleTable")
+    EI_LayoutDescription desc = {
+        {
+            {"g_MarchingCubesEdgeTable", 3, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_MarchingCubesTriangleTable", 4, EI_RESOURCETYPE_BUFFER_RO },
+            {"g_MarchingCubesSignedDistanceField", 0, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_MarchingCubesTriangleVertices", 1, EI_RESOURCETYPE_BUFFER_RW },
+            {"g_NumMarchingCubesVertices", 2, EI_RESOURCETYPE_BUFFER_RW },
+            {"ConstBuffer_MC", 5, EI_RESOURCETYPE_UNIFORM },
+        },
+        EI_ALL
     };
 
-    // UAVS
-    static const int NUM_UAVS = 3;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("g_MarchingCubesTriangleVertices"),
-        TRESSFX_STRING_HASH("g_MarchingCubesTriangleIndices"),
-        TRESSFX_STRING_HASH("g_NumMarchingCubesVertices")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
-        EI_CS
-    };
-
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pSDFMarchingCubesLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pSDFMarchingCubesLayout = pDevice->CreateLayout(desc);
 }
 
-
-void CreatePPLLBuildLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreatePPLLFillLayout(EI_Device* pDevice)
 {
-
-    // SRVS
-    static const int NUM_SRVS = 0;
-
-    // UAVS
-    static const int NUM_UAVS = 2;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("tRWFragmentListHead"),
-        TRESSFX_STRING_HASH("LinkedListUAV")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        0,
-        nullptr,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"RWFragmentListHead", 0, EI_RESOURCETYPE_IMAGE_RW },
+            {"LinkedListUAV", 1, EI_RESOURCETYPE_BUFFER_RW },
+            {"LinkedListCounter", 2, EI_RESOURCETYPE_BUFFER_RW },
+        },
         EI_PS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pPPLLBuildLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
-
+    g_TressFXLayouts->pPPLLFillLayout = pDevice->CreateLayout(desc);
  }
 
-void CreatePPLLReadLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreatePPLLResolveLayout(EI_Device* pDevice)
 {
-
-    // SRVS
-    static const int NUM_SRVS = 2;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("tFragmentListHead"),
-        TRESSFX_STRING_HASH("LinkedListSRV")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        0,
-        nullptr,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"FragmentListHead", 0, EI_RESOURCETYPE_IMAGE_RO },
+            {"LinkedListNodes", 2, EI_RESOURCETYPE_BUFFER_RO },
+        },
         EI_PS
     };
 
-
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pPPLLReadLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pPPLLResolveLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateShortCutDepthsAlphaLayout2(EI_Device* pDevice,
-                                     EI_LayoutManagerRef layoutManager)
+void CreatePPLLShadeParamLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 0;
-
-    // UAVS
-    static const int NUM_UAVS = 1;
-    static const EI_StringHash uavSlotNames[NUM_UAVS] =
-    {
-        TRESSFX_STRING_HASH("RWFragmentDepthsTexture")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        0,
-        nullptr,
-
-        NUM_UAVS,
-        uavSlotNames,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"TressFXShadeParams", 2, EI_RESOURCETYPE_UNIFORM },
+        },
         EI_PS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pShortCutDepthsAlphaLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
-
+    g_TressFXLayouts->pPPLLShadeParamLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateShortCutResolveDepthLayout2(EI_Device* pDevice,
-                                      EI_LayoutManagerRef layoutManager)
+void CreateShortcutDepthsAlphaLayout(EI_Device* pDevice)
 {
-
-    // SRVS
-    static const int NUM_SRVS = 1;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("FragmentDepthsTexture")
+    EI_LayoutDescription desc = {
+        {
+            {"RWFragmentDepthsTexture", 1, EI_RESOURCETYPE_IMAGE_RW },
+        },
+        EI_PS
     };
+    g_TressFXLayouts->pShortcutDepthsAlphaLayout = pDevice->CreateLayout(desc);
+}
 
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        0,
-        nullptr,
-
-        constDesc,
+void CreateShortcutDepthReadLayout(EI_Device* pDevice)
+{
+    EI_LayoutDescription desc = {
+        {
+            {"FragmentDepthsTexture", 0, EI_RESOURCETYPE_IMAGE_RO },
+        },
         EI_PS
     };
 
-
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pShortCutResolveDepthLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
-
+    g_TressFXLayouts->pShortcutDepthReadLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateShortCutFillColorsLayout2(EI_Device* pDevice, EI_LayoutManagerRef layoutManager)
+void CreateShortCutShadeParamLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 1;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("FragmentDepthsTexture")
-    };
-
-
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
-    };
-
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
-
-        0,
-        nullptr,
-
-        constDesc,
+    EI_LayoutDescription desc = {
+        {
+            {"TressFXShadeParams", 2, EI_RESOURCETYPE_UNIFORM },
+        },
         EI_PS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pShortCutFillColorsLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
-
+    g_TressFXLayouts->pShortcutShadeParamLayout = pDevice->CreateLayout(desc);
 }
 
-void CreateShortCutResolveColorLayout2(EI_Device* pDevice,
-                                      EI_LayoutManagerRef layoutManager)
+void CreateShortCutColorReadLayout(EI_Device* pDevice)
 {
-    // SRVS
-    static const int NUM_SRVS = 3;
-    static const EI_StringHash srvSlotNames[NUM_SRVS] =
-    {
-        TRESSFX_STRING_HASH("FragmentDepthsTexture"),
-        TRESSFX_STRING_HASH("FragmentColorsTexture"),
-        TRESSFX_STRING_HASH("tAccumInvAlpha")
+    EI_LayoutDescription desc = {
+        {
+            {"HaiColorTexture", 0, EI_RESOURCETYPE_IMAGE_RO },
+            {"AccumInvAlpha", 1, EI_RESOURCETYPE_IMAGE_RO },
+        },
+        EI_PS
+    };
+    g_TressFXLayouts->pShortCutColorReadLayout = pDevice->CreateLayout(desc);
+}
+
+void CreateViewLayout(EI_Device * pDevice)
+{
+    EI_LayoutDescription desc = {
+        {
+            {"viewConstants", 0, EI_RESOURCETYPE_UNIFORM },
+        },
+        EI_ALL
     };
 
-    static TressFXConstantBufferDesc constDesc =
-    {
-        TRESSFX_STRING_HASH(""),
-        0,
-        0,
-        nullptr
+    g_TressFXLayouts->pViewLayout = pDevice->CreateLayout(desc);
+}
+
+void CreateShadowViewLayout(EI_Device* pDevice)
+{
+    EI_LayoutDescription desc = {
+        {
+            {"shadowViewConstants", 0, EI_RESOURCETYPE_UNIFORM },
+        },
+        EI_ALL
     };
 
-    static const TressFXLayoutDescription layoutDesc =
-    {
-        NUM_SRVS,
-        srvSlotNames,
+    g_TressFXLayouts->pShadowViewLayout = pDevice->CreateLayout(desc);
+}
 
-        0,
-        nullptr,
-
-        constDesc,
+void CreateLightLayout(EI_Device* pDevice)
+{
+    EI_LayoutDescription desc = {
+        {
+            {"LightConstants", 1, EI_RESOURCETYPE_UNIFORM },
+            {"ShadowTexture", 1, EI_RESOURCETYPE_IMAGE_RO },
+        },
         EI_PS
     };
 
-    EI_BindLayout*&  pLayout = g_TressFXLayouts->pShortCutResolveColorLayout;
-
-    if (pLayout != nullptr)
-        EI_DestroyLayout(pDevice, pLayout);
-
-    pLayout = EI_CreateLayout(pDevice, layoutManager, layoutDesc);
+    g_TressFXLayouts->pLightLayout = pDevice->CreateLayout(desc);
 }
 
-#if ENABLE_ROV_TEST
-void CreateShortCutROVBuildLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
+void InitializeAllLayouts(EI_Device* pDevice)
 {
-    TressFXSlots::ShortCutROVBuild& slots        = g_TressFXSlots->shortCutROVBuild;
-    EI_BindLayout&                  engineLayout = g_TressFXLayouts->shortCutROVBuildLayout;
+    // See TressFXLayouts.h
+    // Global storage for layouts.
 
-    slots.uavSlots[TRESSFX_IDUAV_SHORTCUT_ROV_HEADS] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("tRWFragmentListHead"));
-    slots.uavSlots[TRESSFX_IDUAV_SHORTCUT_ROV_NODES] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("RWShortCutROVFragmentData"));
+    if (g_TressFXLayouts == 0)
+        g_TressFXLayouts = new TressFXLayouts;
 
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
+    CreateSimPosTanLayout(pDevice);
+    CreateRenderPosTanLayout(pDevice);
+    CreateRenderLayout(pDevice);
+    CreateSamplerLayout(pDevice);
+    CreateGenerateSDFLayout(pDevice);
+    CreateSimLayout(pDevice);
+    CreateApplySDFLayout(pDevice);
+    CreateBoneSkinningLayout(pDevice);
+    CreateSDFMarchingCubesLayout(pDevice);
+    
+    CreateShortcutDepthsAlphaLayout(pDevice);
+    CreateShortcutDepthReadLayout(pDevice);
+    CreateShortCutShadeParamLayout(pDevice);
+    CreateShortCutColorReadLayout(pDevice);
 
-    tressfxLayout.nUAVs    = AMD_ARRAY_SIZE(slots.uavSlots);
-    tressfxLayout.uavSlots = slots.uavSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
+    CreatePPLLFillLayout(pDevice);
+    CreatePPLLResolveLayout(pDevice);
+    CreatePPLLShadeParamLayout(pDevice);
+
+    CreateViewLayout(GetDevice());
+    CreateShadowViewLayout(GetDevice());
+    CreateLightLayout(GetDevice());
 }
-
-void CreateShortCutROVReadLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::ShortCutROVRead& slots        = g_TressFXSlots->shortCutROVRead;
-    EI_BindLayout&                 engineLayout = g_TressFXLayouts->shortCutROVReadLayout;
-
-    slots.srvSlots[TRESSFX_IDSRV_SHORTCUT_ROV_HEADS] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("tFragmentListHead"));
-    slots.srvSlots[TRESSFX_IDSRV_SHORTCUT_ROV_NODES] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("ShortCutROVFragmentData"));
-    slots.srvSlots[TRESSFX_IDSRV_SHORTCUT_ROV_INVALPHA] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("tAccumInvAlpha"));
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nSRVs    = AMD_ARRAY_SIZE(slots.srvSlots);
-    tressfxLayout.srvSlots = slots.srvSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateKBufferMutexBuildLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::KBufferMutexBuild& slots        = g_TressFXSlots->kBufferMutexBuild;
-    EI_BindLayout&                   engineLayout = g_TressFXLayouts->kBufferMutexBuildLayout;
-
-    slots.uavSlots[TRESSFX_IDUAV_KBUFFER_MUTEX_HEADS] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("tRWFragmentListHead"));
-    slots.uavSlots[TRESSFX_IDUAV_KBUFFER_MUTEX_NODES] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("RWFragmentArray"));
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nUAVs    = AMD_ARRAY_SIZE(slots.uavSlots);
-    tressfxLayout.uavSlots = slots.uavSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateKBufferMutexReadLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::KBufferMutexRead& slots        = g_TressFXSlots->kBufferMutexRead;
-    EI_BindLayout&                  engineLayout = g_TressFXLayouts->kBufferMutexReadLayout;
-
-    slots.srvSlots[TRESSFX_IDSRV_KBUFFER_MUTEX_HEADS] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("tFragmentListHead"));
-    slots.srvSlots[TRESSFX_IDSRV_KBUFFER_MUTEX_NODES] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("FragmentArray"));
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nSRVs    = AMD_ARRAY_SIZE(slots.srvSlots);
-    tressfxLayout.srvSlots = slots.srvSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateKBufferROVBuildLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::KBufferROVBuild& slots        = g_TressFXSlots->kBufferROVBuild;
-    EI_BindLayout&                 engineLayout = g_TressFXLayouts->kBufferROVBuildLayout;
-
-    slots.uavSlots[TRESSFX_IDUAV_KBUFFER_ROV_HEADS] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("tRWFragmentListHead"));
-    slots.uavSlots[TRESSFX_IDUAV_KBUFFER_ROV_NODES] =
-        EI_GetUAVSlot(layoutManager, TRESSFX_STRING_HASH("RWFragmentArray"));
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nUAVs    = AMD_ARRAY_SIZE(slots.uavSlots);
-    tressfxLayout.uavSlots = slots.uavSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateKBufferROVReadLayout(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::KBufferROVRead& slots        = g_TressFXSlots->kBufferROVRead;
-    EI_BindLayout&                engineLayout = g_TressFXLayouts->kBufferROVReadLayout;
-
-    slots.srvSlots[TRESSFX_IDSRV_KBUFFER_ROV_HEADS] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("tFragmentListHead"));
-    slots.srvSlots[TRESSFX_IDSRV_KBUFFER_ROV_NODES] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("FragmentArray"));
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nSRVs    = AMD_ARRAY_SIZE(slots.srvSlots);
-    tressfxLayout.srvSlots = slots.srvSlots;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateRenderPosTanLayoutROVTest(EI_Device* pDevice,
-                                     EI_LayoutManager layoutManager)
-{
-    TressFXSlots::RenderPosTan& slots        = g_TressFXSlots->renderPosTanROVTest;
-    EI_BindLayout&              engineLayout = g_TressFXLayouts->renderPosTanLayoutROVTest;
-
-    slots.srvSlots[TRESSFX_IDSRV_POS_OFFSET] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("g_GuideHairVertexPositions"));
-    slots.srvSlots[TRESSFX_IDSRV_TAN_OFFSET] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("g_GuideHairVertexTangents"));
-
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nSRVs    = AMD_ARRAY_SIZE(slots.srvSlots);
-    tressfxLayout.srvSlots = slots.srvSlots;
-    tressfxLayout.stage    = EI_VS;
-    engineLayout           = EI_CreateLayout(pDevice, tressfxLayout);
-}
-
-void CreateRenderLayoutROVTest(EI_Device* pDevice, EI_LayoutManager layoutManager)
-{
-    TressFXSlots::RenderSlots& slots        = g_TressFXSlots->renderSlotsROVTest;
-    EI_BindLayout&             engineLayout = g_TressFXLayouts->renderLayoutROVTest;
-
-    slots.srvSlots[TRESSFX_IDSRV_THICKNESS_OFFSET] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("g_HairThicknessCoeffs"));
-    slots.srvSlots[TRESSFX_IDSRV_ROOT_TEXCOORD_OFFSET] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("g_HairStrandTexCd"));
-    slots.srvSlots[TRESSFX_IDSRV_COLOR_TEXTURE_OFFSET] =
-        EI_GetSRVSlot(layoutManager, TRESSFX_STRING_HASH("g_txHairColor"));
-
-    // TODO This should probably move to another location.
-    // slots.parameters[TRESSFX_ID_NUMVERTS_OFFSET] = EI_GetParameter(layoutManager,
-    // TRESSFX_STRING_HASH("g_NumVerticesPerStrand"));
-
-    EI_StringHash paramNames[] = { "g_NumVerticesPerStrand" };
-    slots.pCB                  = EI_CreateConstantBuffer(pDevice,
-                                        layoutManager,
-                                        TRESSFX_STRING_HASH("tressfxShadeParameters"),
-                                        sizeof(TressFXRenderingConstantBuffer),
-                                        1,
-                                        paramNames);
-
-    TressFXBindLayout tressfxLayout;
-    Zero(tressfxLayout);
-
-    tressfxLayout.nSRVs    = AMD_ARRAY_SIZE(slots.srvSlots);
-    tressfxLayout.srvSlots = slots.srvSlots;
-    tressfxLayout.pCB      = slots.pCB;
-    // tressfxLayout.nConstants = AMD_ARRAY_SIZE(slots.parameters);
-    // tressfxLayout.constants = slots.parameters;
-    engineLayout = EI_CreateLayout(pDevice, tressfxLayout);
-}
-#endif
 
 void DestroyAllLayouts(EI_Device* pDevice)
 {
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pRenderLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pRenderPosTanLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pSimPosTanLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pGenerateSDFLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pSimLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pApplySDFLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pBoneSkinningLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pSDFMarchingCubesLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pPPLLBuildLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pPPLLReadLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pShortCutDepthsAlphaLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pShortCutResolveDepthLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pShortCutFillColorsLayout);
-    EI_DestroyLayout(pDevice, g_TressFXLayouts->pShortCutResolveColorLayout);
+	UNREFERENCED_PARAMETER(pDevice);
+    if (g_TressFXLayouts != nullptr)
+    {
+        delete g_TressFXLayouts;
+    }
 }
-

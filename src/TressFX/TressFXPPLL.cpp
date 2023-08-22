@@ -2,7 +2,7 @@
 // Interface for TressFX OIT using per-pixel linked lists.
 // ----------------------------------------------------------------------------
 //
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,113 +27,157 @@
 
 //#include "AMD_TressFX.h"
 
-#include "TressFXEngineInterface.h"
-#include "TressFXGPUInterface.h"
 #include "TressFXLayouts.h"
 #include "TressFXPPLL.h"
+#include "EngineInterface.h"
+#include "HairStrands.h"
+#include "TressFXHairObject.h"
 
 using namespace AMD;
 
-TressFXPPLL::TressFXPPLL()
-    : m_nScreenWidth(0)
-    , m_nScreenHeight(0)
-    , m_nNodes(0)
-    , m_nNodeSize(0)
-    , m_bCreated(false)
-    , m_pHeads()
-    , m_pPPLLBuildBindSet(nullptr)
-    , m_pPPLLReadBindSet(nullptr)
-    , m_pNodes()
+TressFXPPLL::TressFXPPLL() : 
+    m_nScreenWidth(0),
+    m_nScreenHeight(0), 
+    m_nNodes(0), 
+    m_nNodeSize(0), 
+    m_PPLLHeads(nullptr), 
+    m_PPLLNodes(nullptr), 
+    m_PPLLCounter(nullptr),
+    m_pPPLLFillBindSet(nullptr), 
+    m_pPPLLResolveBindSet(nullptr),
+    m_PPLLRenderTargetSet(nullptr),
+    m_PPLLFillPSO(nullptr),
+    m_ShadeParamsBindSet(nullptr)
 {
 }
 
-TressFXPPLL::~TressFXPPLL()
+void TressFXPPLL::Initialize(int width, int height, int nNodes, int nodeSize)
 {
-    TRESSFX_ASSERT(!m_bCreated);
-    Destroy(nullptr);
+    Create(GetDevice(), width, height, nNodes, nodeSize);
+
+    // Create constant buffer and bind set
+    m_ShadeParamsConstantBuffer.CreateBufferResource("TressFXShadeParams");
+    EI_BindSetDescription set = { { m_ShadeParamsConstantBuffer.GetBufferResource() } };
+    //m_ShadeParamsBindSet = GetDevice()->CreateBindSet(GetShortCutShadeParamLayout(), set); This isn't ShortCut REEEEEEEEEEEEEE
+	m_ShadeParamsBindSet = GetDevice()->CreateBindSet(GetPPLLShadeParamLayout(), set);
+
+    // Setup PSOs
+
+    // Hair Fill Pass
+    {
+        //std::vector<VkVertexInputAttributeDescription> FillDesc;
+
+        EI_PSOParams psoParams;
+        psoParams.primitiveTopology = EI_Topology::TriangleList;
+        psoParams.colorWriteEnable = false;
+        psoParams.depthTestEnable = true;
+        psoParams.depthWriteEnable = false;
+        psoParams.depthCompareOp = EI_CompareFunc::LessEqual;
+
+        psoParams.colorBlendParams.colorBlendEnabled = false;
+        
+        EI_BindLayout* HairColorLayouts[] = { GetTressFXParamLayout(), GetRenderPosTanLayout(), GetViewLayout(), GetPPLLFillLayout(), GetSamplerLayout() };
+        psoParams.layouts = HairColorLayouts;
+        psoParams.numLayouts = 5;
+        psoParams.renderTargetSet = m_PPLLRenderTargetSet.get();
+
+        m_PPLLFillPSO = GetDevice()->CreateGraphicsPSO("TressFXPPLL.hlsl", "RenderHairVS", "TressFXPPLL.hlsl", "PPLLFillPS", psoParams);
+    }
+
+    // Hair Resolve
+    {
+        //std::vector<VkVertexInputAttributeDescription> ResolveDesc;
+
+        EI_PSOParams psoParams;
+        psoParams.primitiveTopology = EI_Topology::TriangleStrip;
+        psoParams.colorWriteEnable = true;
+        psoParams.depthTestEnable = false;
+        psoParams.depthWriteEnable = false;
+        psoParams.depthCompareOp = EI_CompareFunc::LessEqual;
+
+        // sushi code was:
+        /*
+            // Blending matches SDK Sample, which
+            // works in terms of (1-a) and otherwise premultiplied.
+            BlendEnable = true
+            SrcBlend = ONE
+            DstBlend = SRCALPHA
+            BlendOp = ADD
+            SrcBlendAlpha = ZERO
+            DstBlendAlpha = ZERO
+            BlendOpAlpha = ADD
+        */
+        psoParams.colorBlendParams.colorBlendEnabled = true;
+        psoParams.colorBlendParams.colorBlendOp = EI_BlendOp::Add;
+        psoParams.colorBlendParams.colorSrcBlend = EI_BlendFactor::One; //::One;
+        psoParams.colorBlendParams.colorDstBlend = EI_BlendFactor::SrcAlpha; //::SrcAlpha;
+        psoParams.colorBlendParams.alphaBlendOp = EI_BlendOp::Add;
+        psoParams.colorBlendParams.alphaSrcBlend = EI_BlendFactor::Zero;
+        psoParams.colorBlendParams.alphaDstBlend = EI_BlendFactor::Zero;
+
+        EI_BindLayout* layouts[] = { GetPPLLResolveLayout(), GetPPLLShadeParamLayout(), GetViewLayout(), GetLightLayout(), GetSamplerLayout() };
+        psoParams.layouts = layouts;
+        psoParams.numLayouts = 5;
+        psoParams.renderTargetSet = m_PPLLRenderTargetSet.get();
+        m_PPLLResolvePSO = GetDevice()->CreateGraphicsPSO("TressFXPPLL.hlsl", "FullScreenVS", "TressFXPPLL.hlsl", "PPLLResolvePS", psoParams);
+    }
 }
 
-bool TressFXPPLL::Create(
-    EI_Device* pDevice, int width, int height, int nNodes, int nodeSize)
+bool TressFXPPLL::Create(EI_Device* pDevice, int width, int height, int nNodes, int nodeSize)
 {
-    TRESSFX_ASSERT(!m_bCreated);
-
     m_nNodes        = nNodes;
     m_nNodeSize     = nodeSize;
     m_nScreenWidth  = width;
     m_nScreenHeight = height;
 
-    m_pHeads = EI_RW2D_Create(pDevice, width, height, 1, TRESSFX_STRING_HASH("PPLLHeads"));
-    m_pNodes = EI_CreateCountedSB(pDevice, nodeSize, nNodes, TRESSFX_STRING_HASH("PPLLNodes"), TRESSFX_STRING_HASH("Global"));
+    // Create required resources
+    m_PPLLHeads = pDevice->CreateUint32Resource(width, height, 1, "PPLLHeads", TRESSFX_PPLL_NULL_PTR);
+    m_PPLLNodes = pDevice->CreateBufferResource(nodeSize, nNodes, EI_BF_NEEDSUAV, "PPLLNodes");
+    m_PPLLCounter = pDevice->CreateBufferResource(sizeof(uint32_t), 1, EI_BF_NEEDSUAV, "PPLLNodes");
 
-    CreateBuildBindSet(pDevice);
-    CreateReadBindSet(pDevice);
+    // Create bind sets
+	logger::info("Fill bindset");
+    CreateFillBindSet(pDevice);
+	logger::info("Resolve bindset");
+    CreateResolveBindSet(pDevice);
 
-    m_bCreated = true;
-
+    // Create RenderPasss sets
+	logger::info("create render target set");
+    CreatePPLLRenderTargetSet(pDevice);
     return true;
 }
 
 // return the set?
-void TressFXPPLL::CreateBuildBindSet(EI_Device* pDevice)
+void TressFXPPLL::CreateFillBindSet(EI_Device* pDevice)
 {
-    EI_Resource* uavs[2];
-
-    uavs[TRESSFX_IDUAV_PPLL_HEADS] = m_pHeads;
-    uavs[TRESSFX_IDUAV_PPLL_NODES] = m_pNodes;
-
-    TressFXBindSet bindSet;
-    // For now, none will have values.
-    bindSet.nBytes = 0;
-    bindSet.values = 0;
-
-    bindSet.nUAVs     = AMD_ARRAY_SIZE(uavs);
-    bindSet.uavs = uavs;
-    bindSet.nSRVs     = 0;
-    m_pPPLLBuildBindSet = EI_CreateBindSet(pDevice, bindSet);
-}
-
-void TressFXPPLL::CreateReadBindSet(EI_Device* pDevice)
-{
-    EI_Resource* srvs[2];
-
-    srvs[TRESSFX_IDSRV_PPLL_HEADS] = m_pHeads;
-    srvs[TRESSFX_IDSRV_PPLL_NODES] = m_pNodes;
-
-    TressFXBindSet bindSet;
-    // For now, none will have values.
-    bindSet.nBytes = 0;
-    bindSet.values = 0;
-
-
-    bindSet.nSRVs    = AMD_ARRAY_SIZE(srvs);
-    bindSet.srvs     = srvs;
-    bindSet.nUAVs    = 0;
-    m_pPPLLReadBindSet = EI_CreateBindSet(pDevice, bindSet);
-}
-
-void TressFXPPLL::Destroy(EI_Device* context)
-{
-    if (m_bCreated)
+    EI_BindSetDescription bindSet =
     {
-        EI_DestroyBindSet(context, m_pPPLLBuildBindSet);
-        EI_DestroyBindSet(context, m_pPPLLReadBindSet);
+        { m_PPLLHeads.get(), m_PPLLNodes.get(), m_PPLLCounter.get() }
+    };
 
-        EI_Destroy(context, m_pHeads);
-        EI_SB_Destroy(context, m_pNodes);
-        //  EI_DestroyBindSet(context, mBindSetForBuilding);
-        // EI_DestroyBindSet(context, mBindSetForReading);
-    }
-    m_bCreated = false;
+    m_pPPLLFillBindSet = pDevice->CreateBindSet(GetPPLLFillLayout(), bindSet);
 }
 
-
-void TressFXPPLL::Clear(EI_CommandContextRef context)
+void TressFXPPLL::CreateResolveBindSet(EI_Device* pDevice)
 {
-    if (!m_bCreated)
+    EI_BindSetDescription bindSet =
     {
-        TressFXLogWarning("PPLL cleared without being created.");
-    }
+        { m_PPLLHeads.get(), m_PPLLNodes.get() }
+    };
+
+    m_pPPLLResolveBindSet = pDevice->CreateBindSet(GetPPLLResolveLayout(), bindSet);
+}
+
+void TressFXPPLL::CreatePPLLRenderTargetSet(EI_Device* pDevice)
+{
+    const EI_Resource* ResourceArray[] = { pDevice->GetColorBufferResource(), pDevice->GetDepthBufferResource() };
+    const EI_AttachmentParams AttachmentParams[] = { {EI_RenderPassFlags::load | EI_RenderPassFlags::Store},
+                                                     {EI_RenderPassFlags::Depth | EI_RenderPassFlags::load | EI_RenderPassFlags::Store} };
+    m_PPLLRenderTargetSet = pDevice->CreateRenderTargetSet(ResourceArray, 2, AttachmentParams, nullptr);
+}
+
+void TressFXPPLL::Clear(EI_CommandContext& context)
+{
     // Consider being explicit on values here.
     // In DX, UAV counter clears are actually done when UAV is set, which makes this a bit weird, I
     // suppose.
@@ -141,60 +185,145 @@ void TressFXPPLL::Clear(EI_CommandContextRef context)
     // reads slower)
     // or look at 0-based for fast clears.
 
-    EI_RW2D_Clear(&context, m_pHeads, TRESSFX_PPLL_NULL_PTR);
+    // Transition and clear any resources we need to
+    
+    if (m_firstRun)
+    {
+        // The first time we use the resource, we need to transition it out of UNDEFINED state to COPY_DEST.
+        // Doing from PS_SRV causes validation errors.
+        EI_Barrier readToClear[] =
+        {
+#ifdef TRESSFX_VK
+            { m_PPLLHeads.get(), EI_STATE_UNDEFINED, EI_STATE_COPY_DEST },
+#endif // TRESSFX_VK
+            { m_PPLLCounter.get(), EI_STATE_UAV, EI_STATE_COPY_DEST },
+            { m_PPLLNodes.get(), EI_STATE_UAV, EI_STATE_SRV },   // Just need to do this on the first frame so our usual transition doesn't bug out.
+        };
 
-    // Really, this should be a upload 0 with transitions around it.
-    EI_SB_ClearCounter(context, *m_pNodes, 0);
+        context.SubmitBarrier(AMD_ARRAY_SIZE(readToClear), readToClear);
+    }
+    else
+    {
+        EI_Barrier readToClear[] =
+        {
+#ifdef TRESSFX_VK
+            { m_PPLLHeads.get(), EI_STATE_SRV, EI_STATE_COPY_DEST },
+#else
+            { m_PPLLHeads.get(), EI_STATE_SRV, EI_STATE_UAV },
+#endif // TRESSFX_VK
+            { m_PPLLCounter.get(), EI_STATE_UAV, EI_STATE_COPY_DEST },
+        };
+        context.SubmitBarrier(AMD_ARRAY_SIZE(readToClear), readToClear);
+    }
+	logger::info("About to clear");
+    context.ClearUint32Image(m_PPLLHeads.get(), TRESSFX_PPLL_NULL_PTR);
+
+    uint32_t clearCounter = 0;
+    context.UpdateBuffer(m_PPLLCounter.get(), &clearCounter);
 }
 
-void TressFXPPLL::DoneBuilding(EI_CommandContextRef commandContext)
+void TressFXPPLL::BeginFill(EI_CommandContext& commandContext)
 {
-    if (!m_bCreated)
+    // Begin the render pass and transition any resources to write if needed
+    EI_Barrier readToWrite[] =
     {
-        TressFXLogWarning("PPLL DoneBuilding without being created.");
-    }
-
-    EI_Barrier writeToRead[] = 
-    {
-        { m_pHeads, EI_STATE_UAV, EI_STATE_PS_SRV },
-        { m_pNodes, EI_STATE_UAV, EI_STATE_PS_SRV }
+#ifdef TRESSFX_VK
+        { m_PPLLHeads.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
+#endif // TRESSFX_VK
+        { m_PPLLNodes.get(), EI_STATE_SRV, EI_STATE_UAV },
+        { m_PPLLCounter.get(), EI_STATE_COPY_DEST, EI_STATE_UAV },
     };
 
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(writeToRead), writeToRead);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(readToWrite), readToWrite);
+
+    // Begin the render pass
+    GetDevice()->BeginRenderPass(commandContext, m_PPLLRenderTargetSet.get(), L"BeginFill Pass");
 }
 
-void TressFXPPLL::DoneReading(EI_CommandContextRef commandContext)
+void TressFXPPLL::EndFill(EI_CommandContext& commandContext)
 {
-    if (!m_bCreated)
-    {
-        TressFXLogWarning("PPLL DoneReading without being created.");
-    }
+    // End the render pass so we can transition the UAVs
+    GetDevice()->EndRenderPass(commandContext);
 
-    EI_Barrier readToWrite[] = 
+    EI_Barrier writeToRead[] =
     {
-        { m_pHeads, EI_STATE_PS_SRV, EI_STATE_UAV },
-        { m_pNodes, EI_STATE_PS_SRV, EI_STATE_UAV }
+        { m_PPLLHeads.get(), EI_STATE_UAV, EI_STATE_SRV },
+        { m_PPLLNodes.get(), EI_STATE_UAV, EI_STATE_SRV },
     };
 
-    EI_SubmitBarriers(commandContext, AMD_ARRAY_SIZE(readToWrite), readToWrite);
+    commandContext.SubmitBarrier(AMD_ARRAY_SIZE(writeToRead), writeToRead);
 }
 
-void TressFXPPLL::BindForBuild(EI_CommandContextRef commandContext)
+void TressFXPPLL::BeginResolve(EI_CommandContext& commandContext)
 {
-    if (!m_bCreated)
-    {
-        TressFXLogWarning("PPLL BindForBuild without being created.");
-    }
-	logger::info("Binding for build");
-    EI_Bind(commandContext, GetPPLLBuildLayout(), *m_pPPLLBuildBindSet);
+    // Begin the render pass
+    GetDevice()->BeginRenderPass(commandContext, m_PPLLRenderTargetSet.get(), L"BeginResolve Pass");
 }
 
-void TressFXPPLL::BindForRead(EI_CommandContextRef commandContext)
+void TressFXPPLL::EndResolve(EI_CommandContext& commandContext)
 {
-    if (!m_bCreated)
-    {
-        TressFXLogWarning("PPLL BindForRead without being created.");
-    }
-    EI_Bind(commandContext, GetPPLLReadLayout(), *m_pPPLLReadBindSet);
+    // End the PPLL render pass
+    GetDevice()->EndRenderPass(commandContext);
 }
 
+void TressFXPPLL::DrawHairStrands(EI_CommandContext& commandContext, int numHairStrands, HairStrands** hairStrands, EI_PSO* pPSO, EI_BindSet** extraBindSets, uint32_t numExtraBindSets)
+{
+    // Loop through all hair strands and render them
+    for (size_t i = 0; i < numHairStrands; i++)
+    {
+        if (hairStrands[i]->GetTressFXHandle())
+            hairStrands[i]->GetTressFXHandle()->DrawStrands(commandContext, *pPSO, extraBindSets, numExtraBindSets);
+    }
+}
+
+void TressFXPPLL::Draw(EI_CommandContext& commandContext, int numHairStrands, HairStrands** hairStrands, EI_BindSet* viewBindSet, EI_BindSet* lightBindSet)
+{
+    // Clear out resources
+	logger::info("Clear");
+    Clear(commandContext);
+
+    // Render the fill pass
+	logger::info("Begin fill");
+	BeginFill(commandContext);
+    {
+        EI_BindSet* ExtraBindSets[] = { viewBindSet, m_pPPLLFillBindSet.get(), GetDevice()->GetSamplerBindSet() };
+		logger::info("Draw all strands");
+        DrawHairStrands(commandContext, numHairStrands, hairStrands, m_PPLLFillPSO.get(), ExtraBindSets, 3);
+    }
+	logger::info("End fill");
+    EndFill(commandContext);
+    GetDevice()->GetTimeStamp("PPLL Fill");
+
+    // Hair Resolve pass
+	logger::info("Begin resolve");
+    BeginResolve(commandContext);
+    {
+        EI_BindSet* BindSets[] = { m_pPPLLResolveBindSet.get(), m_ShadeParamsBindSet.get(), viewBindSet, lightBindSet, GetDevice()->GetSamplerBindSet() };
+		logger::info("Draw fullscreen quad");
+		GetDevice()->DrawFullScreenQuad(commandContext, *m_PPLLResolvePSO, BindSets, 5);
+    }
+	logger::info("End resolve");
+    EndResolve(commandContext);
+    GetDevice()->GetTimeStamp("PPLL Resolve");
+
+    m_firstRun = false;
+
+	hairStrands;
+	numHairStrands;
+}
+
+void TressFXPPLL::UpdateShadeParameters(std::vector<const TressFXRenderingSettings*>& renderSettings)
+{
+    // Update Render Parameters
+    for (int i = 0; i < renderSettings.size(); ++i)
+    {
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].FiberRadius = renderSettings[i]->m_FiberRadius; // Don't modify radius by LOD multiplier as this one is used to calculate shadowing and that calculation should remain unaffected
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].ShadowAlpha = renderSettings[i]->m_HairShadowAlpha;
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].FiberSpacing = renderSettings[i]->m_HairFiberSpacing;
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].HairEx2 = renderSettings[i]->m_HairSpecExp2;
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].HairKs2 = renderSettings[i]->m_HairKSpec2;
+        m_ShadeParamsConstantBuffer->HairShadeParams[i].MatKValue = { 0.f, renderSettings[i]->m_HairKDiffuse, renderSettings[i]->m_HairKSpec1, renderSettings[i]->m_HairSpecExp1 }; // no ambient
+	}
+
+    m_ShadeParamsConstantBuffer.Update(GetDevice()->GetCurrentCommandContext());
+}

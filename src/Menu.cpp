@@ -2,7 +2,7 @@
 
 #include <dinput.h>
 #include <magic_enum.hpp>
-#include "PPLLObject.h"
+#include "SkyrimTressFX.h"
 #define SETTING_MENU_TOGGLEKEY "Toggle Key"
 
 void SetupImGuiStyle()
@@ -301,12 +301,26 @@ void Menu::DrawSettings()
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::Begin(std::format("TressFXSSE {}", Plugin::VERSION.string(".")).c_str(), &IsEnabled);
 	if (ImGui::Button("Reload hairs")) {
-		
-		PPLLObject::GetSingleton()->m_doReload = true;
+		SkyrimTressFX::GetSingleton()->m_doReload = true;
+	}
+	const char* drawingControl[] = { "ShortCut", "PPLL" };
+	static int  drawingControlSelected = 0;
+	int         oldDrawingControlSelected = drawingControlSelected;
+	ImGui::Combo("Drawing Method", &drawingControlSelected, drawingControl, _countof(drawingControl));
+	if (drawingControlSelected != oldDrawingControlSelected) {
+		SkyrimTressFX::GetSingleton()->ToggleShortCut();
 	}
 	DrawHairSelector();
-	DrawOffsetSliders();
-	DrawHairParams();
+	if (ImGui::CollapsingHeader("Offsets")) {
+		DrawOffsetSliders();
+	}
+	if (ImGui::CollapsingHeader("Hair params")) {
+		DrawHairParams();
+	}
+	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
+	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
+	ImGui::Checkbox("Community shaders shadows", &communityShadersScreenSpaceShadowsCheckbox);
+	ImGui::Checkbox("Draw debug markers", &drawDebugMarkersCheckbox);
 	DrawQueues();
 
 
@@ -338,41 +352,11 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Hair opacity", &hairOpacitySlider, 0.0f, 1.0f);
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
 	ImGui::Checkbox("Thin tip", &thinTipCheckbox);
-	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
-	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
-	ImGui::Checkbox("Community shaders shadows", &communityShadersScreenSpaceShadowsCheckbox);
-	ImGui::Checkbox("Ambient occlusion", &HBAOCheckbox);
-	ImGui::Checkbox("AO Debug", &clearBeforeHBAOCheckbox);
-	/*float aoLargeScaleAOSlider = 1.0;
-	float aoSmallScaleAOSlider = 1.0;
-	float aoBiasSlider = 0.1;
-	bool  aoBlurEnableCheckbox = true;
-	float aoBlurSharpnessSlider = 16.0;
-	float aoPowerExponentSlider = 2.0;
-	float aoRadiusSlider = 0.1;
-	bool  aoDepthThresholdEnableCheckbox = false;
-	float aoDepthThresholdMaxViewDepthSlider = 0;
-	float aoDepthThresholdSharpnessSlider = 100;*/
-	ImGui::SliderFloat("AO power exponent", &aoPowerExponentSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO large scale", &aoLargeScaleAOSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO small scale", &aoSmallScaleAOSlider, 0.0f, 10.0f);
-	ImGui::SliderFloat("AO bias", &aoBiasSlider, 0.0f, 1.0f);
-	ImGui::SliderFloat("AO radius", &aoRadiusSlider, 0.0f, 10.0f);
-	ImGui::Checkbox("AO blur", &aoBlurEnableCheckbox);
-	ImGui::SliderFloat("Blur sharpness", &aoBlurSharpnessSlider, 0.0f, 100.0f);
-	ImGui::Checkbox("AO depth threshold", &aoDepthThresholdEnableCheckbox);
-	ImGui::SliderFloat("Max depth", &aoDepthThresholdMaxViewDepthSlider, 0.0f, 10000.0f);
-	ImGui::SliderFloat("Depth threshold sharpness", &aoDepthThresholdSharpnessSlider, 0.0f, 100.0f);
 	if (ImGui::Button("Export parameters")) {
-		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportParameters();
+		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters();
 	}
-	ImGui::SliderFloat("Ambient lighting amount", &ambientLightingAmount, 0.0f, 10.0f);
-	ImGui::SliderFloat("Point lighting diffuse amount", &pointLightDiffuseAmount, 0.0f, 1.0f);
-	ImGui::SliderFloat("Point lighting specular amount", &pointLightSpecularAmount, 0.0f, 1.0f);
-	ImGui::SliderFloat("Sun lighting diffuse amount", &sunLightDiffuseAmount, 0.0f, 2.0f);
-	ImGui::SliderFloat("Sun lighting specular amount", &sunLightSpecularAmount, 0.0f, 2.0f);
-
 }
+
 void Menu::DrawHairSelector()
 {
 	if (ImGui::BeginCombo("Select actor", activeActors[selectedActor].c_str())) {
@@ -431,7 +415,11 @@ void Menu::DrawOffsetSliders()
 		offsetSlidersUpdated = true;
 	}
 	if (ImGui::Button("Export offsets")) {
-		PPLLObject::GetSingleton()->m_hairs[activeHairs[selectedHair]]->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);
+		for (auto& hair : SkyrimTressFX::GetSingleton()->m_activeScene.objects) {
+			if (hair.name == activeHairs[selectedHair]) {
+				hair.hairStrands.get()->ExportOffsets(xSliderValue, ySliderValue, zSliderValue, sSliderValue);
+			}
+		}
 	}
 }
 void Menu::DrawQueues()
@@ -629,6 +617,61 @@ void Menu::DrawMatrix(DirectX::XMMATRIX mat, std::string name)
 		{ temp._31, temp._32, temp._33, temp._34 },
 		{ temp._41, temp._42, temp._43, temp._44 });
 	DrawMatrix(glmmat, name);
+}
+TressFXRenderingSettings Menu::GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings)
+{
+	TressFXRenderingSettings settings;
+	settings.m_BaseAlbedoName = previousSettings.m_BaseAlbedoName;
+	settings.m_EnableHairLOD = previousSettings.m_EnableHairLOD;
+	settings.m_EnableShadowLOD = previousSettings.m_EnableShadowLOD;
+	settings.m_EnableStrandTangent = previousSettings.m_EnableStrandTangent;
+	settings.m_EnableStrandUV = previousSettings.m_EnableStrandUV;
+	settings.m_EnableThinTip = thinTipCheckbox;
+	settings.m_FiberRadius = fiberRadiusSliderValue;
+	settings.m_FiberRatio = fiberRatioSliderValue;
+	settings.m_HairFiberSpacing = previousSettings.m_HairFiberSpacing;
+	settings.m_HairKDiffuse = kdSliderValue;
+	settings.m_HairKSpec1 = ks1SliderValue;
+	settings.m_HairKSpec2 = ks2SliderValue;
+	settings.m_HairMatBaseColor = previousSettings.m_HairMatBaseColor;
+	settings.m_HairMatTipColor = previousSettings.m_HairMatTipColor;
+	settings.m_HairMaxShadowFibers = previousSettings.m_HairMaxShadowFibers;
+	settings.m_HairShadowAlpha = hairShadowAlphaSlider;
+	settings.m_HairSpecExp1 = ex1SliderValue;
+	settings.m_HairSpecExp2 = ex2SliderValue;
+	settings.m_LODEndDistance = previousSettings.m_LODEndDistance;
+	settings.m_LODPercent = previousSettings.m_LODPercent;
+	settings.m_LODStartDistance = previousSettings.m_LODStartDistance;
+	settings.m_LODWidthMultiplier = previousSettings.m_LODWidthMultiplier;
+	settings.m_ShadowLODEndDistance = previousSettings.m_ShadowLODEndDistance;
+	settings.m_ShadowLODPercent = previousSettings.m_ShadowLODPercent;
+	settings.m_ShadowLODStartDistance = previousSettings.m_ShadowLODStartDistance;
+	settings.m_ShadowLODWidthMultiplier = previousSettings.m_ShadowLODWidthMultiplier;
+	settings.m_StrandAlbedoName = previousSettings.m_StrandAlbedoName;
+	settings.m_StrandUVTilingFactor = previousSettings.m_StrandUVTilingFactor;
+	settings.m_TipPercentage = previousSettings.m_TipPercentage;
+	return settings;
+}
+
+TressFXSimulationSettings Menu::GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings) {
+	TressFXSimulationSettings settings;
+	settings.m_clampPositionDelta = previousSettings.m_clampPositionDelta;
+	settings.m_damping = dampingSlider;
+	settings.m_globalConstraintsRange = globalConstraintsRangeSlider;
+	settings.m_globalConstraintStiffness = globalConstraintsStiffnessSlider;
+	settings.m_gravityMagnitude = gravityMagnitudeSlider;
+	settings.m_lengthConstraintsIterations = lengthConstraintsIterationsSlider;
+	settings.m_localConstraintsIterations = localConstraintsIterationsSlider;
+	settings.m_localConstraintStiffness = localConstraintsStiffnessSlider;
+	settings.m_tipSeparation = previousSettings.m_tipSeparation;
+	settings.m_vspAccelThreshold = vspAccelThresholdSlider;
+	settings.m_vspCoeff = vspAmountSlider;
+	settings.m_windAngleRadians = previousSettings.m_windAngleRadians;
+	settings.m_windDirection[0] = previousSettings.m_windDirection[0];
+	settings.m_windDirection[1] = previousSettings.m_windDirection[1];
+	settings.m_windDirection[2] = previousSettings.m_windDirection[2];
+	settings.m_windMagnitude = previousSettings.m_windMagnitude;
+	return settings;
 }
 	const char* Menu::KeyIdToString(uint32_t key)
 {
