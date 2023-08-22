@@ -1191,16 +1191,23 @@ void EI_CommandContext::DrawInstanced(EI_PSO& pso, EI_DrawParams& drawParams)
 	pContext->DrawInstanced(drawParams.numVertices, drawParams.numInstances, 0, 0);
 }
 
-ID3D11UnorderedAccessView* pNullUAVs[4] = { nullptr };
+ID3D11UnorderedAccessView* pNullUAVs[5] = { nullptr };
+ID3D11ShaderResourceView* pNullSRVs[5] = { nullptr };
 void EI_CommandContext::SubmitBarrier(int numBarriers, EI_Barrier* barriers)
 {
 	UNREFERENCED_PARAMETER(numBarriers);
 	UNREFERENCED_PARAMETER(barriers);
 
 	if (barriers->from == EI_STATE_UAV && barriers->to == EI_STATE_SRV) {
-		logger::info("transitioning UAVs");
+		logger::info("Unbinding UAVs");
 		auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
 		pContext->CSSetUnorderedAccessViews(0, 4, pNullUAVs, zeros);
+	}
+	if (barriers->from == EI_STATE_SRV && barriers->to == EI_STATE_UAV) {
+		logger::info("Unbinding SRVs");
+		auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
+		pContext->VSSetShaderResources(0, 5, pNullSRVs);
+		pContext->PSSetShaderResources(0, 5, pNullSRVs);
 	}
 	//do we need anything?
 	//logger::info("SubmitBarriers");

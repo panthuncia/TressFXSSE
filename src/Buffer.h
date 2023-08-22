@@ -19,7 +19,7 @@ D3D11_BUFFER_DESC StructuredBufferDesc(uint64_t count, bool uav = true, bool dyn
 	if (uav)
 		desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	desc.CPUAccessFlags = !dynamic ? 0 : D3D11_CPU_ACCESS_WRITE;
+	desc.CPUAccessFlags = 0;  //!dynamic ? 0 : D3D11_CPU_ACCESS_WRITE;
 	desc.StructureByteStride = sizeof(T);
 	desc.ByteWidth = (UINT)(sizeof(T) * count);
 	return desc;
@@ -32,9 +32,9 @@ D3D11_BUFFER_DESC StructuredBufferDesc(uint64_t count, uint32_t size, bool uav =
 	if (uav)
 		desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	desc.CPUAccessFlags = !dynamic ? 0 : D3D11_CPU_ACCESS_WRITE;
-	if (uav)
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
+	desc.CPUAccessFlags = 0;//!dynamic ? 0 : D3D11_CPU_ACCESS_WRITE;
+	//if (uav)
+	desc.CPUAccessFlags = 0;  // D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
 	desc.StructureByteStride = size;
 	desc.ByteWidth = (UINT)(size * count);
 	return desc;
