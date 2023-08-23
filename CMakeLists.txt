@@ -29,6 +29,7 @@ find_package(xbyak CONFIG REQUIRED)
 find_package( glm REQUIRED )
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
+find_package(directxtex CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
@@ -47,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}
 		Microsoft::DirectX-Guids 
 		Microsoft::DirectX-Headers
 		Microsoft::DirectXTK
+		Microsoft::DirectXTex
 		imgui::imgui
 		nlohmann_json::nlohmann_json
 		#D:/Modding/dev/TressFXSSE/build/vcpkg_installed/x64-windows-static-md/lib/Effects11.lib

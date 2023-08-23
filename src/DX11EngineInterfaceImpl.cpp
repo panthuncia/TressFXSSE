@@ -6,7 +6,7 @@
 #include "TressFX/AMD_TressFX.h"
 #include "TressFX/TressFXLayouts.h"
 #include "Util.h"
-
+#include <DirectXTex.h>
 inline D3D11_BLEND_OP operator*(EI_BlendOp Enum)
 {
 	if (Enum == EI_BlendOp::Add)
@@ -192,6 +192,7 @@ std::unique_ptr<EI_BindSet> EI_Device::CreateBindSet(EI_BindLayout* layout, EI_B
 std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFilename, bool useSRGB /*= false*/)
 {
 	UNREFERENCED_PARAMETER(useSRGB);
+	std::filesystem::path  filename = szFilename;
 	EI_Resource* res = new EI_Resource;
 	res->m_ResourceType = EI_ResourceType::Texture;
 	auto                 pDevice = SkyrimGPUResourceManager::GetInstance()->m_pDevice;
@@ -199,7 +200,29 @@ std::unique_ptr<EI_Resource> EI_Device::CreateResourceFromFile(const char* szFil
 	pDevice->GetImmediateContext(&pContext);
 	std::filesystem::path name = szFilename;
 	logger::info("Creating texture {} from file", szFilename);
-	DirectX::CreateDDSTextureFromFile(pDevice, pContext, name.generic_wstring().c_str(), (ID3D11Resource**)&res->m_pTexture, &res->SRView);
+	DirectX::TexMetadata  metadata;
+	DirectX::ScratchImage scratchImage;
+
+	HRESULT hr = DirectX::LoadFromWICFile(filename.generic_wstring().c_str(), DirectX::WIC_FLAGS_NONE, &metadata, scratchImage);
+	if (FAILED(hr)) {
+		logger::info("Load image from file failed!");
+		Util::printHResult(hr);
+	}
+	hr = DirectX::CreateTexture(pDevice,
+		scratchImage.GetImages(),
+		scratchImage.GetImageCount(),
+		metadata,
+		(ID3D11Resource**)&res->m_pTexture);
+	if (FAILED(hr)) {
+		logger::info("Create texture from file failed!");
+		Util::printHResult(hr);
+	}
+	hr = pDevice->CreateShaderResourceView((ID3D11Resource*)res->m_pTexture, nullptr, &res->SRView);
+	if (FAILED(hr)) {
+		res->m_pTexture->Release();
+		Util::printHResult(hr);
+	}
+	//DirectX::CreateDDSTextureFromFile(pDevice, pContext, name.generic_wstring().c_str(), (ID3D11Resource**)&res->m_pTexture, &res->SRView);
 	logger::info("created texture address: {}", Util::ptr_to_string(res->m_pTexture));
 	res->name = szFilename;
 	return std::unique_ptr<EI_Resource>(res);
@@ -738,7 +761,7 @@ void EI_Device::BeginRenderPass(EI_CommandContext& commandContext, const EI_Rend
 	}
 
 	auto pContext = SkyrimGPUResourceManager::GetInstance()->m_pContext;
-	pContext->OMSetRenderTargets(numRenderTargets, pRenderTargetSet->m_renderTargets, pRenderTargetSet->m_depthView);
+	pContext->OMSetRenderTargets(numRenderTargets, numRenderTargets ? pRenderTargetSet->m_renderTargets : nullptr, pRenderTargetSet->m_HasDepth? pRenderTargetSet->m_depthView : nullptr);
 
 	// Do we need to clear?
 	if (numRenderTargets && pRenderTargetSet->m_ClearColor[0])
@@ -885,7 +908,7 @@ void EI_Device::OnCreate()
 	m_currentCommandContext.UpdateBuffer(m_pFullscreenIndexBuffer.get(), indexArray);
 
 	logger::info("Create default texture");
-	const auto texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX\\DefaultWhite.dds";
+	const auto texturePath = std::filesystem::current_path() / "data\\Textures\\TressFX\\DefaultWhite.png";
 	m_DefaultWhiteTexture = CreateResourceFromFile(texturePath.generic_string().c_str(), true);
 	m_LinearWrapSampler = CreateSampler(EI_Filter::Linear, EI_Filter::Linear, EI_Filter::Linear, EI_AddressMode::Wrap);
 	EI_BindSetDescription bindSetDesc = { {

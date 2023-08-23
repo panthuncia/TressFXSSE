@@ -625,7 +625,7 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 			}
 			logger::info("2");
 			std::string baseAssetName = data["asset"].get<std::string>();
-			const auto  assetTexturePath = texturePath / (baseAssetName + ".dds");
+			const auto  assetTexturePath = texturePath / (baseAssetName + ".png");
 			std::string assetName = baseAssetName;
 			uint32_t    i = 1;
 			while (std::find(usedNames.begin(), usedNames.end(), assetName) != usedNames.end()) {

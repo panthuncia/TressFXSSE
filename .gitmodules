@@ -19,3 +19,6 @@
 [submodule "extern/eigen"]
 	path = extern/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "extern/DirectXTex"]
+	path = extern/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
