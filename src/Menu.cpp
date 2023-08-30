@@ -303,7 +303,7 @@ void Menu::DrawSettings()
 	if (ImGui::Button("Reload hairs")) {
 		SkyrimTressFX::GetSingleton()->m_doReload = true;
 	}
-	const char* drawingControl[] = { "ShortCut", "PPLL" };
+	const char* drawingControl[] = { "PPLL", "ShortCut" };
 	static int  drawingControlSelected = 0;
 	int         oldDrawingControlSelected = drawingControlSelected;
 	ImGui::Combo("Drawing Method", &drawingControlSelected, drawingControl, _countof(drawingControl));
@@ -317,6 +317,9 @@ void Menu::DrawSettings()
 	if (ImGui::CollapsingHeader("Hair params")) {
 		DrawHairParams();
 	}
+	ImGui::SliderFloat("Sunlight scale", &sunlightScaleSlider, 0.0f, 20.0f);
+	ImGui::SliderFloat("Ambient flat shading scale", &ambientFlatShadingScaleSlider, 0.0f, 20.0f);
+	ImGui::SliderFloat("Directional ambient light scale", &directionalAmbientLightScaleSlider, 0.0f, 20.0f);
 	ImGui::Checkbox("Draw hair", &drawHairCheckbox);
 	ImGui::Checkbox("Draw shadows", &drawShadowsCheckbox);
 	ImGui::Checkbox("Community shaders shadows", &communityShadersScreenSpaceShadowsCheckbox);

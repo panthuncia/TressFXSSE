@@ -226,7 +226,7 @@ void SkyrimTressFX::UpdateSimulationParameters()
 	//update from menu
 	auto menu = Menu::GetSingleton();
 	m_activeScene.objects[menu->selectedHair].simulationSettings = menu->GetSelectedSimulationSettings(m_activeScene.objects[menu->selectedHair].simulationSettings);
-	
+
 	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
 		m_activeScene.objects[i].hairStrands->GetTressFXHandle()->UpdateSimulationParameters(&m_activeScene.objects[i].simulationSettings, m_deltaTime);
 	}
@@ -326,7 +326,37 @@ void SkyrimTressFX::UpdateLights()
 	auto  accumulator = RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator();
 	auto  shadowSceneNode = accumulator->GetRuntimeData().activeShadowSceneNode;
 	auto& runtimeData = shadowSceneNode->GetRuntimeData();
-	int   i = 0;
+
+	int i = 0;
+	//add ambient light
+	auto&            shaderState = RE::BSShaderManager::State::GetSingleton();
+	RE::NiTransform& dalcTransform = shaderState.directionalAmbientTransform;
+
+	float ambientX;
+	float ambientY;
+	float ambientZ;
+	dalcTransform.rotate.ToEulerAnglesXYZ(ambientX, ambientY, ambientZ);
+
+	//color is in translate component
+	float ambientIntensity = (dalcTransform.translate.x + dalcTransform.translate.y + dalcTransform.translate.z) / 3 * Menu::GetSingleton()->directionalAmbientLightScaleSlider;
+	m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { dalcTransform.translate.x, dalcTransform.translate.y, dalcTransform.translate.z };  //{ color.red, color.blue, color.green };
+	m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = ambientIntensity;
+	m_activeScene.lightConstantBuffer->LightInfo[i].LightDirWS = { ambientX, ambientY, ambientZ };
+	m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;
+	//for flat shading
+	m_activeScene.lightConstantBuffer->AmbientLightingAmount = ambientIntensity*Menu::GetSingleton()->ambientFlatShadingScaleSlider;
+	i += 1;
+
+	auto sunLight = skyrim_cast<RE::NiDirectionalLight*>(accumulator->GetRuntimeData().activeShadowSceneNode->GetRuntimeData().sunLight->light.get());
+	if (sunLight) {
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { sunLight->diffuse.red, sunLight->diffuse.green, sunLight->diffuse.blue };  //{ color.red, color.blue, color.green };
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = (sunLight->diffuse.red + sunLight->diffuse.green + sunLight->diffuse.blue) / 3*Menu::GetSingleton()->sunlightScaleSlider;
+		auto dir = sunLight->GetWorldDirection();
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightDirWS = {dir.x, dir.y, dir.z};
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 0;
+		i += 1;
+	}
+
 	for (auto& e : runtimeData.activePointLights) {
 		auto bsLight = e.get();
 		if (!bsLight) {
@@ -336,6 +366,7 @@ void SkyrimTressFX::UpdateLights()
 		if (!niLight) {
 			continue;
 		}
+
 		i += 1;
 		if (i >= AMD_TRESSFX_MAX_LIGHTS) {
 			break;
@@ -345,15 +376,14 @@ void SkyrimTressFX::UpdateLights()
 		float z;
 		niLight->world.rotate.ToEulerAnglesXYZ(z, y, x);
 		auto dimmer = niLight->GetLightRuntimeData().fade * bsLight->lodDimmer;
-		auto color = niLight->GetLightRuntimeData().diffuse*dimmer;
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { color.red, color.blue, color.green };
+		auto color = niLight->GetLightRuntimeData().diffuse * dimmer;
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightColor = { 1.0, 1.0, 1.0 };  //{ color.red, color.blue, color.green };
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightDirWS = { x, y, z };
 		//m_activeScene.lightConstantBuffer->LightInfo[i].LightInnerConeCos = lightInfo.innerConeCos;
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = (color.red+color.green+color.blue)/3;
-		logger::info("Luminance: {}", bsLight->luminance);
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightIntensity = color.red + color.green + color.blue / 3;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].LightOuterConeCos = lightInfo.outerConeCos;
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightPositionWS = { niLight->world.translate.x, niLight->world.translate.y, niLight->world.translate.z };
-		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = 10000;  //???
+		m_activeScene.lightConstantBuffer->LightInfo[i].LightRange = (niLight->radius.x + niLight->radius.y + niLight->radius.z) / 3;  //???
 		m_activeScene.lightConstantBuffer->LightInfo[i].LightType = 1;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowMapIndex = lightInfo.shadowMapIndex;
 		//m_activeScene.lightConstantBuffer->LightInfo[i].ShadowProjection = *(AMD::float4x4*)&lightInfo.mLightViewProj;  // ugh .. need a proper math library
@@ -656,7 +686,7 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 			float scale = 1.0;
 			if (data.contains("offsets")) {
 				logger::info("loading offsets");
-				auto  offsets = data["offsets"];
+				auto offsets = data["offsets"];
 				if (offsets.contains("x")) {
 					x = offsets["x"].get<float>();
 				}

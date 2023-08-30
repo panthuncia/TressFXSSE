@@ -44,12 +44,6 @@ public:
 	TressFXRenderingSettings GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings);
 	TressFXSimulationSettings GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings);
 	
-	float ambientLightingAmount = 1.0f;
-	float pointLightDiffuseAmount = 1.0f;
-	float sunLightDiffuseAmount = 1.0f;
-	float pointLightSpecularAmount = 1.0f;
-	float sunLightSpecularAmount = 1.0f;
-
 	//hair offsets
 	float xSliderValue = 0.0f;
 	float ySliderValue = 0.0f;
@@ -88,6 +82,9 @@ public:
 	bool                     clearBeforeHBAOCheckbox = false;
 	float                    gravityMagnitudeSlider = 0.09f;
 	bool                     drawDebugMarkersCheckbox = true;
+	float                    sunlightScaleSlider = 1.0;
+	float                    directionalAmbientLightScaleSlider = 1.0;
+	float                    ambientFlatShadingScaleSlider = 1.0;
 	//ao
 	float aoLargeScaleAOSlider = 0.0f;
 	float aoSmallScaleAOSlider = 1.0f;

@@ -106,6 +106,14 @@ namespace AMD
             float v[4];                                                                           \
         };                                                                                        \
     };                                                                                            \
+	struct float3x4																				  \
+	{																							  \
+		union																					  \
+		{																				          \
+			float4 r[3];																	      \
+			float  m[12];																	      \
+		};																				          \
+	};																							  \
     struct float4x4                                                                               \
     {                                                                                             \
         union                                                                                     \
