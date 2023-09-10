@@ -180,6 +180,7 @@ bool TressFXAsset::GenerateFollowHairs(int numFollowHairsPerGuideHair, float tip
 
     m_numFollowStrandsPerGuide = numFollowHairsPerGuideHair;
 
+	logger::info("Generating {} follow hairs for {} guide hairs", m_numFollowStrandsPerGuide, m_numGuideStrands);
     // Nothing to do, just exit. 
     if (numFollowHairsPerGuideHair == 0)
         return false;

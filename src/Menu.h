@@ -43,6 +43,7 @@ public:
 	void UpdateActiveHairs(std::vector<std::string> actors);
 	TressFXRenderingSettings GetSelectedRenderingSettings(TressFXRenderingSettings& previousSettings);
 	TressFXSimulationSettings GetSelectedSimulationSettings(TressFXSimulationSettings& previousSettings);
+	void SetCurrentSliders(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings, float offsets[4]);
 	
 	//hair offsets
 	float xSliderValue = 0.0f;
@@ -56,8 +57,8 @@ public:
 	bool                     offsetSlidersUpdated = false;
 
 	//hair render and sim parameters
-	float                    fiberRadiusSliderValue = 0.002f;
-	float                    fiberSpacingSliderValue = 0.1f;
+	float                    fiberRadiusSliderValue = 0.02f;
+	float                    tipSeparationSliderValue = 0.1f;
 	float                    fiberRatioSliderValue = 0.5f;
 	float                    kdSliderValue = 0.07f;
 	float                    ks1SliderValue = 0.17f;
@@ -78,28 +79,19 @@ public:
 	bool                     drawShadowsCheckbox = true;
 	bool                     communityShadersScreenSpaceShadowsCheckbox = true;
 	bool                     drawHairCheckbox = true;
-	bool                     HBAOCheckbox = true;
-	bool                     clearBeforeHBAOCheckbox = false;
 	float                    gravityMagnitudeSlider = 0.09f;
 	bool                     drawDebugMarkersCheckbox = true;
 	float                    sunlightScaleSlider = 1.0;
 	float                    directionalAmbientLightScaleSlider = 1.0;
 	float                    ambientFlatShadingScaleSlider = 1.0;
-	//ao
-	float aoLargeScaleAOSlider = 0.0f;
-	float aoSmallScaleAOSlider = 1.0f;
-	float aoBiasSlider = 0.266f;
-	bool aoBlurEnableCheckbox = true;
-	float aoBlurSharpnessSlider = 100.0f;
-	float aoPowerExponentSlider = 2.0f;
-	float aoRadiusSlider = 0.038f;
-	bool aoDepthThresholdEnableCheckbox = false;
-	float aoDepthThresholdMaxViewDepthSlider = 0.0f;
-	float aoDepthThresholdSharpnessSlider = 100.0f;
+
+	//needed because IMGUI sliders are low-res.
+	uint8_t                  fiberRadiusScale = 100;
 	std::vector<std::string> activeActors = { "PLAYER" };
 	uint32_t                 selectedActor = 0;
 	std::vector<std::string> activeHairs = { "NONE" };
-	uint32_t                 selectedHair = 0;
+	int                 lastSelectedHair = -1;
+	int                 selectedHair = 0;
 
 
 private:
@@ -112,8 +104,6 @@ private:
 	void           DrawHairParams();
 	const char*    KeyIdToString(uint32_t key);
 	const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey);
-
-
 
 	std::vector<glm::mat4> matrices;
 	std::vector<std::string> matrixNames;

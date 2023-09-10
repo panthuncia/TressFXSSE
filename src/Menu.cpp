@@ -335,9 +335,9 @@ void Menu::DrawSettings()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 void Menu::DrawHairParams() {
-	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 1.0f);
-	ImGui::SliderFloat("Fiber Spacing", &fiberSpacingSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Fiber Radius", &fiberRadiusSliderValue, 0.0f, 0.06f);
 	ImGui::SliderFloat("Fiber Ratio", &fiberRatioSliderValue, 0.0f, 1.0f);
+	ImGui::SliderFloat("Tip separation", &tipSeparationSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Kd", &kdSliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Ks1", &ks1SliderValue, 0.0f, 1.0f);
 	ImGui::SliderFloat("Kx1", &ex1SliderValue, 0.0f, 20.0f);
@@ -356,7 +356,8 @@ void Menu::DrawHairParams() {
 	ImGui::SliderFloat("Hair shadow alpha", &hairShadowAlphaSlider, 0.0f, 1.0f);
 	ImGui::Checkbox("Thin tip", &thinTipCheckbox);
 	if (ImGui::Button("Export parameters")) {
-		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters();
+		auto tfx = SkyrimTressFX::GetSingleton();
+		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters(GetSelectedRenderingSettings(tfx->m_activeScene.objects[selectedHair].renderingSettings), GetSelectedSimulationSettings(tfx->m_activeScene.objects[selectedHair].simulationSettings));
 	}
 }
 
@@ -379,10 +380,15 @@ void Menu::DrawHairSelector()
 	}
 
 	if (ImGui::BeginCombo("Select hair", activeHairs[selectedHair].c_str())) {
-		for (uint32_t i = 0; i < activeHairs.size(); i++) {
+		for (int i = 0; i < activeHairs.size(); i++) {
 			bool isSelected = (selectedHair == i);
 			if (ImGui::Selectable(activeHairs[i].c_str(), isSelected)) {
 				selectedHair = i;
+				if (selectedHair != lastSelectedHair) {
+					auto tfx = SkyrimTressFX::GetSingleton();
+					SetCurrentSliders(tfx->m_activeScene.objects[selectedHair].renderingSettings, tfx->m_activeScene.objects[selectedHair].simulationSettings, tfx->m_activeScene.objects[selectedHair].hairStrands.get()->m_currentOffsets);
+					lastSelectedHair = selectedHair;
+				}
 			}
 
 			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -394,6 +400,35 @@ void Menu::DrawHairSelector()
 		ImGui::EndCombo();
 	}
 }
+
+void Menu::SetCurrentSliders(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings, float* offsets)
+{
+	xSliderValue = offsets[0];
+	ySliderValue = offsets[1];
+	zSliderValue = offsets[2];
+	sSliderValue = offsets[3];
+
+	fiberRadiusSliderValue = renderSettings.m_FiberRadius;
+	tipSeparationSliderValue = simSettings.m_tipSeparation;
+	fiberRatioSliderValue = renderSettings.m_FiberRatio;
+	kdSliderValue = renderSettings.m_HairKDiffuse;
+	ks1SliderValue = renderSettings.m_HairKSpec1;
+	ex1SliderValue = renderSettings.m_HairSpecExp1;
+	ks2SliderValue = renderSettings.m_HairKSpec2;
+	localConstraintsIterationsSlider = simSettings.m_localConstraintsIterations;
+	lengthConstraintsIterationsSlider = simSettings.m_lengthConstraintsIterations;
+	localConstraintsStiffnessSlider = simSettings.m_localConstraintStiffness;
+	globalConstraintsStiffnessSlider = simSettings.m_globalConstraintStiffness;
+	globalConstraintsRangeSlider = simSettings.m_globalConstraintsRange;
+	dampingSlider = simSettings.m_damping;
+	vspAmountSlider = simSettings.m_vspCoeff;
+	vspAccelThresholdSlider = simSettings.m_vspAccelThreshold;
+	hairOpacitySlider = renderSettings.m_HairMatBaseColor.w;
+	hairShadowAlphaSlider = renderSettings.m_HairShadowAlpha;
+	thinTipCheckbox = renderSettings.m_EnableThinTip;
+	gravityMagnitudeSlider = simSettings.m_gravityMagnitude;
+}
+
 void Menu::DrawOffsetSliders()
 {
 	offsetSlidersUpdated = false;
@@ -630,7 +665,7 @@ TressFXRenderingSettings Menu::GetSelectedRenderingSettings(TressFXRenderingSett
 	settings.m_EnableStrandTangent = previousSettings.m_EnableStrandTangent;
 	settings.m_EnableStrandUV = previousSettings.m_EnableStrandUV;
 	settings.m_EnableThinTip = thinTipCheckbox;
-	settings.m_FiberRadius = fiberRadiusSliderValue;
+	settings.m_FiberRadius = fiberRadiusSliderValue/fiberRadiusScale;
 	settings.m_FiberRatio = fiberRatioSliderValue;
 	settings.m_HairFiberSpacing = previousSettings.m_HairFiberSpacing;
 	settings.m_HairKDiffuse = kdSliderValue;
@@ -666,7 +701,7 @@ TressFXSimulationSettings Menu::GetSelectedSimulationSettings(TressFXSimulationS
 	settings.m_lengthConstraintsIterations = lengthConstraintsIterationsSlider;
 	settings.m_localConstraintsIterations = localConstraintsIterationsSlider;
 	settings.m_localConstraintStiffness = localConstraintsStiffnessSlider;
-	settings.m_tipSeparation = previousSettings.m_tipSeparation;
+	settings.m_tipSeparation = tipSeparationSliderValue;
 	settings.m_vspAccelThreshold = vspAccelThresholdSlider;
 	settings.m_vspCoeff = vspAmountSlider;
 	settings.m_windAngleRadians = previousSettings.m_windAngleRadians;

@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include "SkyrimTressFX.h"
 
-HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID)
+HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::string tfxFilePath, std::string tfxboneFilePath, int numFollowHairsPerGuideHair, float tipSeparationFactor, std::string name, std::vector<std::string> boneNames, json config, std::filesystem::path configPath, float initialOffsets[4], std::string userEditorID, TressFXRenderingSettings initialRenderingSettings)
 {
 	logger::info("Hair strands constructor");
 	m_pHairAsset = new TressFXAsset();
@@ -19,7 +19,8 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	fclose(fp);
 
 	logger::info("Generate follow hairs");
-	m_pHairAsset->GenerateFollowHairs(numFollowHairsPerGuideHair, tipSeparationFactor, 0.012f);
+	//m_pHairAsset->GenerateFollowHairs(numFollowHairsPerGuideHair, tipSeparationFactor, 0.012f*Util::RenderScale);
+	m_pHairAsset->GenerateFollowHairs(numFollowHairsPerGuideHair, tipSeparationFactor, 1.0f * Util::RenderScale);
 	
 	logger::info("Process asset");
 	m_pHairAsset->ProcessAsset();
@@ -47,6 +48,7 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	for (int i = 0; i < m_numBones; i++) {
 		m_boneNames[i] = boneNames[i];
 	}
+	m_initialRenderingSettings = initialRenderingSettings;
 	m_config = config;
 	m_configPath = configPath.generic_string();
 	m_currentOffsets[0] = initialOffsets[0];
@@ -54,7 +56,7 @@ HairStrands::HairStrands(EI_Scene* scene, int skinNumber, int renderIndex, std::
 	m_currentOffsets[2] = initialOffsets[2];
 	m_currentOffsets[3] = initialOffsets[3];
 	m_userEditorID = userEditorID;
-	logger::info("Initial offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
+	//logger::info("Initial offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
 	//m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), initialOffsets[0] * Util::RenderScale, initialOffsets[1] * Util::RenderScale, initialOffsets[2] * Util::RenderScale, initialOffsets[3] * Util::RenderScale);
 }
 
@@ -78,6 +80,7 @@ void HairStrands::Reload()
 	
 	logger::info("Offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
 	m_pHairObject->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3]);
+	m_pHairObject->PopulateDrawStrandsBindSet(pDevice, &m_initialRenderingSettings);
 }
 
 void HairStrands::DrawDebugMarkers()
@@ -103,28 +106,6 @@ void HairStrands::DrawDebugMarkers()
 void HairStrands::UpdateVariables(float gravityMagnitude)
 {
 	UNREFERENCED_PARAMETER(gravityMagnitude);
-}
-void HairStrands::SetRenderingAndSimParameters(float fiberRadius, float fiberSpacing, float fiberRatio, float kd, float ks1, float ex1, float ks2, float ex2, int localConstraintsIterations, int lengthConstraintsIterations, float localConstraintsStiffness, float globalConstraintsStiffness, float globalConstraintsRange, float damping, float vspAmount, float vspAccelThreshold, float hairOpacity, float hairShadowAlpha, bool thinTip)
-{
-	m_fiberRadius = fiberRadius;
-	m_fiberSpacing = fiberSpacing;
-	m_fiberRatio = fiberRatio;
-	m_kd = kd;
-	m_ks1 = ks1;
-	m_ex1 = ex1;
-	m_ks2 = ks2;
-	m_ex2 = ex2;
-	m_localConstraintsIterations = localConstraintsIterations;
-	m_lengthConstraintsIterations = lengthConstraintsIterations;
-	m_localConstraintsStiffness = localConstraintsStiffness;
-	m_globalConstraintsStiffness = globalConstraintsStiffness;
-	m_globalConstraintsRange = globalConstraintsRange;
-	m_damping = damping;
-	m_vspAmount = vspAmount;
-	m_vspAccelThreshold = vspAccelThreshold;
-	m_hairOpacity = hairOpacity;
-	m_hairShadowAlpha = hairShadowAlpha;
-	m_thinTip = thinTip;
 }
 
 void HairStrands::TransitionRenderingToSim(EI_CommandContext& context)
@@ -234,8 +215,8 @@ void HairStrands::RegisterBones()
 	logger::info("Got all bones");
 	m_gotSkeleton = true;
 
-	logger::info("Offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
-	m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3] * Util::RenderScale);
+	//logger::info("Offsets: {}, {}, {}, {}", m_currentOffsets[0], m_currentOffsets[1], m_currentOffsets[2], m_currentOffsets[3]);
+	//m_pHairObject.get()->UpdateStrandOffsets(m_pHairAsset, GetDevice()->GetCurrentCommandContext(), m_currentOffsets[0] * Util::RenderScale, m_currentOffsets[1] * Util::RenderScale, m_currentOffsets[2] * Util::RenderScale, m_currentOffsets[3] * Util::RenderScale);
 }
 void HairStrands::UpdateBones()
 {
@@ -331,31 +312,32 @@ void HairStrands::ExportOffsets(float x, float y, float z, float scale)
 	std::ofstream file(m_configPath);
 	file << std::setw(4) << m_config <<std::endl;
 }
-void HairStrands::ExportParameters()
+void HairStrands::ExportParameters(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings)
 {
 	json parameters;
-	parameters["fiberRadius"] = m_fiberRadius;
-	parameters["fiberSpacing"] = m_fiberSpacing;
-	parameters["fiberRatio"] = m_fiberRatio;
-	parameters["kd"] = m_kd;
-	parameters["ks1"] = m_ks1;
-	parameters["ex1"] = m_ex1;
-	parameters["ks2"] = m_ks2;
-	parameters["ex2"] = m_ex2;
-	parameters["hairOpacity"] = m_hairOpacity;
-	parameters["hairShadowAlpha"] = m_hairShadowAlpha;
-	parameters["thinTip"] = m_thinTip;
-	parameters["localConstraintsIterations"] = m_localConstraintsIterations;
-	parameters["lengthConstraintsIterations"] = m_lengthConstraintsIterations;
-	parameters["localConstraintsStiffness"] = m_localConstraintsStiffness;
-	parameters["globalConstraintsStiffness"] = m_globalConstraintsStiffness;
-	parameters["globalConstraintsRange"] = m_globalConstraintsRange;
-	parameters["damping"] = m_damping;
-	parameters["vspAmount"] = m_vspAmount;
-	parameters["vspAccelThreshold"] = m_vspAccelThreshold;
+	parameters["fiberRadius"] = renderSettings.m_FiberRadius;
+	parameters["fiberSpacing"] = renderSettings.m_HairFiberSpacing;
+	parameters["fiberRatio"] = renderSettings.m_FiberRatio;
+	parameters["kd"] = renderSettings.m_HairKDiffuse;
+	parameters["ks1"] = renderSettings.m_HairKSpec1;
+	parameters["ex1"] = renderSettings.m_HairSpecExp1;
+	parameters["ks2"] = renderSettings.m_HairKSpec2;
+	parameters["ex2"] = renderSettings.m_HairSpecExp2;
+	parameters["hairOpacity"] = renderSettings.m_HairMatBaseColor.w;
+	parameters["hairShadowAlpha"] = renderSettings.m_HairShadowAlpha;
+	parameters["thinTip"] = renderSettings.m_EnableThinTip;
+	parameters["localConstraintsIterations"] = simSettings.m_localConstraintsIterations;
+	parameters["lengthConstraintsIterations"] = simSettings.m_lengthConstraintsIterations;
+	parameters["localConstraintsStiffness"] = simSettings.m_localConstraintStiffness;
+	parameters["globalConstraintsStiffness"] = simSettings.m_globalConstraintStiffness;
+	parameters["globalConstraintsRange"] = simSettings.m_globalConstraintsRange;
+	parameters["damping"] = simSettings.m_damping;
+	parameters["vspAmount"] = simSettings.m_vspCoeff;
+	parameters["vspAccelThreshold"] = simSettings.m_vspAccelThreshold;
+	parameters["tipSeparation"] = simSettings.m_tipSeparation;
 	m_config["parameters"] = parameters;
 	std::ofstream file(m_configPath);
-	file << m_config;
+	file << std::setw(4) << m_config << std::endl;
 }
 
 void HairStrands::initialize(std::filesystem::path texturePath)

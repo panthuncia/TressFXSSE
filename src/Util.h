@@ -11,7 +11,8 @@ namespace Util
 	//also this is important for hair physics
 	//constexpr auto RenderScale = 0.142875f;
 	//constexpr auto              RenderScale = 0.0142875f;
-	constexpr auto              RenderScale = 1.0f;
+	constexpr auto RenderScale = 0.00142875f;
+	//constexpr auto              RenderScale = 1.0f;
 	// Convert a world position to our render scale
 	__forceinline glm::vec3 ToRenderScale(const glm::vec3& position) noexcept
 	{
