@@ -141,7 +141,7 @@ void CreateBoneSkinningLayout(EI_Device* pDevice)
         {
             {"bs_boneSkinningData", 1, EI_RESOURCETYPE_BUFFER_RO },
             {"bs_initialVertexPositions", 2, EI_RESOURCETYPE_BUFFER_RO },
-            {"bs_collMeshVertexPositions", 0, EI_RESOURCETYPE_BUFFER_RW },
+            {"bs_collMeshVertexPositions", 3, EI_RESOURCETYPE_BUFFER_RO },
             {"ConstBufferCS_BoneMatrix", 3, EI_RESOURCETYPE_UNIFORM },
         },
         EI_ALL

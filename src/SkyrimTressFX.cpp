@@ -59,6 +59,13 @@ void SkyrimTressFX::OnCreate(int width, int height)
 	auto menu = Menu::GetSingleton();
 	menu->SetCurrentSliders(m_activeScene.objects[menu->selectedHair].renderingSettings, m_activeScene.objects[menu->selectedHair].simulationSettings, m_activeScene.objects[menu->selectedHair].hairStrands.get()->m_currentOffsets);
 	m_activeScene.objects[menu->selectedHair].hairStrands.get()->Reload();
+	//OnTeleport();
+}
+
+void SkyrimTressFX::OnTeleport() {
+	for (int i = 0; i < m_activeScene.objects.size(); ++i) {
+		m_activeScene.objects[i].hairStrands.get()->GetTressFXHandle()->ResetPositions();
+	}
 }
 
 void SkyrimTressFX::Simulate(double fTime, bool bUpdateCollMesh, bool bSDFCollisionResponse)
@@ -287,10 +294,12 @@ void SkyrimTressFX::ToggleShortCut()
 
 void SkyrimTressFX::LoadScene()
 {
+	logger::info("Loading user files");
 	TressFXSceneDescription desc = LoadTFXUserFiles();
 
 	//EI_Device*         pDevice = GetDevice();
 	//EI_CommandContext& uploadCommandContext = pDevice->GetCurrentCommandContext();
+	logger::info("Loading hair objects");
 	for (size_t i = 0; i < desc.objects.size(); ++i) {
 		HairStrands* hair = new HairStrands(
 			m_activeScene.scene.get(),
@@ -312,7 +321,7 @@ void SkyrimTressFX::LoadScene()
 		hair->GetTressFXHandle()->PopulateDrawStrandsBindSet(GetDevice(), &desc.objects[i].initialRenderingSettings);
 		m_activeScene.objects.push_back({ std::unique_ptr<HairStrands>(hair), desc.objects[i].initialSimulationSettings, desc.objects[i].initialRenderingSettings, desc.objects[i].name.c_str() });
 	}
-
+	logger::info("Loading collision meshes");
 	for (size_t i = 0; i < desc.collisionMeshes.size(); ++i) {
 		CollisionMesh* mesh = new CollisionMesh(
 			m_activeScene.scene.get(), m_pDebugRenderTargetSet.get(),
@@ -474,7 +483,7 @@ void SkyrimTressFX::Draw()
 			GenerateMarchingCubes();
 		}
 
-		logger::info("Begin render pass");
+		logger::info("Begin debug render pass");
 		GetDevice()->BeginRenderPass(commandList, m_pDebugRenderTargetSet.get(), L"DrawCollisionMesh Pass");
 		if (m_drawCollisionMesh) {
 			logger::info("Draw collision mesh");
@@ -671,8 +680,11 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 			logger::info("Asset name: {}", assetName);
 			std::string assetFileName = baseAssetName + ".tfx";
 			std::string boneFileName = baseAssetName + ".tfxbone";
+			std::string meshFileName = baseAssetName + ".tfxmesh";
+
 			const auto  thisAssetPath = assetPath / assetFileName;
 			const auto  thisBonePath = assetPath / boneFileName;
+			const auto  thisMeshPath = assetPath / meshFileName;
 
 			const auto bones = data["bones"].get<std::vector<std::string>>();
 			for (auto bone : bones) {
@@ -817,6 +829,7 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 					simSettings.m_lengthConstraintsIterations = lengthConstraintsIterations;
 					simSettings.m_damping = damping;
 					simSettings.m_gravityMagnitude = gravityMagnitude;
+					simSettings.m_clampPositionDelta = 20 * Util::RenderScale;
 
 					TressFXRenderingSettings renderSettings;
 					renderSettings.m_BaseAlbedoName = assetTexturePath.generic_string();
@@ -841,8 +854,18 @@ TressFXSceneDescription SkyrimTressFX::LoadTFXUserFiles()
 					hairDesc.numFollowHairs = numFollowHairs;
 					hairDesc.mesh = (int)m_activeScene.scene.get()->skinIDBoneNamesMap.size();
 					hairDesc.tipSeparationFactor = fiberSpacing;  //???
+
+					TressFXCollisionMeshDescription collisionMesh;
+					collisionMesh.tfxMeshFilePath = thisMeshPath.generic_string();
+					collisionMesh.name = collisionMesh.tfxMeshFilePath;
+					collisionMesh.numCellsInXAxis = 50;
+					collisionMesh.collisionMargin = 0.0f;
+					collisionMesh.mesh = 0;
+					collisionMesh.followBone = bones[0];
+					logger::info("collision mesh with name: {}", collisionMesh.tfxMeshFilePath);
+
 					sd.objects.push_back(hairDesc);
-					//TODO collision mesh
+					sd.collisionMeshes.push_back(collisionMesh);
 				}
 				m_activeScene.scene.get()->skinIDBoneNamesMap[(int)m_activeScene.scene.get()->skinIDBoneNamesMap.size()] = bones;
 			}

@@ -138,6 +138,7 @@ public:
 	void Update();
 	void CreateRenderResources();
 	void ToggleShortCut();
+	void OnTeleport();
 	bool m_doReload = false;
 
 	float  m_time;       // WallClock in seconds.
@@ -147,7 +148,7 @@ public:
 	bool   m_PauseSimulation = false;
 	bool   m_drawHair = true;
 	bool   m_drawModel = true;
-	bool   m_drawCollisionMesh = false;
+	bool   m_drawCollisionMesh = true;
 	bool   m_drawMarchingCubes = false;
 	bool   m_generateSDF = true;
 	bool   m_collisionResponse = true;

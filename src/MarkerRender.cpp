@@ -284,7 +284,7 @@ void MarkerRender::LoadMeshes(ID3D11Device* pDevice)
 	m_pArrowModel = DirectX::Model::CreateFromVBO(pDevice, modelPath.c_str());
 	m_pArrowMesh = m_pArrowModel->meshes[0];
 
-	WaveFrontReader<uint16_t> wfReader;
+	 WaveFrontReader<uint16_t> wfReader;
 
 	//cursed for now, need to load it twice since DirectXTK's buffers are broken.
 	//TODO:: remove this garbage and make a real mesh loading system

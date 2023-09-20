@@ -15,6 +15,7 @@
     "directx-headers",
     "directxtk",
     "directxtex",
+    "directxmesh",
     "detours",
     {
       "name": "imgui",

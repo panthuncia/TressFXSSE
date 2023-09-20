@@ -30,14 +30,10 @@ find_package( glm REQUIRED )
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 find_package(directxtex CONFIG REQUIRED)
+find_package(directxmesh CONFIG REQUIRED COMPONENTS library utils)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-add_git_submodule(extern/DirectXMesh)
-target_include_directories(${PROJECT_NAME} 
-	PUBLIC
-		"extern/DirectXMesh/Utilities"
-)
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
 		debug ${CMAKE_CURRENT_SOURCE_DIR}/extern/detours/x64/Debug/detours.lib
@@ -49,6 +45,8 @@ target_link_libraries(${PROJECT_NAME}
 		Microsoft::DirectX-Headers
 		Microsoft::DirectXTK
 		Microsoft::DirectXTex
+		Microsoft::DirectXMesh
+		Microsoft::DirectXMesh::Utilities
 		imgui::imgui
 		nlohmann_json::nlohmann_json
 		#D:/Modding/dev/TressFXSSE/build/vcpkg_installed/x64-windows-static-md/lib/Effects11.lib
