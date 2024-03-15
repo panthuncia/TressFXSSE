@@ -16,6 +16,8 @@ public:
 	AMD::float4x4                   GetInvViewProjMatrix() const { return m_invViewProjMatrix; }
 	AMD::float4                     GetCameraPos() { return m_cameraPos; };
 
+	
+	AMD::float4x4  m_cameraWorld;
 	AMD::float4x4  m_viewMatrix;
 	AMD::float4x4  m_projMatrix;
 	AMD::float4x4  m_viewProjMatrix;

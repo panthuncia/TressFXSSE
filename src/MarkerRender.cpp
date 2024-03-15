@@ -51,6 +51,16 @@ void MarkerRender::DrawAllMarkers(AMD::float4x4 viewMatrix, AMD::float4x4 projMa
 	DirectX::XMMATRIX   pmx = DirectX::XMLoadFloat4x4(&pm);
 	DrawAllMarkers(vmx, pmx);
 }
+void MarkerRender::DrawWorldAxes(AMD::float4x4 cameraWorldTransform, AMD::float4x4 viewMatrix, AMD::float4x4 projMatrix)
+{
+	DirectX::XMFLOAT4X4 wm = DirectX::XMFLOAT4X4(&cameraWorldTransform.m[0]);
+	DirectX::XMFLOAT4X4 vm = DirectX::XMFLOAT4X4(&viewMatrix.m[0]);
+	DirectX::XMFLOAT4X4 pm = DirectX::XMFLOAT4X4(&projMatrix.m[0]);
+	DirectX::XMMATRIX   wmx = DirectX::XMLoadFloat4x4(&wm);
+	DirectX::XMMATRIX   vmx = DirectX::XMLoadFloat4x4(&vm);
+	DirectX::XMMATRIX   pmx = DirectX::XMLoadFloat4x4(&pm);
+	DrawWorldAxes(wmx, vmx, pmx);
+}
 void MarkerRender::DrawWorldAxes(DirectX::XMMATRIX cameraWorldTransform, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
 	ID3D11DeviceContext* pDeviceContext = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().context;

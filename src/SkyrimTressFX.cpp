@@ -143,6 +143,36 @@ void SkyrimTressFX::Update()
 		{ camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2], glm::dot(eye, glm::vec3(camRotCalcTransp[2][0], camRotCalcTransp[2][1], camRotCalcTransp[2][2])) },
 		{ 0, 0, 0, 1 });
 
+
+	RE::NiMatrix3 rotation = playerCam->world.rotate;
+
+	glm::mat4 cameraTrans = glm::translate(glm::mat4(1.0f), glm::vec3(translation.x, translation.y, translation.z));
+	glm::mat4 cameraRot = glm::mat4({ rotation.entry[0][0], rotation.entry[0][1], rotation.entry[0][2], 0,
+		rotation.entry[1][0], rotation.entry[1][1], rotation.entry[1][2], 0,
+		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
+		0, 0, 0, 1 });
+
+	glm::mat4 cameraWorld = cameraRot * cameraTrans;
+	AMD::float4x4 amdCamWorldMatrix;
+	amdCamWorldMatrix.m[0] = cameraWorld[0][0];
+	amdCamWorldMatrix.m[1] = cameraWorld[0][1];
+	amdCamWorldMatrix.m[2] = cameraWorld[0][2];
+	amdCamWorldMatrix.m[3] = cameraWorld[0][3];
+	amdCamWorldMatrix.m[4] = cameraWorld[1][0];
+	amdCamWorldMatrix.m[5] = cameraWorld[1][1];
+	amdCamWorldMatrix.m[6] = cameraWorld[1][2];
+	amdCamWorldMatrix.m[7] = cameraWorld[1][3];
+	amdCamWorldMatrix.m[8] = cameraWorld[2][0];
+	amdCamWorldMatrix.m[9] = cameraWorld[2][1];
+	amdCamWorldMatrix.m[10] = cameraWorld[2][2];
+	amdCamWorldMatrix.m[11] = cameraWorld[2][3];
+	amdCamWorldMatrix.m[12] = cameraWorld[3][0];
+	amdCamWorldMatrix.m[13] = cameraWorld[3][1];
+	amdCamWorldMatrix.m[14] = cameraWorld[3][2];
+	amdCamWorldMatrix.m[15] = cameraWorld[3][3];
+	m_activeScene.scene.get()->m_cameraWorld = amdCamWorldMatrix;
+
+
 	AMD::float4x4 amdProjMatrix;
 	amdProjMatrix.m[0] = projMatrix[0][0];
 	amdProjMatrix.m[1] = projMatrix[0][1];
@@ -321,18 +351,18 @@ void SkyrimTressFX::LoadScene()
 		hair->GetTressFXHandle()->PopulateDrawStrandsBindSet(GetDevice(), &desc.objects[i].initialRenderingSettings);
 		m_activeScene.objects.push_back({ std::unique_ptr<HairStrands>(hair), desc.objects[i].initialSimulationSettings, desc.objects[i].initialRenderingSettings, desc.objects[i].name.c_str() });
 	}
-	logger::info("Loading collision meshes");
-	for (size_t i = 0; i < desc.collisionMeshes.size(); ++i) {
-		CollisionMesh* mesh = new CollisionMesh(
-			m_activeScene.scene.get(), m_pDebugRenderTargetSet.get(),
-			desc.collisionMeshes[i].name.c_str(),
-			desc.collisionMeshes[i].tfxMeshFilePath.c_str(),
-			desc.collisionMeshes[i].numCellsInXAxis,
-			desc.collisionMeshes[i].collisionMargin,
-			desc.collisionMeshes[i].mesh,
-			desc.collisionMeshes[i].followBone.c_str());
-		m_activeScene.collisionMeshes.push_back(std::unique_ptr<CollisionMesh>(mesh));
-	}
+	//logger::info("Loading collision meshes");
+	//for (size_t i = 0; i < desc.collisionMeshes.size(); ++i) {
+	//	CollisionMesh* mesh = new CollisionMesh(
+	//		m_activeScene.scene.get(), m_pDebugRenderTargetSet.get(),
+	//		desc.collisionMeshes[i].name.c_str(),
+	//		desc.collisionMeshes[i].tfxMeshFilePath.c_str(),
+	//		desc.collisionMeshes[i].numCellsInXAxis,
+	//		desc.collisionMeshes[i].collisionMargin,
+	//		desc.collisionMeshes[i].mesh,
+	//		desc.collisionMeshes[i].followBone.c_str());
+	//	m_activeScene.collisionMeshes.push_back(std::unique_ptr<CollisionMesh>(mesh));
+	//}
 	logger::info("LoadScene done");
 }
 void SkyrimTressFX::UpdateLights()
@@ -418,6 +448,7 @@ void SkyrimTressFX::UpdateLights()
 }
 void SkyrimTressFX::ReloadAllHairs()
 {
+	logger::info("Reloading all hairs");
 	for (auto& object : m_activeScene.objects) {
 		object.hairStrands.get()->Reload();
 	}

@@ -14,6 +14,7 @@ struct BSFaceGenNiNode_FixSkinInstances
 {
 	static void thunk(RE::BSFaceGenNiNode* self, RE::NiNode* a_skeleton, bool a_arg2)
 	{
+		logger::info("In fix skin instances");
 		const char* name = "";
 		uint32_t formId = 0x0;
 
@@ -53,14 +54,15 @@ struct BSFaceGenNiNode_FixSkinInstances
 };
 struct Main_Update
 {
-	static void thunk()
+	static short thunk(INT64 MainPTR)
 	{
 		//call main game loop
 		SkyrimTressFX* tfx = SkyrimTressFX::GetSingleton();
 		if (tfx->m_doReload) {
+			logger::info("Calling reload");
 			tfx->ReloadAllHairs();
 		}
-		func();
+		return func(MainPTR);
 	}
 	static inline REL::Relocation<decltype(thunk)> func;
 };
@@ -95,7 +97,6 @@ struct Hooks
 					tfx->Draw();
 					tfx->m_currentState = state::done_drawing;
 				}
-				//MarkerRender::GetSingleton()->DrawWorldAxes(PPLLObject::GetSingleton()->m_cameraWorld, PPLLObject::GetSingleton()->m_viewXMMatrix, PPLLObject::GetSingleton()->m_projXMMatrix);
 				/*auto hbao = HBAOPlus::GetSingleton();
 				if (!hbao->gotRTV) {
 					ID3D11RenderTargetView* pRTV;
@@ -126,11 +127,11 @@ struct Hooks
 		static void thunk(INT64 BSGraphics_Renderer, int unk)
 		{
 			func(BSGraphics_Renderer, unk);
-			//draw hair
 			auto camera = RE::PlayerCamera::GetSingleton();
 			auto tfx = SkyrimTressFX::GetSingleton();
 			if (camera != nullptr && camera->currentState != nullptr && (camera->currentState->id == RE::CameraState::kThirdPerson || camera->currentState->id == RE::CameraState::kFree || camera->currentState->id == RE::CameraState::kDragon || camera->currentState->id == RE::CameraState::kFurniture || camera->currentState->id == RE::CameraState::kMount)) {
 				MarkerRender::GetSingleton()->DrawAllMarkers(tfx->m_activeScene.scene.get()->m_viewMatrix, tfx->m_activeScene.scene.get()->m_projMatrix);
+				MarkerRender::GetSingleton()->DrawWorldAxes(tfx->m_activeScene.scene.get()->m_cameraWorld, tfx->m_activeScene.scene.get()->m_viewMatrix, tfx->m_activeScene.scene.get()->m_projMatrix);
 				MarkerRender::GetSingleton()->ClearMarkers();
 			}
 		}
