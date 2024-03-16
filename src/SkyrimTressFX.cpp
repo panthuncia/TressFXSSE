@@ -152,7 +152,7 @@ void SkyrimTressFX::Update()
 		rotation.entry[2][0], rotation.entry[2][1], rotation.entry[2][2], 0,
 		0, 0, 0, 1 });
 
-	glm::mat4 cameraWorld = cameraRot * cameraTrans;
+	glm::mat4 cameraWorld = cameraRot*cameraTrans;
 	AMD::float4x4 amdCamWorldMatrix;
 	amdCamWorldMatrix.m[0] = cameraWorld[0][0];
 	amdCamWorldMatrix.m[1] = cameraWorld[0][1];

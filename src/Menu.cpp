@@ -357,6 +357,7 @@ void Menu::DrawHairParams() {
 	ImGui::Checkbox("Thin tip", &thinTipCheckbox);
 	if (ImGui::Button("Export parameters")) {
 		auto tfx = SkyrimTressFX::GetSingleton();
+		logger::info("Export button clicked");
 		SkyrimTressFX::GetSingleton()->GetHairByName(activeHairs[selectedHair])->ExportParameters(GetSelectedRenderingSettings(tfx->m_activeScene.objects[selectedHair].renderingSettings), GetSelectedSimulationSettings(tfx->m_activeScene.objects[selectedHair].simulationSettings));
 	}
 }
@@ -401,33 +402,33 @@ void Menu::DrawHairSelector()
 	}
 }
 
-void Menu::SetCurrentSliders(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings, float* offsets)
-{
-	xSliderValue = offsets[0];
-	ySliderValue = offsets[1];
-	zSliderValue = offsets[2];
-	sSliderValue = offsets[3];
-
-	fiberRadiusSliderValue = renderSettings.m_FiberRadius;
-	tipSeparationSliderValue = simSettings.m_tipSeparation;
-	fiberRatioSliderValue = renderSettings.m_FiberRatio;
-	kdSliderValue = renderSettings.m_HairKDiffuse;
-	ks1SliderValue = renderSettings.m_HairKSpec1;
-	ex1SliderValue = renderSettings.m_HairSpecExp1;
-	ks2SliderValue = renderSettings.m_HairKSpec2;
-	localConstraintsIterationsSlider = simSettings.m_localConstraintsIterations;
-	lengthConstraintsIterationsSlider = simSettings.m_lengthConstraintsIterations;
-	localConstraintsStiffnessSlider = simSettings.m_localConstraintStiffness;
-	globalConstraintsStiffnessSlider = simSettings.m_globalConstraintStiffness;
-	globalConstraintsRangeSlider = simSettings.m_globalConstraintsRange;
-	dampingSlider = simSettings.m_damping;
-	vspAmountSlider = simSettings.m_vspCoeff;
-	vspAccelThresholdSlider = simSettings.m_vspAccelThreshold;
-	hairOpacitySlider = renderSettings.m_HairMatBaseColor.w;
-	hairShadowAlphaSlider = renderSettings.m_HairShadowAlpha;
-	thinTipCheckbox = renderSettings.m_EnableThinTip;
-	gravityMagnitudeSlider = simSettings.m_gravityMagnitude;
-}
+//void Menu::SetCurrentSliders(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings, float* offsets)
+//{
+//	xSliderValue = offsets[0];
+//	ySliderValue = offsets[1];
+//	zSliderValue = offsets[2];
+//	sSliderValue = offsets[3];
+//
+//	fiberRadiusSliderValue = renderSettings.m_FiberRadius;
+//	tipSeparationSliderValue = simSettings.m_tipSeparation;
+//	fiberRatioSliderValue = renderSettings.m_FiberRatio;
+//	kdSliderValue = renderSettings.m_HairKDiffuse;
+//	ks1SliderValue = renderSettings.m_HairKSpec1;
+//	ex1SliderValue = renderSettings.m_HairSpecExp1;
+//	ks2SliderValue = renderSettings.m_HairKSpec2;
+//	localConstraintsIterationsSlider = simSettings.m_localConstraintsIterations;
+//	lengthConstraintsIterationsSlider = simSettings.m_lengthConstraintsIterations;
+//	localConstraintsStiffnessSlider = simSettings.m_localConstraintStiffness;
+//	globalConstraintsStiffnessSlider = simSettings.m_globalConstraintStiffness;
+//	globalConstraintsRangeSlider = simSettings.m_globalConstraintsRange;
+//	dampingSlider = simSettings.m_damping;
+//	vspAmountSlider = simSettings.m_vspCoeff;
+//	vspAccelThresholdSlider = simSettings.m_vspAccelThreshold;
+//	hairOpacitySlider = renderSettings.m_HairMatBaseColor.w;
+//	hairShadowAlphaSlider = renderSettings.m_HairShadowAlpha;
+//	thinTipCheckbox = renderSettings.m_EnableThinTip;
+//	gravityMagnitudeSlider = simSettings.m_gravityMagnitude;
+//}
 
 void Menu::DrawOffsetSliders()
 {
@@ -711,7 +712,37 @@ TressFXSimulationSettings Menu::GetSelectedSimulationSettings(TressFXSimulationS
 	settings.m_windMagnitude = previousSettings.m_windMagnitude;
 	return settings;
 }
-	const char* Menu::KeyIdToString(uint32_t key)
+void Menu::SetCurrentSliders(TressFXRenderingSettings renderSettings, TressFXSimulationSettings simSettings, float offsets[4]){
+
+	//render settings
+	thinTipCheckbox = renderSettings.m_EnableThinTip;
+	fiberRadiusSliderValue = renderSettings.m_FiberRadius * fiberRadiusScale;
+	fiberRatioSliderValue = renderSettings.m_FiberRatio;
+	kdSliderValue = renderSettings.m_HairKDiffuse;
+	ks1SliderValue = renderSettings.m_HairKSpec1;
+	ks2SliderValue = renderSettings.m_HairKSpec2;
+	hairShadowAlphaSlider = renderSettings.m_HairShadowAlpha;
+	ex1SliderValue = renderSettings.m_HairSpecExp1;
+	ex2SliderValue = renderSettings.m_HairSpecExp2;
+
+	//sim settings
+	dampingSlider = simSettings.m_damping;
+	globalConstraintsRangeSlider = simSettings.m_globalConstraintsRange;
+	globalConstraintsStiffnessSlider = simSettings.m_globalConstraintStiffness;
+	gravityMagnitudeSlider = simSettings.m_gravityMagnitude;
+	lengthConstraintsIterationsSlider = simSettings.m_lengthConstraintsIterations;
+	localConstraintsIterationsSlider = simSettings.m_localConstraintsIterations;
+	localConstraintsStiffnessSlider = simSettings.m_localConstraintStiffness;
+	tipSeparationSliderValue = simSettings.m_tipSeparation;
+	vspAccelThresholdSlider = simSettings.m_vspAccelThreshold;
+	vspAmountSlider = simSettings.m_vspCoeff;
+
+	xSliderValue = offsets[0];
+	ySliderValue = offsets[1];
+	zSliderValue = offsets[2];
+	sSliderValue = offsets[3];
+}
+const char* Menu::KeyIdToString(uint32_t key)
 {
 	if (key >= 256)
 		return "";

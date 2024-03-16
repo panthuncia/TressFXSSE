@@ -316,6 +316,7 @@ void HairStrands::ExportParameters(TressFXRenderingSettings renderSettings, Tres
 {
 	json parameters;
 	parameters["fiberRadius"] = renderSettings.m_FiberRadius;
+	logger::info("Exporting:  ratio: {}", renderSettings.m_FiberRadius);
 	parameters["fiberSpacing"] = renderSettings.m_HairFiberSpacing;
 	parameters["fiberRatio"] = renderSettings.m_FiberRatio;
 	parameters["kd"] = renderSettings.m_HairKDiffuse;
