@@ -1,1 +1,1 @@
-Repo is effecrtively abandoned, pending full DX12 rewrite
+Repo is effectively abandoned, pending full rewrite
